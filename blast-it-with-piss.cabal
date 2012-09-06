@@ -1,0 +1,147 @@
+name: blast-it-with-piss
+synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
+description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
+version: 0.0.0.0
+homepage: https://github.com/exbb2/blast-it-with-piss
+bug-reports: https://github.com/exbb2/blast-it-with-piss/issues
+license: GPL-3
+license-file: LICENSE
+author: news@conference.1chan.ru/kudah
+category: Network
+stability: Experimental
+portability: non-portable (requires STM)
+build-type: Simple
+cabal-version: >=1.8
+tested-with: GHC == 7.4.1
+
+flag bindist
+    description: Set executable's directory to be the current working directory
+                 and redirect stdout to stdout.txt.
+    default: False
+
+library
+    build-depends: base
+                  ,containers
+                  ,stm
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,random
+                  ,MonadRandom
+                  ,safe
+                  ,network
+                  ,http-conduit >= 1.6.0.1
+                  ,http-types
+                  ,mime-types
+                  ,resourcet
+                  ,case-insensitive
+--                  ,system-filepath
+                  ,tagsoup
+                  ,utf8-string
+
+    exposed-modules:
+                   BlastItWithPiss.Post
+                  ,BlastItWithPiss.Parsing
+                  ,BlastItWithPiss.Escaping
+                  ,BlastItWithPiss.MultipartFormData
+                  ,BlastItWithPiss.Image
+                  ,BlastItWithPiss.Board
+                  ,BlastItWithPiss.Choice
+
+                  ,Import
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+
+    ghc-options: -Wall -threaded -O2
+    
+    extensions: NoImplicitPrelude, CPP
+               ,OverloadedStrings
+               ,PatternGuards
+               ,RecordWildCards
+               ,ScopedTypeVariables
+
+executable checkproxy
+    main-is: CheckProxyMain.hs 
+    build-depends: base
+                  ,random
+                  ,strict
+                  ,directory
+                  ,safe
+                  ,http-conduit
+                  ,http-types >= 0.7
+                  ,network
+                  ,utf8-string
+                  ,bytestring
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+
+    ghc-options: -Wall -threaded -O2
+
+    extensions: NoImplicitPrelude, CPP
+
+executable blastgtk
+    main-is: GtkMain.hs
+    build-depends: base
+                  ,time
+                  ,stm
+                  ,blast-it-with-piss
+                  ,bytestring
+                  ,text
+                  ,safe
+                  ,gtk
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+        build-depends: directory
+                      ,executable-path
+
+    ghc-options: -Wall -threaded -O2
+
+    extensions: NoImplicitPrelude, CPP
+
+executable blastcli
+    main-is: CliMain.hs
+    build-depends: base
+                  ,blast-it-with-piss
+                  ,containers
+                  ,stm
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,random
+                  ,MonadRandom
+                  ,safe
+                  ,network
+                  ,http-conduit >= 1.6.0.1
+                  ,http-types
+                  ,mime-types
+                  ,case-insensitive
+                  ,system-filepath
+                  ,tagsoup
+                  ,utf8-string
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+
+    ghc-options: -Wall -threaded -O2
+
+    extensions: NoImplicitPrelude, CPP
+
+-- updater app. Checks and installs updates, then runs blastgtk
+executable blast
+    main-is: UpdaterMain.hs
+    build-depends: base
+                  ,process
+                  ,directory
+                  ,filepath
+                  ,executable-path
+                  ,http-conduit
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+
+    ghc-options: -Wall -threaded -O2
+
+    extensions: NoImplicitPrelude, CPP

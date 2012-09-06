@@ -1,0 +1,6 @@
+:set -XNoImplicitPrelude
+:set -XCPP
+:set -XOverloadedStrings
+:set -XRecordWildCards
+:set -XScopedTypeVariables
+:set -Wall

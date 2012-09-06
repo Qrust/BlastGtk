@@ -1,0 +1,4 @@
+#!/bin/sh
+cabal clean
+cabal configure -f bindist --enable-optimization=2 --enable-executable-stripping
+cabal build
