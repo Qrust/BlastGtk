@@ -40,8 +40,8 @@ renderField boundary (Field params headers body) =
 
 randomBoundary :: IO ByteString
 randomBoundary = do
-    dashcount <- randomRIO (9, 50)
-    charcount <- randomRIO (30, 50)
+    dashcount <- getRandomR (9, 50)
+    charcount <- getRandomR (30, 50)
     fromString . (replicate dashcount '-' <>)
                . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains that only alphanumeric characters are allowed in boundary, it works however.
 

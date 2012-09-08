@@ -279,6 +279,19 @@ ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
 ssachPage b 0 = ssachBoard b
 ssachPage b i = ssachBoard b <> show i <> ".html"
 
+ssachRecaptchaKey :: String
+ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
+
+ssachLengthLimit :: Int
+ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
+                        -- bytes instead of unicode chars.
+
+ssachThreadTimeout :: Board -> Int
+ssachThreadTimeout _ = 30 * 60
+
+ssachPostTimeout :: Board -> Int
+ssachPostTimeout _ = 10
+
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"
 

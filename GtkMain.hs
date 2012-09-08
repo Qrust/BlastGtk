@@ -8,6 +8,7 @@ import System.Directory (setCurrentDirectory)
 import System.IO (openFile, stdout)
 import GHC.IO.Handle (hDuplicateTo)
 #endif
+import Network (withSocketsDo)
 
 main :: IO ()
 main = do

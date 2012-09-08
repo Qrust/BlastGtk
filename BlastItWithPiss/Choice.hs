@@ -5,7 +5,7 @@ import BlastItWithPiss.Parsing
 import Text.HTML.TagSoup
 import Network.HTTP.Conduit
 import Data.Ratio
-import Control.Monad.Random (fromList, MonadRandom)
+import Control.Monad.Random
 import qualified Data.Map as M
 import qualified Codec.Binary.UTF8.Generic as UTF8
 
@@ -228,12 +228,7 @@ chooseThread mode getPage p0 = do
                                 else (return p0 :) $ tailSafe $
                                       map getPage [pageId p0 .. lastpage p0]
              in Just <$> untilJust (findMapM (chooseThread' mode =<<) iterpages)
-{-
-main :: MonadChoice m => Board -> Bool -> m ()
-main board canmakethread = do
-    let getPage i = parsePage . parseTags . UTF8.toString <$> simpleHttp (ssachPage board i)
-    p0 <- getPage 0
-    mode <- chooseMode board canmakethread p0
-    liftIO $ print mode
-    liftIO . print =<< chooseThread mode getPage p0
--}
+
+chooseFromList :: MonadChoice m => [a] -> m a
+chooseFromList [] = error "chooseFromList supplied with empty pasta list."
+chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)

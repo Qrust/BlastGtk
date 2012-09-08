@@ -1,7 +1,5 @@
 module BlastItWithPiss.Post where
 import Import
-import BlastItWithPiss.Parsing
-import BlastItWithPiss.Choice
 import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
 import BlastItWithPiss.MultipartFormData
@@ -11,21 +9,9 @@ import Network.HTTP.Types
 import Network.Mime
 import Network.HTTP.Conduit
 import Control.Exception
-import Control.Concurrent
-import Network (withSocketsDo)
-import qualified Data.ByteString.Lazy as L
 import qualified Text.Show as S
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
-
---import Data.Time
-
-sosachRecaptchaKey :: String
-sosachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
-
-lengthLimit :: Int
-lengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
-                   -- bytes instead of unicode chars.
 
 userAgent :: ByteString
 userAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
@@ -250,44 +236,3 @@ post (req, success) = do
         ,Handler $ \(async :: AsyncException) -> throwIO async
         ,Handler $ \(something :: SomeException) -> return $ InternalError (Err $ show something)
         ]
-
--- TODO switch to Browser. Add more generic header handling to browser.
--- TODO More type safety.
--- TODO tests — hspec, hunit.
-main = withSocketsDo $ do
-    let board = MDK
-        thread = 18131
-        mthread = Just thread
-    (wakabapl, otherfields) <- parseForm ssach . parseTags . UTF8.toString
-                    <$> simpleHttp (ssachThread board thread)
-    chKey <- getChallengeKey sosachRecaptchaKey
-    mbbytes <- getCaptcha wakabapl (Just thread) sosachRecaptchaKey chKey
-    captcha <- case mbbytes of
-                Just bytes -> do
-                    L.writeFile "captcha.jpeg" bytes
-                    putStrLn "Капча: "
-                    getLine
-                Nothing -> return ""
-    rimage <- readImage "captcha.jpeg"
-    image <- appendJunk rimage
-    chKey >$> (captcha >$> (image >$> fix (\this image captcha chKey -> do
-        p <- prepare board mthread (PostData "" ">петушкам™ здесь не место\nДак ведь на сосаче одни петухи и водятся!"
-                        (Just image{bytes="abc"}) True True) chKey captcha wakabapl otherfields lengthLimit
---        print =<< getCurrentTime
-        out <- post p -- FIXME for some reason post eats up 2 seconds for nothing.
---        print =<< getCurrentTime
-        if out==WrongCaptcha || out==Success
-            then do
-                chKey <- getChallengeKey sosachRecaptchaKey
-                mbbytes <- getCaptcha wakabapl mthread sosachRecaptchaKey chKey
-                captcha <- case mbbytes of
-                            Just bytes -> do
-                                L.writeFile "captcha.jpeg" bytes
-                                putStrLn "Капча: "
-                                getLine
-                            Nothing -> return ""
-                image <- appendJunk rimage
-                when (out==Success) $ threadDelay (10*1000000)
-                this image captcha chKey
-            else print out
-        )))

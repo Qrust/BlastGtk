@@ -27,6 +27,7 @@ module Import
     ,tupapp
     ,justIf
     ,untilJust
+    ,untilNothing
     ) where
 import Prelude as A hiding (show)
 -- import Filesystem.Path as A
@@ -167,9 +168,14 @@ tupapp f1 f2 = \a -> (f1 a, f2 a)
 justIf :: (a -> Bool) -> a -> Maybe a
 justIf p a = if p a then Just a else Nothing
 
-{-# INLINE untilJust #-}
 untilJust :: Monad m => m (Maybe a) -> m a
 untilJust m = do x <- m
                  case x of
                     Just a -> return a
                     Nothing -> untilJust m
+
+untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
+untilNothing m = do x <- m
+                    case x of
+                        Just a -> (a :) <$> untilNothing m
+                        Nothing -> return []
