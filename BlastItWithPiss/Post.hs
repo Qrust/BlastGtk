@@ -42,6 +42,11 @@ data Outcome = Success
 message :: Outcome -> String
 message = unErrorMessage . errMessage
 
+successOutcome :: Outcome -> Bool
+successOutcome Success = True
+successOutcome (SuccessLongPost _) = True
+successOutcome _ = False
+
 wordfiltered :: [Tag String] -> Bool
 wordfiltered =
     isPrefixOf [TagOpen "html" [], TagOpen "body" [], TagOpen "h1" [],TagText "Spam detected."]
