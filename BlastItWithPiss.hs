@@ -16,14 +16,23 @@ import Data.Time.Clock.POSIX
 
 import System.Process
 
--- FIXME Oh god, what a mess.
+-- FIXME FIXME FIXME simpleHTTP throws exceptions (like ResponseTimeout) and kills program
+-- FIXME Oh dog, what a mess.
 -- TODO switch to Browser. Add more generic header handling to browser.
 -- TODO More type safety.
 -- TODO Less boilerplate, less explicit parameter passing. (Rollout some monad)
+-- TODO Increase modularity.
+-- TODO Support non-makaba-boards. Add 2chnu, alterchan.
+
+data MaybeRandom a = Always a
+                   | Random
 
 data MuSettings = MuSettings {tpastas :: TVar [String]
                              ,timages :: TVar [Image]
-                             ,tuseimages :: TVar Bool}
+                             ,tuseimages :: TVar Bool
+                             ,tcreatethreads :: TVar Bool
+                             ,tthread :: TVar (MaybeRandom (Maybe Int))
+                             ,tmode :: TVar (MaybeRandom Mode)}
 
 data CaptchaAnswer = Answer String
                    | ReloadCaptcha
@@ -34,6 +43,13 @@ data OutMessage = OutcomeMessage (Maybe Int) Outcome
                                 } -- we send outcome anyway
                 | NoPastas
                 | NoImages
+
+whenRandomSTM :: MonadIO m => TVar (MaybeRandom a) -> m a -> m a
+whenRandomSTM t m = do
+    r <- liftIO $ readTVarIO t
+    case r of
+        Always a -> return a
+        Random -> m
 
 downloadTags :: String -> IO [Tag String]
 downloadTags u = parseTags . UTF8.toString <$> simpleHttp u
@@ -66,7 +82,9 @@ entryPoint board MuSettings{..} output = do
                     case a of
                         Answer s -> return s
                         ReloadCaptcha -> blastCaptcha wakabapl thread chKey
-        blastPost w@(wakabapl, otherfields) mode thread postdata chKey captcha = do
+        blastPost w@(wakabapl, otherfields) mode thread postdata = do
+            chKey <- getChallengeKey ssachRecaptchaKey
+            captcha <- blastCaptcha wakabapl thread chKey
             p <- prepare board thread postdata
                             chKey captcha wakabapl otherfields ssachLengthLimit
             beforePost <- getPOSIXTime
@@ -84,11 +102,8 @@ entryPoint board MuSettings{..} output = do
                 Success -> success
                 SuccessLongPost rest -> if mode /= CreateNew
                     then do _ <- success
-                            nchk <- getChallengeKey ssachRecaptchaKey
-                            ncp <- blastCaptcha wakabapl thread nchk
                             blastPost w mode thread
                                     (PostData "" rest Nothing (sageMode mode) False)
-                                    nchk ncp
                     else success
                 NeedCaptcha -> do auxlog thread $
                                     "don't know how to handle NeedCaptcha, we "
@@ -98,21 +113,15 @@ entryPoint board MuSettings{..} output = do
                 TooFastThread -> do auxlog thread $ "too fast thread, retrying in 15 minutes"
                                     ret
                 _ -> failure
-        newLoop w@(wakabapl, _) lthreadtime = do
+        newLoop w lthreadtime = do
             now <- getPOSIXTime
-            let canmakethread = now - lthreadtime >= realToFrac (ssachThreadTimeout board)
+            canmakethread <- ifM (readTVarIO tcreatethreads)
+                                (return $ now - lthreadtime >= realToFrac (ssachThreadTimeout board))
+                                (return False)
             p0 <- getPage 0
-            mode <- chooseMode board canmakethread p0
-            thread <- chooseThread mode getPage p0
+            mode <- whenRandomSTM tmode $ chooseMode board canmakethread p0
+            thread <- whenRandomSTM tthread $ chooseThread mode getPage p0
             auxlog thread $ "chose mode " ++ show mode
-            chKey <- getChallengeKey ssachRecaptchaKey
-            captcha <- blastCaptcha wakabapl thread chKey
-            pasta <- do pastas <- readTVarIO tpastas
-                        if null pastas
-                            then do atomically $ writeTQueue output $ NoPastas
-                                    auxlog thread "threw NoPastas"
-                                    return $ concat $ replicate 500 "NOPASTA"
-                            else chooseFromList pastas
             rimage <- do use <- readTVarIO tuseimages
                          if not use && mode /= CreateNew
                             then return Nothing
@@ -122,12 +131,20 @@ entryPoint board MuSettings{..} output = do
                                             atomically $ writeTQueue output $ NoImages
                                             auxlog thread "threw NoImages"
                                             -- as a fallback use recaptcha image
+                                            chKey <- getChallengeKey ssachRecaptchaKey
                                             Just . Image "haruhi.jpg" "image/jpeg" .
                                                 S.concat . L.toChunks
                                                     <$> getCaptchaImage chKey
                                         else Just <$> chooseFromList images
             image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
-            (beforePost, out) <- blastPost w mode thread (PostData "" pasta image (sageMode mode) False) chKey captcha
+            pasta <- do pastas <- readTVarIO tpastas
+                        if null pastas
+                            then do when (isNothing image) $ do
+                                        atomically $ writeTQueue output $ NoPastas
+                                        auxlog thread "threw NoPastas"
+                                    return ""
+                            else chooseFromList pastas
+            (beforePost, out) <- blastPost w mode thread (PostData "" pasta image (sageMode mode) False)
             if successOutcome out
                 then newLoop w (if mode==CreateNew then beforePost else lthreadtime)
                 else newLoop w (if out==TooFastThread
@@ -136,9 +153,12 @@ entryPoint board MuSettings{..} output = do
 
 main :: IO ()
 main = do
-    tpastas <- atomically $ newTVar ["ололололололололололо", "нянянянянянняняняняняняняня"]
+    tpastas <- atomically $ newTVar []
     timages <- atomically . newTVar =<< mapM readImageWithoutJunk ["images/jew-swede.jpg"]
     tuseimages <- atomically $ newTVar True
+    tcreatethreads <- atomically $ newTVar False
+    tthread <- atomically $ newTVar (Always (Just 18189))
+    tmode <- atomically $ newTVar Random
     to <- atomically $ newTQueue
     void $ forkIO (entryPoint MDK MuSettings{..} to)
     forever $ do

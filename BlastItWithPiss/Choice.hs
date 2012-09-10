@@ -1,15 +1,14 @@
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
 module BlastItWithPiss.Choice where
 import Import
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
-import Text.HTML.TagSoup
-import Network.HTTP.Conduit
 import Data.Ratio
 import Control.Monad.Random
 import qualified Data.Map as M
-import qualified Codec.Binary.UTF8.Generic as UTF8
 
-type MonadChoice m = (MonadRandom m, MonadIO m, Applicative m)
+class (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
+instance (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
 
 data Mode = SagePopular
           | BumpUnpopular
@@ -230,5 +229,5 @@ chooseThread mode getPage p0 = do
              in Just <$> untilJust (findMapM (chooseThread' mode =<<) iterpages)
 
 chooseFromList :: MonadChoice m => [a] -> m a
-chooseFromList [] = error "chooseFromList supplied with empty pasta list."
+chooseFromList [] = error "chooseFromList supplied with empty list."
 chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)

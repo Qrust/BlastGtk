@@ -8,8 +8,7 @@ license: GPL-3
 license-file: LICENSE
 author: news@conference.1chan.ru/kudah
 category: Network
-stability: Experimental
-portability: non-portable (requires STM)
+stability: experimental
 build-type: Simple
 cabal-version: >=1.8
 tested-with: GHC == 7.4.1
@@ -28,6 +27,7 @@ library
                   ,text
                   ,random
                   ,MonadRandom
+                  ,transformers
                   ,safe
                   ,network
                   ,http-conduit >= 1.6.0.1
@@ -37,10 +37,15 @@ library
                   ,case-insensitive
 --                  ,system-filepath
                   ,tagsoup
+
+                  ,process
+
                   ,utf8-string
 
+
     exposed-modules:
-                   BlastItWithPiss.Post
+                   BlastItWithPiss
+                  ,BlastItWithPiss.Post
                   ,BlastItWithPiss.Parsing
                   ,BlastItWithPiss.Escaping
                   ,BlastItWithPiss.MultipartFormData
@@ -55,7 +60,7 @@ library
 
     ghc-options: -Wall -threaded -O2
     
-    extensions: NoImplicitPrelude, CPP
+    extensions: NoImplicitPrelude, CPP, PatternGuards
                ,OverloadedStrings
                ,PatternGuards
                ,RecordWildCards
@@ -79,18 +84,20 @@ executable checkproxy
 
     ghc-options: -Wall -threaded -O2
 
-    extensions: NoImplicitPrelude, CPP
+    extensions: NoImplicitPrelude, CPP, PatternGuards
 
 executable blastgtk
     main-is: GtkMain.hs
     build-depends: base
+                  ,blast-it-with-piss
                   ,time
                   ,stm
-                  ,blast-it-with-piss
+                  ,transformers
                   ,bytestring
                   ,text
                   ,safe
                   ,gtk
+                  ,network
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -99,7 +106,7 @@ executable blastgtk
 
     ghc-options: -Wall -threaded -O2
 
-    extensions: NoImplicitPrelude, CPP
+    extensions: NoImplicitPrelude, CPP, PatternGuards
 
 executable blastcli
     main-is: CliMain.hs
@@ -107,6 +114,7 @@ executable blastcli
                   ,blast-it-with-piss
                   ,containers
                   ,stm
+                  ,transformers
                   ,time
                   ,bytestring
                   ,text
@@ -127,7 +135,7 @@ executable blastcli
 
     ghc-options: -Wall -threaded -O2
 
-    extensions: NoImplicitPrelude, CPP
+    extensions: NoImplicitPrelude, CPP, PatternGuards
 
 -- updater app. Checks and installs updates, then runs blastgtk
 executable blast
@@ -144,4 +152,4 @@ executable blast
 
     ghc-options: -Wall -threaded -O2
 
-    extensions: NoImplicitPrelude, CPP
+    extensions: NoImplicitPrelude, CPP, PatternGuards
