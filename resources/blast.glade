@@ -35,13 +35,14 @@
                 <property name="can_focus">False</property>
                 <property name="spacing">8</property>
                 <child>
-                  <object class="GtkProgressBar" id="progressbar1">
+                  <object class="GtkProgressBar" id="wipeprogress">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="activity_mode">True</property>
                     <property name="show_text">True</property>
-                    <property name="pulse_step">0.25</property>
+                    <property name="pulse_step">0.050000000000000003</property>
                     <property name="text" translatable="yes">Вайп ещё не начат</property>
-                    <property name="discrete_blocks">4</property>
+                    <property name="discrete_blocks">9000</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -979,7 +980,7 @@
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkRadioButton" id="radio-random-num">
+                                      <object class="GtkRadioButton" id="radio-num">
                                         <property name="label" translatable="yes">Случайные _цифры</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="visible">True</property>
@@ -996,7 +997,7 @@
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkRadioButton" id="radio-random-char">
+                                      <object class="GtkRadioButton" id="radio-char">
                                         <property name="label" translatable="yes">Случайные _буквы</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="visible">True</property>
@@ -1168,6 +1169,22 @@
                                         <property name="position">1</property>
                                       </packing>
                                     </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="check-watermark">
+                                        <property name="label" translatable="yes">Ват_ермарка</property>
+                                        <property name="use_action_appearance">False</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="use_underline">True</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">True</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">2</property>
+                                      </packing>
+                                    </child>
                                   </object>
                                 </child>
                               </object>
@@ -1239,7 +1256,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="check-annoy-errors">
+                                  <object class="GtkCheckButton" id="check-annoyerrors">
                                     <property name="label" translatable="yes">Разворачивать окно при
 _ошибках</property>
                                     <property name="use_action_appearance">False</property>
@@ -1264,7 +1281,6 @@ _ошибках</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
                                     <property name="use_underline">True</property>
-                                    <property name="active">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
@@ -1309,6 +1325,39 @@ _ошибках</property>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkExpander" id="expander-additional-settings">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <child>
+                  <object class="GtkHBox" id="hbox2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="spacing">5</property>
+                    <property name="homogeneous">True</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                </child>
+                <child type="label">
+                  <object class="GtkLabel" id="label7">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">_Дополнительно</property>
+                    <property name="use_underline">True</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
               </packing>
             </child>
           </object>

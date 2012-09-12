@@ -1,36 +1,43 @@
 module BlastItWithPiss where
 import Import
+import BlastItWithPiss.Blast
 import BlastItWithPiss.Image
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Choice
+import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Post
-import Control.Concurrent
+import Control.Concurrent (forkIO)
+import Control.Concurrent.Lifted
 import Control.Concurrent.STM
 import Text.HTML.TagSoup
-import Network.HTTP.Conduit
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Data.Time.Clock.POSIX
 
+import GHC.Conc (threadStatus, ThreadStatus(..))
 import System.Process
+import System.Exit
+import Network
 
--- FIXME FIXME FIXME simpleHTTP throws exceptions (like ResponseTimeout) and kills program
+--TODO support ANTIGATE, CAPTCHABOT, etc.
+--TODO add multipart/form-data to http-conduit
+
 -- FIXME Oh dog, what a mess.
--- TODO switch to Browser. Add more generic header handling to browser.
 -- TODO More type safety.
 -- TODO Less boilerplate, less explicit parameter passing. (Rollout some monad)
 -- TODO Increase modularity.
--- TODO Support non-makaba-boards. Add 2chnu, alterchan.
+-- TODO Support 2chnu, alterchan.
 
 data MaybeRandom a = Always a
                    | Random
 
 data MuSettings = MuSettings {tpastas :: TVar [String]
-                             ,timages :: TVar [Image]
+                             ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
+                             ,tmakewatermark :: TVar Bool
                              ,tthread :: TVar (MaybeRandom (Maybe Int))
                              ,tmode :: TVar (MaybeRandom Mode)}
 
@@ -40,7 +47,7 @@ data CaptchaAnswer = Answer String
 data OutMessage = OutcomeMessage (Maybe Int) Outcome
                 | SupplyCaptcha {captchaBytes :: LByteString
                                 ,captchaSend :: (CaptchaAnswer -> IO ())
-                                } -- we send outcome anyway
+                                }
                 | NoPastas
                 | NoImages
 
@@ -54,27 +61,32 @@ whenRandomSTM t m = do
 downloadTags :: String -> IO [Tag String]
 downloadTags u = parseTags . UTF8.toString <$> simpleHttp u
 
-downloadPage :: Board -> Int -> IO Page
-downloadPage b i = parsePage <$> downloadTags (ssachPage b i)
-
 -- | Entry point should always be forked.
--- > forkIO (entryPoint MDK ts to)
+--
+-- > thread <- forkIO (entryPoint MDK ts to)
+--
+-- You might want to resurrect thread if it gets killed.
+--
+-- > st <- threadStatus thread
+-- > if st==ThreadDied || st==ThreadFinished
+-- >    then resurrect
+-- >    else continue
 entryPoint :: Board -> MuSettings -> TQueue OutMessage -> IO ()
 entryPoint board MuSettings{..} output = do
     w <- parseForm ssach <$> downloadTags (ssachPage board 0)
-    newLoop w 0
-  where --kokoko
-        auxlog thread m = do
+    runBlast $ newLoop w 0 0
+  where --kokoko ;_;
+        auxlog thread m = liftIO $ do
             now <- getPOSIXTime
             putStrLn $ show now ++ " " ++ show board ++ " | " ++ show thread ++ ": " ++ m
-        getPage = downloadPage board
+        getPage p = parsePage <$> httpGetStrTags (ssachPage board p)
         blastCaptcha wakabapl thread chKey = do
             mbbytes <- getCaptcha wakabapl thread ssachRecaptchaKey chKey
             case mbbytes of
                 Nothing -> return ""
                 Just bytes -> do
                     m <- newEmptyMVar
-                    atomically $
+                    liftIO $ atomically $
                         writeTQueue output $ SupplyCaptcha bytes (putMVar m)
                     auxlog thread "blocking on mvar"
                     a <- takeMVar m
@@ -82,93 +94,133 @@ entryPoint board MuSettings{..} output = do
                     case a of
                         Answer s -> return s
                         ReloadCaptcha -> blastCaptcha wakabapl thread chKey
-        blastPost w@(wakabapl, otherfields) mode thread postdata = do
-            chKey <- getChallengeKey ssachRecaptchaKey
-            captcha <- blastCaptcha wakabapl thread chKey
+        blastPost cap w@(wakabapl, otherfields) mode thread postdata= do
+            (chKey, captcha) <- if cap || mode==CreateNew
+                                    then do auxlog thread $ "querying captcha"
+                                            chKey <- getChallengeKey ssachRecaptchaKey
+                                            (,) chKey <$> blastCaptcha wakabapl thread chKey
+                                    else return ("", "")
             p <- prepare board thread postdata
                             chKey captcha wakabapl otherfields ssachLengthLimit
-            beforePost <- getPOSIXTime
-            out <- post p -- FIXME for some reason post eats up 2 seconds for nothing.
-            atomically $ writeTQueue output (OutcomeMessage thread out)
+            auxlog thread $ "posting"
+            beforePost <- liftIO $ getPOSIXTime
+            out <- post p -- FIXME for some reason post eats up 3 seconds for nothing.
+                          -- FIXME Not a lazyness issue(?)
+            liftIO $ atomically $ writeTQueue output (OutcomeMessage thread out)
+            let reportSuccess = do
+                    afterPost <- liftIO $ getPOSIXTime
+                    auxlog thread "sleeping 10 seconds after success"
+                    liftIO $ threadDelay ((10 - round (afterPost - beforePost)) * 1000000)
+                reportFail = do
+                    auxlog thread "sleeping 1 second after fail"
+                    liftIO $ threadDelay 1000000
             let ret = return (beforePost, out)
-                success = do afterPost <- getPOSIXTime
-                             auxlog thread "sleeping 10 seconds after success"
-                             threadDelay ((10 - round (afterPost - beforePost)) * 1000000)
-                             ret
-                failure = do auxlog thread "sleeping 2 seconds after fail"
-                             threadDelay (2 * 1000000)
-                             ret
             case out of
-                Success -> success
+                Success -> do reportSuccess
+                              ret
                 SuccessLongPost rest -> if mode /= CreateNew
-                    then do _ <- success
-                            blastPost w mode thread
-                                    (PostData "" rest Nothing (sageMode mode) False)
-                    else success
-                NeedCaptcha -> do auxlog thread $
-                                    "don't know how to handle NeedCaptcha, we "
-                                    ++ "always query for captcha anyway"
-                                  ret
-                WrongCaptcha -> ret
-                TooFastThread -> do auxlog thread $ "too fast thread, retrying in 15 minutes"
+                    then do reportSuccess
+                            blastPost cap w mode thread
+                                (PostData "" rest Nothing (sageMode mode) False)
+                    else do reportSuccess; ret
+                TooFastPost -> do auxlog thread "TooFastPost, retrying in 1 second"
+                                  liftIO $ threadDelay 1000000
+                                  blastPost cap w mode thread postdata
+                TooFastThread -> do auxlog thread $ "TooFastThread, retrying in 15 minutes"
                                     ret
-                _ -> failure
-        newLoop w lthreadtime = do
-            now <- getPOSIXTime
-            canmakethread <- ifM (readTVarIO tcreatethreads)
+                o | o==NeedCaptcha || o==WrongCaptcha -> do
+                        auxlog thread $ show o ++ ", requerying"
+                        blastPost True w mode thread postdata
+                  | otherwise -> do
+                        reportFail
+                        ret
+        newLoop w lthreadtime lposttime = handle (\(_::HttpException) -> newLoop w lthreadtime lposttime) $ do
+                                -- Dunno what to do except restart.
+            now <- liftIO $ getPOSIXTime
+            canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                                 (return $ now - lthreadtime >= realToFrac (ssachThreadTimeout board))
                                 (return False)
             p0 <- getPage 0
             mode <- whenRandomSTM tmode $ chooseMode board canmakethread p0
             thread <- whenRandomSTM tthread $ chooseThread mode getPage p0
             auxlog thread $ "chose mode " ++ show mode
-            rimage <- do use <- readTVarIO tuseimages
-                         if not use && mode /= CreateNew
+            rimage <- do use <- liftIO $ readTVarIO tuseimages
+                         if not use && mode /= CreateNew || mode == SagePopular
                             then return Nothing
-                            else do images <- readTVarIO timages
+                            else do images <- liftIO $ readTVarIO timages
                                     if null images
                                         then do
-                                            atomically $ writeTQueue output $ NoImages
+                                            liftIO $ atomically $
+                                                writeTQueue output $ NoImages
                                             auxlog thread "threw NoImages"
-                                            -- as a fallback use recaptcha image
+                                            -- use recaptcha as a fallback
                                             chKey <- getChallengeKey ssachRecaptchaKey
                                             Just . Image "haruhi.jpg" "image/jpeg" .
                                                 S.concat . L.toChunks
                                                     <$> getCaptchaImage chKey
-                                        else Just <$> chooseFromList images
+                                        else do i <- chooseFromList images
+                                                Just <$> readImageWithoutJunk i
             image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
-            pasta <- do pastas <- readTVarIO tpastas
+            pasta <- do pastas <- liftIO $ readTVarIO tpastas
                         if null pastas
                             then do when (isNothing image) $ do
-                                        atomically $ writeTQueue output $ NoPastas
+                                        liftIO $ atomically $
+                                            writeTQueue output $ NoPastas
                                         auxlog thread "threw NoPastas"
                                     return ""
                             else chooseFromList pastas
-            (beforePost, out) <- blastPost w mode thread (PostData "" pasta image (sageMode mode) False)
+            watermark <- liftIO $ readTVarIO tmakewatermark
+            (beforePost, out) <- blastPost False w mode thread
+                                (PostData "" pasta image (sageMode mode) watermark)
             if successOutcome out
-                then newLoop w (if mode==CreateNew then beforePost else lthreadtime)
-                else newLoop w (if out==TooFastThread
-                                    then beforePost - (realToFrac (ssachThreadTimeout board) / 2)
-                                    else lthreadtime)
+                then newLoop w
+                        (if mode==CreateNew then beforePost else lthreadtime)
+                        lposttime
+                else newLoop w
+                        (if out==TooFastThread
+                            then beforePost - (realToFrac (ssachThreadTimeout board) / 2)
+                            else lthreadtime)
+                        lposttime
 
 main :: IO ()
-main = do
-    tpastas <- atomically $ newTVar []
-    timages <- atomically . newTVar =<< mapM readImageWithoutJunk ["images/jew-swede.jpg"]
+main = withSocketsDo $ do
+    tpastas <- atomically $ newTVar $ [
+                                    -- {-
+                                       "Я уже завтракал, мам"
+                                      ,"Я у мамы молодец"
+                                      ,"Долблюсь в попотан"
+                                      ,"Ебать, спортсмен не выпал ни одного раза"
+                                      ,concat $ replicate 600 "Длинный пост "
+                                      ,"Слава Україні, Героям Слава!"-- -}
+                                      ]
+    timages <- atomically $ newTVar ["images/jew-swede.jpg"]
     tuseimages <- atomically $ newTVar True
-    tcreatethreads <- atomically $ newTVar False
-    tthread <- atomically $ newTVar (Always (Just 18189))
+    tcreatethreads <- atomically $ newTVar True
+    tmakewatermark <- atomically $ newTVar False
+    tthread <- atomically $ newTVar Random
     tmode <- atomically $ newTVar Random
     to <- atomically $ newTQueue
-    void $ forkIO (entryPoint MDK MuSettings{..} to)
+    th <- forkIO (entryPoint MDK MuSettings{..} to)
     forever $ do
-        x <- atomically $ readTQueue to
-        case x of
-            OutcomeMessage thread (SuccessLongPost _) -> putStrLn $ show thread ++ " " ++ "SuccessLongPost"
-            OutcomeMessage thread out -> putStrLn $ show thread ++ " " ++ show out
-            SupplyCaptcha bytes send -> do
-                L.writeFile "captcha.jpeg" bytes
-                c <- readProcess "./captcha" ["captcha.jpeg"] []
-                send (Answer c)
-            NoPastas -> putStrLn "NoPastas"
-            NoImages -> putStrLn "NoImages"
+        t <- atomically $ tryReadTQueue to
+        case t of
+            Just x -> case x of
+                OutcomeMessage thread (SuccessLongPost _) -> putStrLn $ show thread ++ " " ++ "SuccessLongPost"
+                OutcomeMessage thread out -> putStrLn $ show thread ++ " " ++ show out
+                SupplyCaptcha bytes send -> do
+                    L.writeFile "captcha.jpeg" bytes
+                    let captchabin =
+#ifdef mingw32_HOST_OS
+                            ".\\captcha.exe"
+#else
+                            "./captcha"
+#endif
+                    c <- readProcess captchabin ["captcha.jpeg"] []
+                    send (Answer c)
+                NoPastas -> putStrLn "NoPastas"
+                NoImages -> putStrLn "NoImages"
+            Nothing -> do st <- threadStatus th
+                          if st==ThreadDied || st==ThreadFinished
+                            then exitFailure
+                            else threadDelay (2 * 1000000)
+        

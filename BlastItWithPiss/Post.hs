@@ -4,17 +4,11 @@ import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
 import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Image
+import BlastItWithPiss.Blast
 import Text.HTML.TagSoup
-import Network.HTTP.Types
-import Network.Mime
-import Network.HTTP.Conduit
-import Control.Exception
 import qualified Text.Show as S
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
-
-userAgent :: ByteString
-userAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
 
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)
@@ -91,30 +85,30 @@ outcome tags
     | otherwise = Success
 
 -- | Query adaptive captcha state
-doWeNeedCaptcha :: String -> Maybe Int -> IO Bool
+doWeNeedCaptcha :: String -> Maybe Int -> Blast Bool
 doWeNeedCaptcha wakabapl thread = do
     let td = maybe "" show thread
-    elem (TagOpen "div" [("id", "recaptcha_widget")]) . parseTags . UTF8.toString
-     <$> simpleHttp (wakabapl ++ "?task=captcha&thread=" ++ td ++ "&dummy=" ++ td)
+    elem (TagOpen "div" [("id", "recaptcha_widget")]) <$> httpGetStrTags
+        (wakabapl ++ "?task=captcha&thread=" ++ td ++ "&dummy=" ++ td)
 
-getChallengeKey :: String -> IO String
+getChallengeKey :: String -> Blast String
 getChallengeKey key = do
-    rawjs <- UTF8.toString <$> simpleHttp ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
+    rawjs <- httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
     return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjs) $
         mapMaybe getChallenge $ lines rawjs
   where getChallenge s =
             takeUntil (=='\'') <$> stripPrefix "challenge : \'" (dropWhile isSpace s)
 
-reloadCaptcha :: String -> String -> IO ()
+reloadCaptcha :: String -> String -> Blast ()
 reloadCaptcha key chKey = void $
-    simpleHttp $ "http://www.google.com/recaptcha/api/reload?c="
+    httpGet $ "http://www.google.com/recaptcha/api/reload?c="
                     ++ chKey ++ "&k=" ++ key ++ "&reason=r&type=image&lang=en"
 
-getCaptchaImage :: String -> IO LByteString
+getCaptchaImage :: String -> Blast LByteString
 getCaptchaImage chKey =
-    simpleHttp $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
+    httpGet $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
-getCaptcha :: String -> Maybe Int -> String -> String -> IO (Maybe LByteString)
+getCaptcha :: String -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
 getCaptcha wakabapl thread key chKey =
     ifM (doWeNeedCaptcha wakabapl thread)
         (do reloadCaptcha key chKey
@@ -168,7 +162,7 @@ instance NFData (PreparedReq a) where
     rnf (PreparedReq a b) = a `deepseq` b `deepseq` ()
 -}
 
-prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> IO (Request a, Outcome)
+prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
 prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields' maxlength = do
     --print =<< getCurrentTime
     let otherfields = filter (not . reservedField) otherfields' 
@@ -205,8 +199,7 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
     req' <- parseUrl wakabapl
     let req = req' {method = methodPost
                    ,requestHeaders =
-                        [(hUserAgent, userAgent)
-                        ,(hContentType, "multipart/form-data; boundary=" <> boundary)
+                        [(hContentType, "multipart/form-data; boundary=" <> boundary)
                         ,(hReferer, ssachBoard board)
                         ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                         ,(hAcceptLanguage, "ru,en;q=0.5")
@@ -227,10 +220,10 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                                                 ,"recaptcha_response_field"
                                                 ,"makewatermark"]
 
-post :: (Request (ResourceT IO), Outcome) -> IO Outcome
+post :: (Request (ResourceT IO), Outcome) -> Blast Outcome
 post (req, success) = do
     catches
-        (outcome . parseTags . UTF8.toString . responseBody <$> withManager (httpLbs req))
+        (outcome <$> httpReqStrTags req)
         [Handler $ \ex -> case ex of
             StatusCodeException st heads
                 | statusCode st >= 300 && statusCode st < 400

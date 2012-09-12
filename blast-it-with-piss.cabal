@@ -14,14 +14,15 @@ cabal-version: >=1.8
 tested-with: GHC == 7.4.1
 
 flag bindist
-    description: Set executable's directory to be the current working directory
+    description: Set executable's directory to be the current working directory,
                  and redirect stdout to stdout.txt.
     default: False
 
 library
     build-depends: base
                   ,containers
-                  ,stm
+                  ,lifted-base
+                  ,stm >= 2.4
                   ,time
                   ,bytestring
                   ,text
@@ -30,7 +31,7 @@ library
                   ,transformers
                   ,safe
                   ,network
-                  ,http-conduit >= 1.6.0.1
+                  ,http-conduit >= 1.7
                   ,http-types
                   ,mime-types
                   ,resourcet
@@ -45,6 +46,7 @@ library
 
     exposed-modules:
                    BlastItWithPiss
+                  ,BlastItWithPiss.Blast
                   ,BlastItWithPiss.Post
                   ,BlastItWithPiss.Parsing
                   ,BlastItWithPiss.Escaping
@@ -52,13 +54,14 @@ library
                   ,BlastItWithPiss.Image
                   ,BlastItWithPiss.Board
                   ,BlastItWithPiss.Choice
+                  ,BlastItWithPiss.MonadChoice
 
-                  ,Import
+    other-modules: Import
 
     if flag(bindist)
         cpp-options: -DBINDIST
 
-    ghc-options: -Wall -threaded -O2
+    ghc-options: -Wall -threaded 
     
     extensions: NoImplicitPrelude, CPP, PatternGuards
                ,OverloadedStrings
@@ -82,7 +85,7 @@ executable checkproxy
     if flag(bindist)
         cpp-options: -DBINDIST
 
-    ghc-options: -Wall -threaded -O2
+    ghc-options: -Wall -threaded 
 
     extensions: NoImplicitPrelude, CPP, PatternGuards
 
@@ -91,7 +94,7 @@ executable blastgtk
     build-depends: base
                   ,blast-it-with-piss
                   ,time
-                  ,stm
+                  ,stm >= 2.4
                   ,transformers
                   ,bytestring
                   ,text
@@ -104,7 +107,7 @@ executable blastgtk
         build-depends: directory
                       ,executable-path
 
-    ghc-options: -Wall -threaded -O2
+    ghc-options: -Wall -threaded 
 
     extensions: NoImplicitPrelude, CPP, PatternGuards
 
@@ -113,7 +116,7 @@ executable blastcli
     build-depends: base
                   ,blast-it-with-piss
                   ,containers
-                  ,stm
+                  ,stm >= 2.4
                   ,transformers
                   ,time
                   ,bytestring
@@ -122,7 +125,7 @@ executable blastcli
                   ,MonadRandom
                   ,safe
                   ,network
-                  ,http-conduit >= 1.6.0.1
+                  ,http-conduit >= 1.7
                   ,http-types
                   ,mime-types
                   ,case-insensitive
@@ -133,7 +136,7 @@ executable blastcli
     if flag(bindist)
         cpp-options: -DBINDIST
 
-    ghc-options: -Wall -threaded -O2
+    ghc-options: -Wall -threaded 
 
     extensions: NoImplicitPrelude, CPP, PatternGuards
 
@@ -150,6 +153,6 @@ executable blast
     if flag(bindist)
         cpp-options: -DBINDIST
 
-    ghc-options: -Wall -threaded -O2
+    ghc-options: -Wall -threaded 
 
     extensions: NoImplicitPrelude, CPP, PatternGuards

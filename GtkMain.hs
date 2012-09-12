@@ -2,16 +2,17 @@
 module Main where
 import Import hiding (on)
 import Graphics.UI.Gtk
+import System.IO
+import Network (withSocketsDo)
+
 #ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 import System.Directory (setCurrentDirectory)
-import System.IO (openFile, stdout)
 import GHC.IO.Handle (hDuplicateTo)
 #endif
-import Network (withSocketsDo)
 
 main :: IO ()
-main = do
+main = withSocketsDo $ do
 #ifdef BINDIST
     -- change workdir
     (path, _) <- splitExecutablePath
@@ -26,22 +27,19 @@ main = do
     builderAddFromFile b "resources/blast.glade"
 
     window <- builderGetObject b castToWindow "window1"
-    checktray <- builderGetObject b castToCheckButton "check-tray"
-    f <- builderGetObject b castToFileChooserButton "filechooserbutton1"
-    wipebutton <- builderGetObject b castToButton "wipebutton"
 
-    fileChooserSetFilename f "images"
+    -- setup tray
 
-    s <- statusIconNewFromFile "resources/2ch.so.png"
-    statusIconSetTooltip s "Вайпалка мочана"
-    statusIconSetName s "blast-it-with-piss"
+    wtray <- statusIconNewFromFile "resources/2ch.so.png"
+    statusIconSetTooltip wtray "Вайпалка мочана"
+    statusIconSetName wtray "blast-it-with-piss"
 
-    mshow <- checkMenuItemNewWithMnemonic "_Показать вайпалку"
-    mexit <- imageMenuItemNewFromStock stockQuit
-    m <- menuNew
-    menuShellAppend m mshow
-    menuShellAppend m mexit
-    widgetShowAll m
+    wmenushow <- checkMenuItemNewWithMnemonic "_Показать вайпалку"
+    wmenuexit <- imageMenuItemNewFromStock stockQuit
+    wmenu <- menuNew
+    menuShellAppend wmenu wmenushow
+    menuShellAppend wmenu wmenuexit
+    widgetShowAll wmenu
 
     let toggleWindow = do
         v <- get window widgetVisible
@@ -50,24 +48,56 @@ main = do
             else do widgetShow window
                     windowDeiconify window
 
-    _ <- on s statusIconActivate toggleWindow
-    _ <- on s statusIconPopupMenu $ \(Just mb) t -> menuPopup m $ Just (mb, t)
-    mshowConnId <- on mshow menuItemActivate toggleWindow
-    _ <- on mexit menuItemActivate $ mainQuit
+    -- tray signals
+
+    on wtray statusIconActivate toggleWindow
+    on wtray statusIconPopupMenu $ \(Just mb) t -> menuPopup wmenu $ Just (mb, t)
+    wmenushowConnId <- on wmenushow menuItemActivate toggleWindow
+    on wmenuexit menuItemActivate $ mainQuit
+
+    -- setup main window
+
+    wprogresswipe <- builderGetObject b castToProgressBar "wipeprogress"
+    wbuttonwipe <- builderGetObject b castToButton "wipebutton"
+    wradiokopipasta <- builderGetObject b castToRadioButton "radio-kopipasta"
+    wradiokakashki <- builderGetObject b castToRadioButton "radio-kakashki"
+    wradionum <- builderGetObject b castToRadioButton "radio-num"
+    wradiochar <- builderGetObject b castToRadioButton "radio-char"
+    wradionotext <- builderGetObject b castToRadioButton "radio-notext"
+    wcheckthread <- builderGetObject b castToCheckButton "check-thread"
+    wcheckimages <- builderGetObject b castToCheckButton "check-images"
+    wcheckwatermark <- builderGetObject b castToCheckButton "check-watermark"
+    wcheckcheckannoy <- builderGetObject b castToCheckButton "check-annoy"
+    wcheckcheckannoyerrors <- builderGetObject b castToCheckButton "check-annoyerrors"
+    wchecktray <- builderGetObject b castToCheckButton "check-tray"
+#ifdef BINDIST
+    toggleButtonSetActive wchecktray True
+#endif
+    wfilechooser <- builderGetObject b castToFileChooserButton "filechooserbutton1"
+    fileChooserSetFilename wfilechooser "images"
+
+    -- main window signals
 
     let setCheckActive ca = do
-        signalBlock mshowConnId
-        checkMenuItemSetActive mshow ca
-        signalUnblock mshowConnId
+        signalBlock wmenushowConnId
+        checkMenuItemSetActive wmenushow ca
+        signalUnblock wmenushowConnId
 
-    onDelete window $ \_ -> do noTray <- not <$> statusIconIsEmbedded s
-                               closePlease <- not <$> toggleButtonGetActive checktray
+    onDelete window $ \_ -> do noTray <- not <$> statusIconIsEmbedded wtray
+                               closePlease <- not <$> toggleButtonGetActive wchecktray
                                if noTray || closePlease
                                    then return False
                                    else True <$ widgetHide window
     onShow window $ setCheckActive True
     onHide window $ setCheckActive False
     onDestroy window mainQuit
-    
+
+    -- main loop
+
+    let loop = do
+        progressBarPulse wprogresswipe
+
+    timeoutAdd (loop >> return True) 50 --kiloseconds
+
     widgetShowAll window
     mainGUI

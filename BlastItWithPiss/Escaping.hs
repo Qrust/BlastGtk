@@ -1,7 +1,6 @@
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module BlastItWithPiss.Escaping where
 import Import
-import Control.Monad.Random
+import BlastItWithPiss.MonadChoice
 
 -- FIXME code here is a mess.
 
@@ -80,7 +79,7 @@ findAlternative c = findMap aux simillars
                    | otherwise = Nothing
 
 -- | Randomly substitute letters by simillar looking in different alphabet
-randomizeLang :: String -> IO String
+randomizeLang :: MonadChoice m => String -> m String
 randomizeLang str =
     forM str $ \c ->
         case findAlternative c of
@@ -98,7 +97,7 @@ getIxs :: [Int] -> [a] -> [a]
 getIxs is as = map (as!!) is --dangerous
 
 -- | Intersperse string in random places with random amount of random invisible characters
-randomizeInvisible :: Int -> String -> IO String
+randomizeInvisible :: MonadChoice m => Int -> String -> m String
 randomizeInvisible max_invs' str = do
     -- HACK as every one of our invisible chars consists of three unicode code points
     --      we divide limit by three.
@@ -110,15 +109,15 @@ randomizeInvisible max_invs' str = do
                                     getRandomRs (0, length invisibleSymbols-1)
     return $ insertAfterIxs (zip ixs syms) str
 
-randomizeOneCharLang :: String -> IO String
+randomizeOneCharLang :: MonadChoice m => String -> m String
 randomizeOneCharLang str = do
     let ixs = findIndices (isJust . findAlternative) str
     if null ixs
         then return $ error $ "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
-        else do (f, (v:s)) <- (`splitAt` str)  . (ixs!!) <$> getRandomR (0, length ixs - 1)
+        else do (f, (v:s)) <- (`splitAt` str) <$> chooseFromList ixs
                 return $ f ++ [fromJust (findAlternative v)] ++ s
 
-escapeOneWord :: Int -> String -> IO (Int, String)
+escapeOneWord :: MonadChoice m => Int -> String -> m (Int, String)
 escapeOneWord charsleft str = do
     cut_str <- randomizeInvisible charsleft str
     if str==cut_str
@@ -128,7 +127,7 @@ escapeOneWord charsleft str = do
                     ((,) charsused <$> randomizeOneCharLang cut_str)
                     (return (charsused, cut_str))
 
-escapeWordfilter :: Int -> [String] -> String -> IO String
+escapeWordfilter :: MonadChoice m => Int -> [String] -> String -> m String
 escapeWordfilter charsleft wordfilter str =
     snd <$> foldM escapeWords (charsleft, str) wordfilter
   where escapeWord word (charsleft, pas, as) =
@@ -142,7 +141,7 @@ escapeWordfilter charsleft wordfilter str =
             return (chars, concat (reverse pas) ++ as)
 
 -- | Use various methods to mutilate string
-escape :: Int -> [String] -> String -> IO String
+escape :: MonadChoice m => Int -> [String] -> String -> m String
 escape charlimit wordfilter str = do
     let max_invs = charlimit - length str
     garbled_str <- randomizeLang str

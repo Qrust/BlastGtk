@@ -1,14 +1,10 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
 module BlastItWithPiss.Choice where
 import Import
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
 import Data.Ratio
-import Control.Monad.Random
+import BlastItWithPiss.MonadChoice
 import qualified Data.Map as M
-
-class (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
-instance (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
 
 data Mode = SagePopular
           | BumpUnpopular
@@ -23,9 +19,9 @@ sageMode :: Mode -> Bool
 sageMode SagePopular = True
 sageMode _ = False
 
--- | Different strategys for different boards.
-strategys :: M.Map Board Strategy
-strategys =
+-- | Different strategies for different boards.
+strategies :: M.Map Board Strategy
+strategies =
     let infixr 0 /
         (/) = (,)
         always = 100000000
@@ -145,7 +141,7 @@ bumplimits :: Board -> Int
 bumplimits = undefined
 -}
 
--- | For boards not listed in "strategys"
+-- | For boards not listed in "strategies"
 defaultStrategy :: Strategy
 defaultStrategy =
     let infixr 0 /
@@ -192,7 +188,7 @@ adjustStrategy strategy canmakethread Page{..}
 
 chooseStrategy :: Board -> Bool -> Page -> Strategy
 chooseStrategy board =
-    adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategys))
+    adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
 
 chooseModeStrategy :: MonadRandom m => Strategy -> m Mode
 chooseModeStrategy = fromList
@@ -227,7 +223,3 @@ chooseThread mode getPage p0 = do
                                 else (return p0 :) $ tailSafe $
                                       map getPage [pageId p0 .. lastpage p0]
              in Just <$> untilJust (findMapM (chooseThread' mode =<<) iterpages)
-
-chooseFromList :: MonadChoice m => [a] -> m a
-chooseFromList [] = error "chooseFromList supplied with empty list."
-chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)

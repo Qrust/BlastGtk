@@ -1,8 +1,8 @@
 module BlastItWithPiss.MultipartFormData where
 import Import hiding (concat)
+import BlastItWithPiss.MonadChoice
 import Network.HTTP.Types
 import Network.HTTP.Conduit
-import Control.Monad.Random
 import Data.CaseInsensitive (original)
 import Data.ByteString (concat)
 --import Codec.Binary.UTF8.Generic (toString, fromString)
@@ -38,7 +38,7 @@ renderField boundary (Field params headers body) =
         renderHeaders [] = mempty
         renderHeaders heads = concat (map renderHeader heads) <> "\r\n"
 
-randomBoundary :: IO ByteString
+randomBoundary :: MonadChoice m => m ByteString
 randomBoundary = do
     dashcount <- getRandomR (9, 50)
     charcount <- getRandomR (30, 50)
