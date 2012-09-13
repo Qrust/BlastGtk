@@ -29,6 +29,7 @@ import Network
 -- TODO Less boilerplate, less explicit parameter passing. (Rollout some monad)
 -- TODO Increase modularity.
 -- TODO Support 2chnu, alterchan.
+-- TODO Switch to normal logging.
 
 data MaybeRandom a = Always a
                    | Random

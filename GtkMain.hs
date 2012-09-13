@@ -18,8 +18,9 @@ main = withSocketsDo $ do
     (path, _) <- splitExecutablePath
     setCurrentDirectory path
     -- redirect stdout
-    real_out <- openFile "stdout.txt" AppendMode
-    hDuplicateTo real_out stdout
+    new_out <- openFile "stdout.txt" AppendMode
+    hDuplicateTo new_out stdout
+    hDuplicateTo new_out stderr
 #endif
     putStrLn =<< ("Starting blastgtk. Current time is " ++) . show <$> getCurrentTime
     initGUI
@@ -70,11 +71,15 @@ main = withSocketsDo $ do
     wcheckcheckannoy <- builderGetObject b castToCheckButton "check-annoy"
     wcheckcheckannoyerrors <- builderGetObject b castToCheckButton "check-annoyerrors"
     wchecktray <- builderGetObject b castToCheckButton "check-tray"
+    wcheckthreadonly <- builderGetObject b castToCheckButton "check-threadonly"
 #ifdef BINDIST
     toggleButtonSetActive wchecktray True
 #endif
     wfilechooser <- builderGetObject b castToFileChooserButton "filechooserbutton1"
     fileChooserSetFilename wfilechooser "images"
+    wmode <- builderGetObject b castToComboBox "mode"
+    wspinthread <- builderGetObject b castToSpinButton "spin-thread"
+    wlog <- builderGetObject b castToTextView "log"
 
     -- main window signals
 
