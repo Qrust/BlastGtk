@@ -51,8 +51,7 @@ haveAnError tags =
         [(~== TagOpen ("center"::String) [])
         ,(~== TagOpen ("strong"::String) [])
         ,(~== TagOpen ("font"::String) [("size", "5")])
-        ,isTagText -- maybe False (isInfixOf "Ошибка") . maybeTagText
-                   -- На хоптопараше нет префикса.
+        ,isTagText
         ] tags
 
 outcome :: [Tag String] -> Outcome

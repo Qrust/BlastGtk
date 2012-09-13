@@ -4,7 +4,6 @@ import Import
 import BlastItWithPiss.MultipartFormData (Field(..), field)
 import Text.HTML.TagSoup
 import qualified Codec.Binary.UTF8.Generic as UTF8
-
 -- html-conduit(cursor?)?
 
 newtype Post = Post
@@ -69,9 +68,8 @@ parseThread =
     parseThreadParameters . tail . dropUntil (~== TagOpen "div" [("class", "thread")])
 
 parseSpeed :: [Tag String] -> Int
-parseSpeed = getSpeed . parseSpeed' False
+parseSpeed t = getSpeed (parseSpeed' False t <|> parseSpeed' True t)
   where getSpeed mtext =
---          fromMaybe (error "Parsing speed failed") $
 -- FIXME seems that sosaka hides speed sometimes
             fromMaybe 0 $
                 readMay . takeWhile (not . isSpace) =<<
@@ -83,9 +81,7 @@ parseSpeed = getSpeed . parseSpeed' False
                             else TagComment "<div class=\"speed\">")
                     ,maybe False (isInfixOf "Скорость борды") . maybeTagText
                     ] tags
-            of Nothing -> if uncommented
-                                then Nothing
-                                else error "parseSpeed' True tags"
+            of Nothing -> Nothing
                Just ts -> Just $ fromTagText $ last ts
 
 parsePages :: [Tag String] -> (Int, Int)

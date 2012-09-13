@@ -1,11 +1,14 @@
 #!/bin/sh
 case `uname` in
     MINGW*)
-        ldopt="-optl-mwindows";;
+        ldopt="-optl-mwindows"
+        lbdir="dos";;
     *)
-        ldopt="-optl-Wl,-rpath,'\$ORIGIN/libs'";;
+        ldopt="-optl-Wl,-rpath,'\$ORIGIN'"
+        lbdir="linux";;
 esac
 echo $ldopt
+echo $lbdir
 rm -rf distribution
 mkdir distribution
 mkdir distribution/tempprefixdir
@@ -18,12 +21,12 @@ cabal configure -f bindist\
  --prefix=`pwd`/distribution/tempprefixdir --bindir=distribution
 cabal build
 cabal copy
-echo "Removing tempprefixdir"
+echo "Removing distribution/tempprefixdir"
 rm -rf distribution/tempprefixdir
 echo "Copying images"
 cp -r images distribution/images
 echo "Copying resources and pastas"
 cp -r resources distribution/resources
 echo "Copying libraries"
-cp -r libs/. distribution
-echo "Finished building"
+cp -r libs/$lbdir/. distribution
+echo "Finished building, don't forget to check for GLIBC or mingw unwanted dependencies"

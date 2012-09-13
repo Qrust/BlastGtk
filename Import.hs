@@ -48,6 +48,7 @@ import Safe as A
 import Data.ByteString as A (ByteString)
 import Data.Text as A (Text)
 import Data.Time as A
+import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
 import qualified Data.ByteString.Lazy as LB (ByteString)
 import qualified Data.Text.Lazy as LT (Text)

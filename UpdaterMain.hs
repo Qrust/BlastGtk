@@ -1,5 +1,6 @@
 module Main where
 import Prelude
+import Data.Version
 import System.Directory
 import System.FilePath
 import System.Environment.Executable

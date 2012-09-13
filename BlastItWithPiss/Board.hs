@@ -115,14 +115,14 @@ ssachPage b i = ssachBoard b <> show i <> ".html"
 ssachRecaptchaKey :: String
 ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
 
-ssachLengthLimit :: Int
+ssachLengthLimit :: Num a => a
 ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
                         -- bytes instead of unicode chars.
 
-ssachThreadTimeout :: Board -> Int
+ssachThreadTimeout :: Num a => Board -> a
 ssachThreadTimeout _ = 30 * 60
 
-ssachPostTimeout :: Board -> Int
+ssachPostTimeout :: Num a => Board -> a
 ssachPostTimeout _ = 10
 
 hoptoparasha :: IsString a => a
