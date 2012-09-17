@@ -11,8 +11,6 @@ import BlastItWithPiss.Post
 import Control.Concurrent.Lifted
 import Control.Concurrent.STM
 import Text.HTML.TagSoup
-import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import qualified Text.Show as Show
 import Control.Monad.Trans.Class
@@ -27,12 +25,8 @@ import Network-}
 -- TODO support ANTIGATE, CAPTCHABOT, etc. add multipart/form-data to http-conduit
 -- TODO support PROXYs. (It's more about frontend than library,
 --                       library only provides API for one agent(proxy) anyway.)
--- TODO Switch to normal logging.
 -- TODO entry point for proxy checker
 
--- FIXME Oh dog, what a mess.
--- TODO More type safety.
--- TODO Less boilerplate, less explicit parameter passing. (Enhance Blast monad)
 -- TODO Increase modularity.
 -- TODO Support 2chnu, alterchan.
 
@@ -48,22 +42,27 @@ data ShSettings = ShSettings {tpastas :: TVar [String]
 
 data MuSettings = MuSettings {mthread :: TVar (MaybeRandom (Maybe Int))
                              ,mmode :: TVar (MaybeRandom Mode)
-                            -- TODO mcurrentpost with current post settings, e.g mode
-                            --      thread, lposttime and the like. for debugging.
                              }
 
 data CaptchaAnswer = Answer String
                    | ReloadCaptcha
                    | AbortCaptcha
+    deriving (Eq, Show, Ord)
 
-data OutMessage = OutcomeMessage !(Maybe Int) !Outcome
-                | SupplyCaptcha {captchaBytes :: !LByteString
-                                ,captchaSend :: !(CaptchaAnswer -> IO ())
-                                }
-                | NoPastas
-                | NoImages
+data OriginStamp = OriginStamp !POSIXTime !Board !Mode !(Maybe Int)
+
+data Message = OutcomeMessage !Outcome
+             | LogMessage !String
+             | SupplyCaptcha {captchaBytes :: !LByteString
+                             ,captchaSend :: !(CaptchaAnswer -> IO ())
+                             }
+             | NoPastas
+             | NoImages
+
+data OutMessage = OutMessage !OriginStamp !Message
 
 -- memory hog (?)
+-- TODO Either expose LogS to calling thread or replace it with stateT with mode and thread.
 data LogSettings = LogS
                 {gwakabapl :: TVar String
                 ,gotherfields :: TVar [Field]
@@ -76,8 +75,6 @@ data LogSettings = LogS
                 ,glposttime :: TVar POSIXTime
                 }
 
-data LogMessage = Lg !POSIXTime !Board !Mode !(Maybe Int) String
-
 data LogDetail = Log
                | Don'tLog
     deriving (Eq, Show, Ord, Enum, Bounded)
@@ -86,7 +83,6 @@ data BlastLogData = BlastLogData
         {bldBoard :: Board
         ,bldLogD :: LogDetail
         ,bldLogS :: LogSettings
-        ,bldSendLog :: LogMessage -> IO ()
         ,bldShS :: ShSettings
         ,bldMuS :: MuSettings
         ,bldOut :: TQueue OutMessage -- ^ sendOut :: OutMessage -> IO () ?
@@ -94,10 +90,20 @@ data BlastLogData = BlastLogData
 
 type BlastLog = ReaderT BlastLogData Blast
 
-instance Show LogMessage where
-    show (Lg time board mode thread msg) =
+instance Show OriginStamp where
+    show (OriginStamp time board mode thread) =
         show time ++ " " ++ renderBoard board ++ " " ++ show mode ++ " [| " ++
-        maybe (ssachBoard board) (ssachThread board) thread ++ " |]: " ++ msg
+        maybe (ssachBoard board) (ssachThread board) thread ++ " |]"
+
+instance Show Message where
+    show (OutcomeMessage o) = show o
+    show (LogMessage o) = o
+    show (SupplyCaptcha _ _) = "SupplyCaptcha"
+    show NoPastas = "NoPastas"
+    show NoImages = "NoImages"
+
+instance Show OutMessage where
+    show (OutMessage s m) = show s ++ ": " ++ show m
 
 whenRandomSTM :: MonadIO m => TVar (MaybeRandom a) -> m a -> m a
 whenRandomSTM t m = do
@@ -137,9 +143,6 @@ askBLSM = asks $ \b -> (bldBoard b, bldLogS b, bldShS b, bldMuS b)
 askOut :: BlastLog (TQueue OutMessage)
 askOut = asks bldOut
 
-askSendLog :: BlastLog (LogMessage -> IO ())
-askSendLog = asks bldSendLog
-
 rec :: TVar a -> a -> BlastLog a
 rec t a = do
     d <- askLogD
@@ -148,29 +151,24 @@ rec t a = do
     return a 
 
 recM :: TVar a -> BlastLog a -> BlastLog a
-recM t m = do
-    a <- m
-    d <- askLogD
-    when (d == Log) $
-        liftIO $ atomically $ writeTVar t a
-    return a 
+recM t m = rec t =<< m
+
+blastOut :: Message -> BlastLog ()
+blastOut msg = do
+    to <- askOut
+    board <- askBoard
+    LogS{..} <- askLogS
+    liftIO $ do
+        (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
+        now <- getPOSIXTime
+        atomically $ writeTQueue to $
+            OutMessage (OriginStamp now board mode thread) msg
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
     d <- askLogD
     when (d == Log) $ do
-        board <- askBoard
-        sendLog <- askSendLog
-        LogS{..} <- askLogS
-        liftIO $ do
-            (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
-            now <- getPOSIXTime
-            sendLog $ Lg now board mode thread msg
-
-blastOut :: OutMessage -> BlastLog ()
-blastOut o = do
-    to <- askOut
-    liftIO $ atomically $ writeTQueue to o
+        blastOut (LogMessage msg)
 
 blast :: Blast a -> BlastLog a
 blast = lift
@@ -189,9 +187,8 @@ blastImage mode = do
                     blastOut NoImages
                     blastLog "threw NoImages"
                     -- use recaptcha as a fallback
-                    blast $ Just . Image "haruhi.jpg" "image/jpeg" .
-                        S.concat . L.toChunks
-                            <$> (getCaptchaImage =<<
+                    blast $ Just . Image "haruhi.jpg" "image/jpeg" <$>
+                            (getCaptchaImage =<<
                                     getChallengeKey ssachRecaptchaKey)
                 else blast $
                         Just <$> (readImageWithoutJunk =<< chooseFromList images)
@@ -207,11 +204,12 @@ blastPasta image = do
                 return ""
         else chooseFromList pastas
 
-blastCaptcha :: String -> Maybe Int -> String -> BlastLog (Maybe String)
-blastCaptcha wakabapl thread chKey = do
+blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe String)
+blastCaptcha wakabapl thread = do
+    chKey <- blast $ getChallengeKey ssachRecaptchaKey
     mbbytes <- blast $ getCaptcha wakabapl thread ssachRecaptchaKey chKey
     case mbbytes of
-        Nothing -> return $ Just ""
+        Nothing -> return (chKey, Just "")
         Just bytes -> do
             m <- newEmptyMVar
             blastOut $ SupplyCaptcha bytes (putMVar m)
@@ -219,17 +217,16 @@ blastCaptcha wakabapl thread chKey = do
             a <- takeMVar m
             blastLog "got captcha mvar"
             case a of
-                Answer s -> return $ Just s
-                ReloadCaptcha -> blastCaptcha wakabapl thread chKey
-                AbortCaptcha -> return Nothing
+                Answer s -> return (chKey, Just s)
+                ReloadCaptcha -> blastCaptcha wakabapl thread
+                AbortCaptcha -> return (chKey, Nothing)
 
 blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
     (board, LogS{..}, ShSettings{..}, _) <- askBLSM
     (chKey, mcap) <- if cap || mode==CreateNew
                         then do blastLog "querying captcha"
-                                chKey <- blast $ getChallengeKey ssachRecaptchaKey
-                                (,) chKey <$> blastCaptcha wakabapl thread chKey
+                                blastCaptcha wakabapl thread
                         else return ("", Just "")
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
@@ -241,12 +238,13 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
             let canPost = beforeSleep - lposttime >= ssachPostTimeout board
             when (mode /= CreateNew && not canPost) $ do
                 let slptime = (lposttime + ssachPostTimeout board) - beforeSleep
-                blastLog $ "sleeping " ++ show slptime ++ " seconds before post"
+                blastLog $ "sleeping " ++ show slptime ++ " seconds before post. FIXME using threadDelay for sleeping, instead of a more precise timer"
+                -- FIXME precise timing
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
             beforePost <- liftIO $ getPOSIXTime
             out <- blast $ post p
-            blastOut $ OutcomeMessage thread out
+            blastOut (OutcomeMessage out)
             when (successOutcome out) $ blastLog "post succeded"
             let (nthreadtime, nposttime) =
                     if mode == CreateNew
@@ -262,10 +260,10 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                         else ret
                 TooFastPost -> do
                         blastLog "TooFastPost, retrying in 0.5 seconds"
-                        ret
+                        return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
                 TooFastThread -> do
                         blastLog "TooFastThread, retrying in 15 minutes"
-                        ret
+                        return (beforePost - (ssachThreadTimeout board / 2), lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                         blastLog $ show o ++ ", requerying"
                         blastPost True lthreadtime lposttime w mode thread postdata
@@ -289,8 +287,10 @@ blastLoop w lthreadtime lposttime = do
         canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                             (return $ now - lthreadtime >= ssachThreadTimeout board)
                             (return False)
-        let getPage p = blast $ parsePage board <$> httpGetStrTags (ssachPage board p)
+        let getPage p = blast $ (parsePage board $!!) <$> httpGetStrTags (ssachPage board p)
         p0 <- getPage 0
+        --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
+        blastLog $ "page params" ++ show (pageId p0, lastpage p0, speed p0, length $ threads p0)
         mode <- recM gmode $
                     whenRandomSTM mmode $ chooseMode board canmakethread p0
         thread <- recM gthread $
@@ -319,14 +319,15 @@ blastLoop w lthreadtime lposttime = do
 -- > if st==ThreadDied || st==ThreadFinished
 -- >    then resurrect
 -- >    else continue
-entryPoint :: LogDetail -> (LogMessage -> IO ()) -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> IO ()
-entryPoint lgDetail sendLog shS output board muS = do
+entryPoint :: LogDetail -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> IO ()
+entryPoint lgDetail shS output board muS = do
     x <- try $ parseForm ssach . parseTags . UTF8.toString <$> simpleHttp (ssachPage board 0)
     case x of
         Left (a::SomeException) -> do now <- getPOSIXTime
-                                      sendLog $ Lg now board CreateNew Nothing $
-                                                "Couldn't parse page form, got exception " ++
-                                                show a
+                                      atomically $ writeTQueue output $
+                                         OutMessage
+                                            (OriginStamp now board CreateNew Nothing)
+                                            (LogMessage $ "Couldn't parse page form, got exception " ++ show a)
                                       --throwIO a
         Right w -> do
             l <- defLogS w
@@ -334,22 +335,20 @@ entryPoint lgDetail sendLog shS output board muS = do
                 BlastLogData board
                              lgDetail
                              l
-                             sendLog
                              shS
                              muS
                              output
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
 sortSsachBoardsByPopularity boards = runBlast $ do
-    let boards = [minBound..maxBound]
     maybeb <- forM boards $ \b -> do
                 liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
                 spd <- parseSpeed <$> httpGetStrTags (ssachBoard b)
                 liftIO $ putStrLn $ show spd
                 return (b, spd)
-    let (got, fail) = partition (isJust . snd) maybeb
+    let (got, failed) = partition (isJust . snd) maybeb
         sorted = reverse $ sortBy (\(_,a) (_,b) -> compare (fromJust a) (fromJust b)) got
-    return (map (appsnd fromJust) sorted, fst $ unzip $ fail)
+    return (map (appsnd fromJust) sorted, fst $ unzip $ failed)
 {-
 main :: IO ()
 main = withSocketsDo $ do

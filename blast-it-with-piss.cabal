@@ -37,7 +37,6 @@ library
                   ,case-insensitive
                   ,tagsoup
                   ,utf8-string
-
                   ,deepseq
 --                  ,system-filepath
 --                  ,process
@@ -72,36 +71,13 @@ library
                ,RecordWildCards
                ,ScopedTypeVariables
 
-executable checkproxy
-    main-is: CheckProxyMain.hs 
-    build-depends: base
-                  ,random
-                  ,strict
-                  ,directory
-                  ,safe
-                  ,http-conduit
-                  ,http-types >= 0.7
-                  ,network
-                  ,utf8-string
-                  ,bytestring
-
-    if flag(bindist)
-        cpp-options: -DBINDIST
-
-    ghc-options: -Wall -threaded 
-
-    extensions: NoImplicitPrelude, CPP, PatternGuards
-               ,OverloadedStrings
-               ,PatternGuards
-               ,RecordWildCards
-               ,ScopedTypeVariables
-
 executable blastgtk
     main-is: GtkMain.hs
     build-depends: base
                   ,blast-it-with-piss
                   ,filepath
                   ,directory
+                  ,temporary
                   ,time
                   ,old-time
                   ,stm >= 2.4
@@ -112,6 +88,7 @@ executable blastgtk
                   ,safe
                   ,gtk
                   ,network
+                  ,deepseq
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -125,39 +102,39 @@ executable blastgtk
                ,RecordWildCards
                ,ScopedTypeVariables
 
-executable blastcli
-    main-is: CliMain.hs
-    build-depends: base
-                  ,blast-it-with-piss
-
-    if flag(bindist)
-        cpp-options: -DBINDIST
-
-    ghc-options: -Wall -threaded 
-
-    extensions: NoImplicitPrelude, CPP, PatternGuards
-               ,OverloadedStrings
-               ,PatternGuards
-               ,RecordWildCards
-               ,ScopedTypeVariables
-
--- updater app. Checks and installs updates, then runs blastgtk
-executable blast
-    main-is: UpdaterMain.hs
-    build-depends: base
-                  ,process
-                  ,directory
-                  ,filepath
-                  ,executable-path
-                  ,http-conduit
-
-    if flag(bindist)
-        cpp-options: -DBINDIST
-
-    ghc-options: -Wall -threaded 
-
-    extensions: NoImplicitPrelude, CPP, PatternGuards
-               ,OverloadedStrings
-               ,PatternGuards
-               ,RecordWildCards
-               ,ScopedTypeVariables
+--executable blastcli
+--    main-is: CliMain.hs
+--    build-depends: base
+--                  ,blast-it-with-piss
+--
+--    if flag(bindist)
+--        cpp-options: -DBINDIST
+--
+--    ghc-options: -Wall -threaded 
+--
+--    extensions: NoImplicitPrelude, CPP, PatternGuards
+--               ,OverloadedStrings
+--               ,PatternGuards
+--               ,RecordWildCards
+--               ,ScopedTypeVariables
+--
+---- updater app. Checks and installs updates, then runs blastgtk
+--executable BlastItWithPiss
+--    main-is: UpdaterMain.hs
+--    build-depends: base
+--                  ,process
+--                  ,directory
+--                  ,filepath
+--                  ,executable-path
+--                  ,http-conduit
+--
+--    if flag(bindist)
+--        cpp-options: -DBINDIST
+--
+--    ghc-options: -Wall -threaded 
+--
+--    extensions: NoImplicitPrelude, CPP, PatternGuards
+--               ,OverloadedStrings
+--               ,PatternGuards
+--               ,RecordWildCards
+--               ,ScopedTypeVariables

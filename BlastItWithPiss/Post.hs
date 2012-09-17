@@ -12,7 +12,6 @@ import Control.Monad.Trans.Resource
 
 --FIXME
 --{-
-import Control.DeepSeq
 import Data.CaseInsensitive
 import qualified Data.ByteString.Lazy as L
 ---}

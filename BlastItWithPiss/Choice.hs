@@ -173,6 +173,7 @@ adjustStrategy strategy canmakethread Page{..}
                                 [(==CreateNew) | not canmakethread]
                               ++[(==ShitupSticky) | not $ any unlockedSticky threads])
     , len <- fromIntegral $ length threads
+    , if len==0 then error "adjustStrategy: no threads found" else True
     , new <- fromIntegral (length $ filter newThread threads) % len
     , vpop <- fromIntegral (length $ filter veryPopularThread threads) % len
     , nps <- if tooFast speed
@@ -212,7 +213,7 @@ chooseThread' mode Page{..}
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
                 else id
     = justIf (/= 0) <$> fromList (add $
-                map (tupapp threadId (inv . fromIntegral . postcount)) thrds)
+                map (threadId &&& inv . fromIntegral . postcount) thrds)
 
 chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int)
 chooseThread mode getPage p0 = do

@@ -4,12 +4,15 @@ import BlastItWithPiss.MonadChoice
 import Network.HTTP.Types
 import Network.HTTP.Conduit
 import Data.CaseInsensitive (original)
-import Data.ByteString (concat)
+import qualified Data.ByteString.Lazy as L
 --import Codec.Binary.UTF8.Generic (toString, fromString)
+
+toLBS :: ByteString -> LByteString
+toLBS = L.fromChunks . (:[])
 
 data Field = Field {fieldAttrs :: [(ByteString, ByteString)]
                    ,fieldHeaders :: [Header]
-                   ,fieldBody :: !ByteString
+                   ,fieldBody :: !LByteString
                    }
     deriving (Eq, Show)
 
@@ -21,22 +24,22 @@ instance Ord Field where
                     = mempty
                 
 
-field :: ByteString -> ByteString -> Field
+field :: ByteString -> LByteString -> Field
 field n v = Field [("name", n)] [] v
 
 fieldNameIs :: ByteString -> Field -> Bool
 fieldNameIs n f = maybe False (==n) $ lookup "name" $ fieldAttrs f
 
-renderField :: ByteString -> Field -> ByteString
+renderField :: ByteString -> Field -> LByteString
 renderField boundary (Field params headers body) =
-    "--" <> boundary <> "\r\n"
-    <> "Content-Disposition: form-data" <> concat (map renderParam params) <> "\r\n"
-    <> renderHeaders headers <> "\r\n"
+    "--" <> toLBS boundary <> "\r\n"
+    <> "Content-Disposition: form-data" <> L.concat (map renderParam params)
+    <> "\r\n" <> renderHeaders headers <> "\r\n"
     <> body <> "\r\n"
-  where renderParam (n, v) = "; " <> n <> "=\"" <> v <> "\""
+  where renderParam (n, v) = toLBS $ "; " <> n <> "=\"" <> v <> "\""
         renderHeader (header, val) = original header <> ": " <> val
         renderHeaders [] = mempty
-        renderHeaders heads = concat (map renderHeader heads) <> "\r\n"
+        renderHeaders heads = L.concat (map (toLBS . renderHeader) heads) <> "\r\n"
 
 randomBoundary :: MonadChoice m => m ByteString
 randomBoundary = do
@@ -47,5 +50,6 @@ randomBoundary = do
 
 formatMultipart :: ByteString -> [Field] -> RequestBody a
 formatMultipart boundary fields =
-    RequestBodyBS $ concat (map (renderField boundary) fields)
-                <> "--" <> boundary <> "--\r\n" --finalizer
+    RequestBodyLBS $
+        L.concat (map (renderField boundary) fields)
+        <> "--" <> toLBS boundary <> "--\r\n" --finalizer

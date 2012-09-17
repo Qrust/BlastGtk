@@ -35,6 +35,23 @@ instance Ord Thread where
 instance Ord Page where
     compare x y = compare (pageId x) (pageId y)
 
+instance NFData t => NFData (Tag t) where
+    rnf (TagOpen x y) = x `deepseq` y `deepseq` ()
+    rnf (TagClose x) = rnf x
+    rnf (TagText x) = rnf x
+    rnf (TagComment x) = rnf x
+    rnf (TagWarning x) = rnf x
+    rnf (TagPosition x y) = x `deepseq` y `deepseq` ()
+
+instance NFData Post where
+    rnf Post{..} = rnf postId
+
+instance NFData Thread where
+    rnf Thread{..} = rnf (threadId, pinned, locked, postcount, visibleposts)
+
+instance NFData Page where
+    rnf Page{..} = rnf (pageId, lastpage, speed, threads)
+
 parsePosts :: [Tag String] -> [Post]
 parsePosts posts = catMaybes
     (filter
@@ -96,8 +113,10 @@ parsePages =
                         ,(== TagOpen "tbody" []), (== TagOpen "tr" [])
                         ,(== TagOpen "td" [])]
     ) >>> \ts ->
-        fromMaybe (error "parsePages: couldn't find current page") (findMap aux ts)
-            >$> \c -> (c, maximum (c : mapMaybe readMay ts))
+        --fromMaybe (error "parsePages: couldn't find current page") (findMap aux ts)
+-- FIXME seems that sosaka hides pages sometimes
+        fromMaybe 0 (findMap aux ts) >$>
+            \c -> (c, maximum (c : mapMaybe readMay ts))
   where aux t = if '[' `elem` t
                     then readMay $ filter (`notElem` "[]") t
                     else Nothing

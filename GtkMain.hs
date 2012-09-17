@@ -3,20 +3,21 @@
 module Main where
 import Import hiding (on)
 import "blast-it-with-piss" BlastItWithPiss
+import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.Choice
 import "blast-it-with-piss" BlastItWithPiss.MonadChoice
 import Graphics.UI.Gtk
 import GHC.Conc
-import Control.Concurrent
 import Control.Concurrent.STM
 import Data.IORef
 import System.IO
 import System.Environment
 import System.FilePath
 import System.Directory
+import System.IO.Temp
 import Network (withSocketsDo)
 import Control.Exception
+import qualified Data.ByteString.Lazy as L
 #ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 #endif
@@ -24,8 +25,17 @@ import System.Environment.Executable (splitExecutablePath)
 import System.Time
 #endif
 
---TODO FIX FREEZES
---TODO mochepasta resources/mocha
+-- TODO Updater
+-- TODO mochepasta resources/mocha images/mocha-*
+-- TODO реклама вайпалки в самом вайпе
+-- TODO update mocha-repo description
+-- TODO update description when snoyman releases http-conduit-1.7.0
+-- TODO FIX FREEZES
+
+-- FIXME Oh dog, what a mess.
+--       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
+-- TODO Less boilerplate, less explicit parameter passing. (Roll out some monad)
+-- TODO More type safety.
 
 data PastaSet = Mocha
               | Kakashki
@@ -43,6 +53,8 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coTray :: Bool
                  ,coWatermark :: Bool
                  ,coAnnoyErrors :: Bool
+                 ,coSettingsShown :: Bool
+                 ,coLogShown :: Bool
                  }
     deriving (Eq, Show, Read)
 
@@ -105,6 +117,8 @@ defaultConf =
 #endif
          ,coWatermark = False
          ,coAnnoyErrors = True
+         ,coSettingsShown = True
+         ,coLogShown = False
          }
 
 mochanNames :: [String]
@@ -139,37 +153,33 @@ mochanNames =
     ,"трипфажную мочепарашу 2ch.so"
     ]
 
-achievements :: (Int, [(Int, String)])
+achievements :: [(Int, String)]
 achievements =
     let (.) = (,) in
-        (50, [10 . "Анон"
-             ,20 . "Няша"
-             ,50 . "Троллер"
-             ,75 . "Мега-троллер"
-             ,100 . "Сотня разорванных анусов"
-             ,150 . "Вайпер"
-             ,200 . "Братишка"
-             ,300 . "Бэтмен"
-             ,500 . "Ультрахардкорщик"
-             ,1000 . "Тысяча порванных срак"
-             ,3000 . "Поехавший"
-             ,20000 . "Поле устиланное вырванными аналами неверных"
-             ,50000 . "Прости Марио, но Принцесса в другом замке"
-             ,100000 . "Супер-пупер-мега-гипер-охуительный пиздец"
-             ,200000 . "Словил все геты разом"
-             ,1000000 . "Накрутил же, бака"
-             ]
-        )
+        reverse $
+        [10 . "Анон"
+        ,20 . "Няша"
+        ,50 . "Троллер"
+        ,100 . "Сотня разорванных анусов"
+        ,150 . "Вайпер"
+        ,200 . "Братишка"
+        ,300 . "Бэтмен"
+        ,500 . "Ультрахардкорщик"
+        ,1000 . "Тысяча порванных срак"
+        ,3000 . "Поехавший"
+        ,20000 . "Поле устиланное вырванными аналами неверных"
+        ,50000 . "Прости Марио, но Принцесса в другом замке"
+        ,100000 . "Супер-пупер-мега-гипер-охуительный пиздец"
+        ,200000 . "Словил все геты разом"
+        ,1000000 . "Накрутил же, бака"
+        ]
 
 getAchievement :: Int -> Maybe String
-getAchievement i
-    | i >= fst achievements =
-        findMap (\(p, a) -> if i >= p then Just a else Nothing) $ snd achievements
-    | otherwise = Nothing
+getAchievement i =
+    findMap (\(p, a) -> if i >= p then Just a else Nothing) $ achievements
 
 ignoreExceptions :: IO () -> IO ()
-ignoreExceptions m = do
-    void (try m :: IO (Either SomeException ()))
+ignoreExceptions m = void (try m :: IO (Either SomeException ()))
 
 bugMessage :: String
 bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
@@ -201,26 +211,26 @@ main = withSocketsDo $ do
 #endif
   hlog <- do
     eh <- try $ do
-        h <- openFile "blastgtk-log.txt" ReadWriteMode
+        h <- openFile "blastgtk-log.txt" AppendMode--ReadWriteMode
         size <- hFileSize h
         if size >= (10 * 1024 * 1024)
             then do hClose h
                     renameFile "blastgtk-log.txt" "blastgtk-log.txt.bak"
-                    openFile "blastgtk-log.txt" ReadWriteMode
+                    openFile "blastgtk-log.txt" AppendMode--ReadWriteMode
             else return h
     case eh of
         Left (a::SomeException) -> do
             putStrLn $ "Got exception while trying to open log file: " ++ show a
             return Nothing
         Right h -> do hSetEncoding h utf8
-                      hSeek h SeekFromEnd 0
+--                    hSeek h SeekFromEnd 0
                       return $ Just h
 
   let rawPutLog s = do
         when (isJust hlog) $
             flip hPutStrLn s $ fromJust hlog
         putStrLn s
-
+{-
   let readLog =
         maybe (return "")
               (\h -> do
@@ -236,7 +246,7 @@ main = withSocketsDo $ do
                 return c
                 )
               hlog
-
+-}
   handle (\(a::SomeException) -> rawPutLog $ "Uncaught exception terminated program, sorry: " ++ show a) $ do
     -- read configuration
     -- TODO saving configuration
@@ -262,6 +272,7 @@ main = withSocketsDo $ do
     builderAddFromFile b "resources/blast.glade"
 
     window <- builderGetObject b castToWindow "window1"
+    windowSetTitle window "Вайпалка мочана"
 
     -- setup tray
 
@@ -294,9 +305,20 @@ main = withSocketsDo $ do
 
     -- setup widgets
 
+    wvboxcaptcha <- builderGetObject b castToVBox "vboxcaptcha"
+    weventboxcaptcha <- builderGetObject b castToEventBox "eventboxcaptcha"
+    wimagecaptcha <- builderGetObject b castToImage "imagecaptcha"
+    wentrycaptcha <- builderGetObject b castToEntry "entrycaptcha"
+    wbuttoncaptchaok <- builderGetObject b castToButton "buttoncaptchaok"
+    wbuttoncaptchacancel <- builderGetObject b castToButton "buttoncaptchacancel"
+
     wlabelmessage <- builderGetObject b castToLabel "labelmessage"
+    wprogressalignment <- builderGetObject b castToAlignment "progressalignment"
     wprogresswipe <- builderGetObject b castToProgressBar "wipeprogress"
     wbuttonwipe <- builderGetObject b castToButton "wipebutton"
+
+    wexpandersettings <- builderGetObject b castToExpander "expandersettings"
+    expanderSetExpanded wexpandersettings coSettingsShown
 
     wradiomocha <- builderGetObject b castToRadioButton "radio-mocha"
     wradiokakashki <- builderGetObject b castToRadioButton "radio-kakashki"
@@ -339,19 +361,6 @@ main = withSocketsDo $ do
     entrySetText wentryimagefolder coImageFolder
     wbuttonimagefolder <- builderGetObject b castToButton "buttonimagefolder"
 
-    wlog <- builderGetObject b castToTextView "log"
-    wbuf <- textViewGetBuffer wlog
-    -- VERY SLOW for some reason on texts > 100 kilobytes
-    -- Not a haskell issue, print prints instantly, widget lags like hell for a minute.
-    -- textBufferSetText wbuf =<< readLog
-    wad <- textViewGetVadjustment wlog
-    adjustmentSetValue wad =<< adjustmentGetUpper wad
-
-    wprogressalignment <- builderGetObject b castToAlignment "progressalignment"
-    wvboxcaptcha <- builderGetObject b castToVBox "vboxcaptcha"
-    wentrycaptcha <- builderGetObject b castToEntry "entrycaptcha"
-    wbuttoncaptchaok <- builderGetObject b castToButton "buttoncaptchaok"
-
     wvboxboards <- builderGetObject b castToVBox "vbox-boards"
 
     boardunits <- forM (fst $ unzip $ ssachBoardsSortedByPostRate) $ \board -> do
@@ -363,11 +372,18 @@ main = withSocketsDo $ do
     wbuttonselectall <- builderGetObject b castToButton "buttonselectall"
     wbuttonselectnone <- builderGetObject b castToButton "buttonselectnone"
 
-    -- setup mutable variables
+    wexpanderlog <- builderGetObject b castToExpander "expanderlog"
+    expanderSetExpanded wexpanderlog coLogShown
+    
+    wlog <- builderGetObject b castToTextView "log"
+    wbuf <- textViewGetBuffer wlog
+    -- VERY SLOW for some reason on texts > 100 kilobytes
+    -- Not a haskell issue, print prints instantly, widget lags like hell for a minute.
+    -- textBufferSetText wbuf =<< readLog
+    wad <- textViewGetVadjustment wlog
+    adjustmentSetValue wad =<< adjustmentGetUpper wad
 
-    --TODO reject empty captcha input
-    --TODO ability to cancel captcha
-    --TODO captcha origin label
+    -- setup mutable variables
 
     messageLock <- newIORef False
 
@@ -381,14 +397,30 @@ main = withSocketsDo $ do
         n <- getPOSIXTime
         writeLog $ "blasgtk, " ++ show n ++ ": Displayed error message: " ++ s
         labelSetMarkup wlabelmessage $ "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
+        whenM (toggleButtonGetActive wcheckannoyerrors) $ popupWindow
+        void $ timeoutAdd (writeIORef messageLock False >> return False) (t * 1000)
+
+    let captchaMessage s = do
+        writeIORef messageLock True
+        n <- getPOSIXTime
+        writeLog $ "blasgtk, " ++ show n ++ ": Captcha message: " ++ s
+        whenM (toggleButtonGetActive wcheckannoy) $ popupWindow
+        labelSetText wlabelmessage s
+        -- we remove messageLock in sendCaptcha
+
+    let banMessage t s = do
+        writeIORef messageLock True
+        n <- getPOSIXTime
+        writeLog $ "blasgtk, " ++ show n ++ ": captcha or ban message: " ++ s
+        labelSetMarkup wlabelmessage $ "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
+        whenM (toggleButtonGetActive wcheckannoy) $ popupWindow
         void $ timeoutAdd (writeIORef messageLock False >> return False) (t * 1000)
 
     let updMessage s = do
         unlessM (readIORef messageLock) $
             labelSetText wlabelmessage s
 
-    let fromIOE v = handle (\(_::IOException) -> return v)
-        fromIOEM v = handle (\(_::IOException) -> v)
+    let fromIOEM v = handle (\(_::IOException) -> v)
 
     let generatePasta Mocha = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/mocha"
                                            return []) $ readPasta "resources/mocha"
@@ -421,7 +453,6 @@ main = withSocketsDo $ do
 
     -- setup shared mutable state
 
-    tqLog <- atomically $ newTQueue
     tqOut <- atomically $ newTQueue
 
     tpastas <- atomically $ newTVar []
@@ -454,10 +485,57 @@ main = withSocketsDo $ do
                                                 return [])
                                             (map (i </>) <$> getDirectoryContents i)
         li <- readIORef imagesLast
-        when (images /= li) $ atomically $ writeTVar timages images
+        when (images /= li) $ do
+            writeIORef imagesLast =<< readTVarIO timages
+            atomically $ writeTVar timages images
 
     regeneratePasta
     regenerateImages
+
+    -- captcha vars
+    pendingCaptchas <- newIORef []
+
+    let formatCaptchaMessage (OriginStamp _ board _ thread) =
+            "Введите капчу для " ++
+                (maybe ("создания нового треда в " ++ renderBoard board)
+                    (("Поста в тред " ++) . ssachThread board) thread)
+
+    let switchCaptcha = do
+        pc <- readIORef pendingCaptchas
+        case pc of
+            [] -> tempError 2 $ "Switching while there are no captchas."
+            ((st, c):_) ->  withSystemTempFile "recaptcha-captcha-image.jpeg" $
+                                \fn h -> do L.hPut h $ captchaBytes c
+                                            hClose h
+                                            imageSetFromFile wimagecaptcha fn
+                                            writeLog "switched captcha"
+                                            entrySetText wentrycaptcha ""
+                                            captchaMessage $ formatCaptchaMessage st
+
+    let addCaptcha sp = do
+        pc <- readIORef pendingCaptchas
+        modifyIORef pendingCaptchas (++[sp])
+        when (null pc) $ do
+            containerRemove wprogressalignment wprogresswipe
+            containerAdd wprogressalignment wvboxcaptcha
+            widgetGrabFocus wentrycaptcha
+            widgetGrabDefault wbuttoncaptchaok
+            switchCaptcha
+
+    let sendCaptcha a = do
+        cs <- readIORef pendingCaptchas
+        case cs of
+            [] -> tempError 2 $ "Ответил на несуществующий запрос капчи"
+            ((_,c):n) -> do
+                writeLog $ "Sending " ++ show a ++ " to captcha requester"
+                captchaSend c a
+                writeIORef pendingCaptchas n
+                if (null n)
+                    then do
+                        containerRemove wprogressalignment wvboxcaptcha
+                        containerAdd wprogressalignment wprogresswipe
+                        writeIORef messageLock False
+                    else switchCaptcha
 
     let updWipeMessage = do
         --mo <- chooseFromList mochanNames
@@ -477,8 +555,7 @@ main = withSocketsDo $ do
                 mthread <- atomically $ newTVar Random
                 mmode <- atomically $ newTVar Random
                 threadid <- forkIO $
-                    entryPoint Log (atomically . writeTQueue tqLog)
-                               ShSettings{..} tqOut board MuSettings{..}
+                    entryPoint Log ShSettings{..} tqOut board MuSettings{..}
                 return [WipeUnit threadid]
             else return []
 
@@ -518,6 +595,8 @@ main = withSocketsDo $ do
         writeLog "Stopping wipe..."
         writeIORef wipeStarted False
         maintainBoardUnits
+        pc <- readIORef pendingCaptchas
+        forM_ pc $ const $ sendCaptcha AbortCaptcha
 
     -- main loop
 
@@ -528,16 +607,48 @@ main = withSocketsDo $ do
             regenerateImages
             maintainBoardUnits
             updWipeMessage
-            logs <- atomically $ untilNothing $ tryReadTQueue tqLog
-            forM_ logs (writeLog . show)
             outs <- atomically $ untilNothing $ tryReadTQueue tqOut
-            
+            forM_ outs $ \s@(OutMessage st@(OriginStamp _ board _ _) m) ->
+              case m of
+                OutcomeMessage o -> do
+                    case o of
+                        SuccessLongPost _ -> writeLog (show st ++ ": SuccessLongPost")
+                        _ -> writeLog (show s)
+                    case o of
+                        Success -> do modifyIORef postCount (+1)
+                                      maybe (return ()) ((`writeIORef` False) . buBanned) $
+                                        find ((==board) . buBoard) boardunits
+                        SuccessLongPost _ -> do modifyIORef postCount (+1)
+                                                maybe (return ()) ((`writeIORef` False) . buBanned) $
+                                                    find ((==board) . buBoard) boardunits
+                        Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
+                        Banned x -> do banMessage 5 $ "Забанен на доске " ++ renderBoard board
+                                                    ++ " Причина: " ++ show x
+                                                    ++ "\nВозможно стоит переподключится"
+                                       maybe (return ()) ((`writeIORef` True) . buBanned) $
+                                        find ((==board) . buBoard) boardunits
+                        SameMessage -> tempError 2 $ renderBoard board ++ ": Запостил одно и то же сообщение"
+                        SameImage -> tempError 2 $ renderBoard board ++ ": Запостил одну и ту же пикчу"
+                        TooFastPost -> return () -- tempError 2 $ renderBoard board ++ ": Вы постите слишком часто, умерьте пыл"
+                        TooFastThread -> tempError 3 $ renderBoard board ++ ": Вы создаете треды слишком часто"
+                        NeedCaptcha -> return ()
+                        WrongCaptcha -> tempError 3 "Неправильно введена капча"
+                        RecaptchaBan -> do banMessage 7 $ "Забанен рекапчой, охуеть. Переподключайся, мудило"
+                                           maybe (return ()) ((`writeIORef` True) . buBanned) $
+                                            find ((==board) . buBoard) boardunits
+                        LongPost -> tempError 1 $ renderBoard board ++ ": Запостил слишком длинный пост"
+                        CorruptedImage -> tempError 2 $ renderBoard board ++ ": Запостил поврежденное изображение"
+                        OtherError x -> tempError 7 $ renderBoard board ++ ": " ++ show x
+                        InternalError x -> tempError 7 $ renderBoard board ++ ": " ++ show x
+                c@(SupplyCaptcha _ _) -> addCaptcha (st, c)
+                LogMessage _ -> writeLog (show s)
+                NoPastas -> do writeLog (show s)
+                               tempError 3 "Невозможно прочитать пасты, постим повторяющуюся строку \"NOPASTA\""
+                NoImages -> do writeLog (show s)
+                               tempError 3 "Невозможно прочитать пикчи, постим капчу"
             yield
-        -- TODO Captcha
-        -- TODO postCount
-        -- TODO updateBanned
-        -- TODO show thread outs
-        -- TODO popup banned
+        -- TODO config last thread time
+        -- TODO config expander status
 
     timeoutAdd (mainloop >> return True) 50 --kiloseconds, 20 fps.
 
@@ -554,18 +665,25 @@ main = withSocketsDo $ do
                 updWipeMessage
                 progressBarPulse wprogresswipe
                 startWipe
-                {-containerRemove wprogressalignment wprogresswipe
-                containerAdd wprogressalignment wvboxcaptcha
-                widgetGrabFocus wentrycaptcha
-                widgetGrabDefault wbuttoncaptchaok-}
                 )
             (do buttonSetLabel wbuttonwipe "Начать _Вайп"
                 updMessage "Вайп ещё не начат"
                 progressBarSetFraction wprogresswipe 0
                 killWipe
-                {-containerRemove wprogressalignment wvboxcaptcha
-                containerAdd wprogressalignment wprogresswipe-}
                 )
+
+    on weventboxcaptcha buttonPressEvent $ do
+        liftIO $ sendCaptcha ReloadCaptcha
+        return True
+
+    on wbuttoncaptchaok buttonActivated $ do
+        x <- entryGetText wentrycaptcha
+        if null x
+            then captchaMessage "Пожалуйста введите капчу"
+            else sendCaptcha $ Answer x
+
+    on wbuttoncaptchacancel buttonActivated $ do
+        sendCaptcha AbortCaptcha
 
     _ <- forM pastaradio $ \(p, w) -> do
             on w toggled $
@@ -652,6 +770,8 @@ main = withSocketsDo $ do
     coAnnoyErrors <- toggleButtonGetActive wcheckannoyerrors
     coTray <- toggleButtonGetActive wchecktray
     coImageFolder <- readIORef imageFolder
+    coSettingsShown <- expanderGetExpanded wexpandersettings
+    coLogShown <- expanderGetExpanded wexpanderlog
        
     tw <- try $ writeFile "config" $ show Conf{..}
     case tw of

@@ -25,8 +25,6 @@ module Import
     ,findWithSurroundings
     ,findWithSurroundingsLE
     ,delimitByLE
-    ,tupapp
-    ,apptup
     ,appfst
     ,appsnd
     ,justIf
@@ -54,6 +52,7 @@ import Data.Text as A (Text)
 import Data.Time as A
 import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
+import Control.DeepSeq as A
 import qualified Data.ByteString.Lazy as LB (ByteString)
 import qualified Data.Text.Lazy as LT (Text)
 import qualified Text.Show as S
@@ -172,21 +171,13 @@ delimitByLE d l =
         Just (a, _, b) -> a : delimitByLE d b
         Nothing -> [l]
 
-{-# INLINE tupapp #-}
-tupapp :: (a -> b) -> (a -> c) -> a -> (b, c)
-tupapp f1 f2 = \a -> (f1 a, f2 a)
-
-{-# INLINE apptup #-}
-apptup :: (a -> c) -> (b -> d) -> (a, b) -> (c, d)
-apptup f1 f2 = \(a, b) -> (f1 a, f2 b)
-
 {-# INLINE appfst #-}
 appfst :: (a -> c) -> (a, b) -> (c, b)
-appfst a = apptup a id
+appfst a = a *** id
 
 {-# INLINE appsnd #-}
 appsnd :: (b -> d) -> (a, b) -> (a, d)
-appsnd a = apptup id a
+appsnd a = id *** a
 
 {-# INLINE justIf #-}
 justIf :: (a -> Bool) -> a -> Maybe a
