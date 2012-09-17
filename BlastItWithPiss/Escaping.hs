@@ -48,19 +48,25 @@ invisibleSymbols = "\8290\8291\8289\8288\8203\8206"
 zalgo :: [Char]
 zalgo = []
 
--- | Simillar letters in Cyrillic and Latin.
+-- | Simillar letters in Cyrillic, Latin and Greek.
 simillars :: [(Char, Char)]
 simillars =
+    -- [(Latin/Greek, Cyrillic)]
     [('a', 'а')
     ,('A', 'А')
     ,('B', 'В')
+    ,('Γ', 'Г')
     ,('c', 'с')
     ,('C', 'С')
     ,('e', 'е')
     ,('E', 'Е')
+    ,('ë', 'ё')
+    ,('Ë', 'Ё')
     ,('H', 'Н')
+    ,('Η', 'Н')
     ,('i', 'і')
     ,('I', 'І')
+    ,('Ï', 'Ї')
     ,('K', 'К')
     ,('M', 'М')
     ,('o', 'о')
@@ -70,6 +76,8 @@ simillars =
     ,('T', 'Т')
     ,('x', 'х')
     ,('X', 'Х')
+    ,('϶', 'э')
+    ,('ϵ', 'є')
     ]
 
 findAlternative :: Char -> Maybe Char
@@ -99,8 +107,8 @@ getIxs is as = map (as!!) is --dangerous
 -- | Intersperse string in random places with random amount of random invisible characters
 randomizeInvisible :: MonadChoice m => Int -> String -> m String
 randomizeInvisible max_invs' str = do
-    -- HACK as every one of our invisible chars consists of three unicode code points
-    --      we divide limit by three.
+-- HACK as every one of our invisible chars consists of three unicode code points
+--      we divide limit by three.
 -- FIXME symbols should be counted by their UTF8 length in bytes.
     let max_invs = max_invs' `div` 3
     ixlen <- getRandomR (0, max_invs)

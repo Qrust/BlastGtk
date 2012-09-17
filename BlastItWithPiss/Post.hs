@@ -10,6 +10,13 @@ import qualified Text.Show as S
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
 
+--FIXME
+--{-
+import Control.DeepSeq
+import Data.CaseInsensitive
+import qualified Data.ByteString.Lazy as L
+---}
+
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)
 
@@ -113,29 +120,31 @@ getCaptcha wakabapl thread key chKey =
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
-{-
-data Constants = Constants
-        {mlength :: Int}
--}
+
 data PostData = PostData
         {subject:: String
         ,text   :: String
-        ,image  :: Maybe Image
-        ,sage   :: Bool
-        ,makewatermark :: Bool
+        ,image  :: !(Maybe Image)
+        ,sage   :: !Bool
+        ,makewatermark :: !Bool
         }
-{-
-data PreparedReq a = PreparedReq (Request a) Outcome
-
+--FIXME
+--{-
 instance NFData Outcome
 
+#if !MIN_VERSION_bytestring(0,10,0)
 instance NFData ByteString
+
+instance NFData L.ByteString where
+    rnf r = L.toChunks r `deepseq` ()
+#endif
 
 instance NFData a => NFData (CI a) where
     rnf ci = original ci `deepseq` foldedCase ci `deepseq` ()
 
 instance NFData (RequestBody a) where
     rnf (RequestBodyBS b) = b `deepseq` ()
+    rnf (RequestBodyLBS b) = b `deepseq` ()
     rnf a = a `seq` ()
 
 instance NFData (Request a) where
@@ -157,9 +166,7 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-instance NFData (PreparedReq a) where
-    rnf (PreparedReq a b) = a `deepseq` b `deepseq` ()
--}
+---}
 
 prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
 prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields' maxlength = do
@@ -208,7 +215,7 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                    ,responseTimeout = Nothing
                    }
     --print =<< getCurrentTime
-    return (req, if null rest then Success else SuccessLongPost rest)
+    return $!! (req, if null rest then Success else SuccessLongPost rest)
   where reservedField f = any (`fieldNameIs` f) ["parent"
                                                 ,"kasumi"
                                                 ,"shampoo"

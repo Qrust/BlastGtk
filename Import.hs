@@ -24,7 +24,11 @@ module Import
     ,slice
     ,findWithSurroundings
     ,findWithSurroundingsLE
+    ,delimitByLE
     ,tupapp
+    ,apptup
+    ,appfst
+    ,appsnd
     ,justIf
     ,untilJust
     ,untilNothing
@@ -161,9 +165,28 @@ findWithSurroundingsLE = find' []
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
 
+delimitByLE :: Eq a => [a] -> [a] -> [[a]]
+delimitByLE _ [] = []
+delimitByLE d l =
+    case findWithSurroundingsLE d l of
+        Just (a, _, b) -> a : delimitByLE d b
+        Nothing -> [l]
+
 {-# INLINE tupapp #-}
 tupapp :: (a -> b) -> (a -> c) -> a -> (b, c)
 tupapp f1 f2 = \a -> (f1 a, f2 a)
+
+{-# INLINE apptup #-}
+apptup :: (a -> c) -> (b -> d) -> (a, b) -> (c, d)
+apptup f1 f2 = \(a, b) -> (f1 a, f2 b)
+
+{-# INLINE appfst #-}
+appfst :: (a -> c) -> (a, b) -> (c, b)
+appfst a = apptup a id
+
+{-# INLINE appsnd #-}
+appsnd :: (b -> d) -> (a, b) -> (a, d)
+appsnd a = apptup id a
 
 {-# INLINE justIf #-}
 justIf :: (a -> Bool) -> a -> Maybe a

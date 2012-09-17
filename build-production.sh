@@ -1,14 +1,16 @@
 #!/bin/sh
 case `uname` in
     MINGW*)
-        ldopt="-optl-mwindows"
+        ghcopt="--ghc-options=-optl-mwindows"
         lbdir="dos";;
     *)
-        ldopt="-optl-Wl,-rpath,'\$ORIGIN'"
+        ghcopt="--ghc-options=-fllvm --ghc-options=-optl-Wl,-rpath,'\$ORIGIN'"
         lbdir="linux";;
 esac
-echo $ldopt
+echo $ghcopt
+echo "\n"
 echo $lbdir
+echo "\n"
 rm -rf distribution
 mkdir distribution
 mkdir distribution/tempprefixdir
@@ -17,7 +19,7 @@ cabal configure -f bindist\
  --enable-optimization=2 --enable-executable-stripping\
  --disable-library-profiling\
  --disable-executable-profiling\
- --ghc-options=-O2 --ghc-options=$ldopt\
+ --ghc-options=-O2 $ghcopt\
  --prefix=`pwd`/distribution/tempprefixdir --bindir=distribution
 cabal build
 cabal copy
@@ -29,4 +31,6 @@ echo "Copying resources and pastas"
 cp -r resources distribution/resources
 echo "Copying libraries"
 cp -r libs/$lbdir/. distribution
+cabal clean
 echo "Finished building, don't forget to check for GLIBC or mingw unwanted dependencies"
+echo "\n"

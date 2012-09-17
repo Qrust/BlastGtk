@@ -1,6 +1,7 @@
 {-# LANGUAGE NoOverloadedStrings #-}
 module BlastItWithPiss.Parsing where
 import Import
+import BlastItWithPiss.Board
 import BlastItWithPiss.MultipartFormData (Field(..), field)
 import Text.HTML.TagSoup
 import qualified Codec.Binary.UTF8.Generic as UTF8
@@ -67,19 +68,22 @@ parseThread :: [Tag String] -> Thread
 parseThread =
     parseThreadParameters . tail . dropUntil (~== TagOpen "div" [("class", "thread")])
 
-parseSpeed :: [Tag String] -> Int
+parseSpeed :: [Tag String] -> Maybe Int
 parseSpeed t = getSpeed (parseSpeed' False t <|> parseSpeed' True t)
-  where getSpeed mtext =
+  where stripSpeedPrefix a = stripPrefix "[Скорость борды: " a
+                         <|> stripPrefix "[Posting speed: " a
+        isInfixOfSpeed a = isInfixOf "Скорость борды" a
+                         || isInfixOf "Posting speed" a
+        getSpeed mtext =
 -- FIXME seems that sosaka hides speed sometimes
-            fromMaybe 0 $
                 readMay . takeWhile (not . isSpace) =<<
-                    stripPrefix "[Скорость борды: " =<< mtext
+                    stripSpeedPrefix =<< mtext
         parseSpeed' uncommented tags =
             case getInfixOfP
                     [(~== if uncommented
                             then TagOpen "div" [("class", "speed")]
                             else TagComment "<div class=\"speed\">")
-                    ,maybe False (isInfixOf "Скорость борды") . maybeTagText
+                    ,maybe False isInfixOfSpeed . maybeTagText
                     ] tags
             of Nothing -> Nothing
                Just ts -> Just $ fromTagText $ last ts
@@ -98,12 +102,14 @@ parsePages =
                     then readMay $ filter (`notElem` "[]") t
                     else Nothing
 
-parsePage :: [Tag String] -> Page
-parsePage html =
+parsePage :: Board -> [Tag String] -> Page
+parsePage board html =
     let (i, ps) = parsePages html in
     Page {pageId = i
          ,lastpage = ps
-         ,speed = parseSpeed html
+         -- if parse fails assume last recorded speed, or 0 if none recorded.
+         ,speed = parseSpeed html >$>
+                    fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate)
          ,threads = map parseThreadParameters $ tail $ splitBy (~== TagOpen "div" [("class", "thread")]) html
          }
 

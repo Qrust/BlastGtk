@@ -35,12 +35,12 @@ library
                   ,mime-types
                   ,resourcet
                   ,case-insensitive
---                  ,system-filepath
                   ,tagsoup
-
-                  ,process
-
                   ,utf8-string
+
+                  ,deepseq
+--                  ,system-filepath
+--                  ,process
 
 
     exposed-modules:
@@ -100,11 +100,14 @@ executable blastgtk
     main-is: GtkMain.hs
     build-depends: base
                   ,blast-it-with-piss
+                  ,filepath
                   ,directory
                   ,time
+                  ,old-time
                   ,stm >= 2.4
                   ,transformers
                   ,bytestring
+                  ,utf8-string
                   ,text
                   ,safe
                   ,gtk
