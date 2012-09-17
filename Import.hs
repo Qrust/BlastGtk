@@ -31,7 +31,9 @@ module Import
     ,untilJust
     ,untilNothing
     ) where
-import Prelude as A hiding (show)
+import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile)
+import System.IO as A hiding (readFile, writeFile)
+import System.IO.UTF8 as A (readFile, writeFile)
 -- import Filesystem.Path as A
 import Data.Monoid as A
 import Data.Maybe as A

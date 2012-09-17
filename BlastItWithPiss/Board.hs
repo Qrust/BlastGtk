@@ -87,6 +87,14 @@ data Board = A
            | WM
            | WP
            | WR
+        -- temporary boards
+           | PVC
+           | TRV
+           | IZD
+           | WEB
+           | HH
+           | DOM
+           | FTB
     deriving (Eq, Read, Show, Enum, Bounded, Ord)
 
 allSsachBoards :: [Board]
@@ -181,7 +189,15 @@ ssachBoardsSortedByPostRate =
     ,(DE,1)
     ,(INT,0)
     ,(GB,0)
-    ,(ABU,0)]
+    ,(ABU,0)
+    ,(PVC,0)
+    ,(TRV,0)
+    ,(IZD,0)
+    ,(WEB,0)
+    ,(HH,0)
+    ,(DOM,0)
+    ,(FTB,0)
+    ]
 
 readBoard :: String -> Maybe Board
 readBoard x | head x == '/' && last x == '/' = readMay $ map toUpper $ init $ tail x

@@ -10,8 +10,8 @@ import Graphics.UI.Gtk
 import GHC.Conc
 import Control.Concurrent.STM
 import Data.IORef
-import System.IO
-import System.Environment
+import System.IO (openFile, IOMode(..), hFileSize, hClose, hFlush, hSetEncoding, utf8, stdout)
+import System.Environment.UTF8
 import System.FilePath
 import System.Directory
 import System.IO.Temp
@@ -25,7 +25,10 @@ import System.Environment.Executable (splitExecutablePath)
 import System.Time
 #endif
 
+-- TODO build & pack script
+-- TODO don't recompile from scratch in build-production
 -- TODO Updater
+-- TODO background mode
 -- TODO mochepasta resources/mocha images/mocha-*
 -- TODO реклама вайпалки в самом вайпе
 -- TODO update mocha-repo description
@@ -117,7 +120,7 @@ defaultConf =
 #endif
          ,coWatermark = False
          ,coAnnoyErrors = True
-         ,coSettingsShown = True
+         ,coSettingsShown = False
          ,coLogShown = False
          }
 
@@ -184,7 +187,7 @@ ignoreExceptions m = void (try m :: IO (Either SomeException ()))
 bugMessage :: String
 bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
           ++ " file a bug report to the author(https://github.com/exbb2/BlastItWithPiss/issues)"
-          ++ " with attached files blastgtk-log.txt, and, if you have one, blastgtk-log.txt.bak.\n"
+          ++ " with attached files log.txt, and, if you have one, log.txt.bak.\n"
           ++ "NOTE: aforementioned logs contain address of the image folder that you specified"
           ++ " if you customized the program. If this data is sensitive to you, you might want"
           ++ " to clear it from the logs before you submit them.\n"
@@ -196,6 +199,7 @@ helpMessage = "No help message for now, sorry" ++ "\n\n" ++ bugMessage
 
 main :: IO ()
 main = withSocketsDo $ do
+ hSetEncoding stdout utf8
  args <- getArgs
  if any (`elem` args) ["--help", "-h", "-?"]
   then putStrLn helpMessage
@@ -211,12 +215,12 @@ main = withSocketsDo $ do
 #endif
   hlog <- do
     eh <- try $ do
-        h <- openFile "blastgtk-log.txt" AppendMode--ReadWriteMode
+        h <- openFile "log.txt" AppendMode--ReadWriteMode
         size <- hFileSize h
         if size >= (10 * 1024 * 1024)
             then do hClose h
-                    renameFile "blastgtk-log.txt" "blastgtk-log.txt.bak"
-                    openFile "blastgtk-log.txt" AppendMode--ReadWriteMode
+                    renameFile "log.txt" "log.txt.bak"
+                    openFile "log.txt" AppendMode--ReadWriteMode
             else return h
     case eh of
         Left (a::SomeException) -> do
@@ -230,6 +234,7 @@ main = withSocketsDo $ do
         when (isJust hlog) $
             flip hPutStrLn s $ fromJust hlog
         putStrLn s
+        maybe (return ()) hFlush hlog
 {-
   let readLog =
         maybe (return "")
