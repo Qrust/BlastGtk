@@ -29,8 +29,10 @@ import System.Time
 
 -- TODO investigate — captcha needed when posting in /b/
 --      might be related to wakabapl thread & dummy params
+--      ^ Nope, They can't be related.
 -- TODO Updater
--- TODO реклама вайпалки в самом вайпе
+-- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
+--      и соответствующая опция для отключения рекламы вайпалки
 -- TODO mochepasta resources/mocha
 -- TODO update mocha-repo description
 -- TODO update description when snoyman releases http-conduit-1.7.0

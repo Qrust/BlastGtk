@@ -5,6 +5,7 @@ import System.Directory
 import System.FilePath
 import System.Environment.Executable
 import Network.HTTP.Conduit
+import Graphics.UI.Gtk
 
 type URL = String
 
