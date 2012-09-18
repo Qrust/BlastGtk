@@ -36,6 +36,7 @@ import System.Time
 -- TODO mochepasta resources/mocha
 -- TODO update mocha-repo description
 -- TODO update description when snoyman releases http-conduit-1.7.0
+-- TODO display popup with info on where to submit bugreports on first launch.
 -- TODO support ANTIGATE, CAPTCHABOT, etc. add multipart/form-data to http-conduit
 -- TODO support PROXYs. (It's more about frontend than library,
 --                       library only provides API for one agent(proxy) anyway.)

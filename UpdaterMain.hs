@@ -13,8 +13,14 @@ type MD5Sum = String
 
 -- FIXME Может легче просто скачать соответствующий тарболл?
 
-data Platform = Windows | Linux
+data Platform = Linux | Windows | Mac
 
+errorNoBuildAvailable :: Platform -> String
+errorNoBuildAvailable Linux = "Случилось абсолютно невозможное, не обнаружено версии вайпалки для единственной операционной системы."
+errorNoBuildAvailable Windows = "Не обнаружено версии вайпалки для утятницы \"Пекач\"\nРешение:\n1. Соснуть хуйцов\n2.Сделать бочку."
+errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(через news-конфу колчана, по скайпу kudahkukarek, или через открытие баг-репорта в Issues репозитория вайпалки)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
+
+{-
 data UpdateManifest = UpdateManifest
     {root :: URL
     ,version :: Version
@@ -23,6 +29,9 @@ data UpdateManifest = UpdateManifest
     ,popupMessage :: Maybe String
     ,configCompatible :: Version -- ^ если наша версия — копируем конфиг из .old.
     }
+-}
+data AnotherManifest = AnotherManifest
+    {
 
 {-
 - скачиваем манифест с файла, в манифесте версия, список файлов и чексумм.
@@ -36,6 +45,8 @@ data UpdateManifest = UpdateManifest
 data Outcome = Success
              | ChecksumMismatch
              | ServersUnreachable
+             | NoBuildAvailable Platform
+             | UnparseableManifest
              | HttpExc HttpException
 
 main :: IO ()
