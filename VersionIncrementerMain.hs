@@ -12,11 +12,12 @@ main = do
     cf <- readFile "blast-it-with-piss.cabal"
     let (a, x, b) = fromMaybe (error "Couldn't find version in cabal file, oh well.") $
             findWithSurroundings (isPrefixOf "version: ") (lines cf)
-        oldv@Version{versionBranch=[v1,v2,v3,v4]} =
+        oldv =
             fst $ last $ (readP_to_S parseVersion) (fromJust $ stripPrefix "version: " x)
     if "--get" `elem` g
         then putStr $ showVersion oldv
-        else do let newv = oldv{versionBranch=[v1, v2, v3, v4+1]}
+        else do let newv = oldv{versionBranch=init (versionBranch oldv) ++
+                                                [last (versionBranch oldv) + 1]}
                 putStrLn $ "Old version: " ++ showVersion oldv
                 putStrLn $ "New version: " ++ showVersion newv
                 writeFile "blast-it-with-piss.cabal.bak" cf

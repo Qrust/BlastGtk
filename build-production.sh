@@ -26,7 +26,7 @@ echo $foldr
 echo "\n"
 echo $optimi
 echo "\n"
-rm -rf $foldr
+rm -rfv $foldr
 mkdir $foldr
 mkdir $foldr/tempprefixdir
 cabal configure --builddir=builddir/$foldr -f bindist --verbose\
@@ -39,17 +39,17 @@ cabal configure --builddir=builddir/$foldr -f bindist --verbose\
  then
   cabal copy --builddir=builddir/$foldr --verbose &&\
   echo "Removing ${foldr}/tempprefixdir" &&\
-  rm -rf $foldr/tempprefixdir &&\
+  rm -rfv $foldr/tempprefixdir &&\
   echo "Copying images" &&\
-  cp -r images $foldr/BlastItWithPiss/images &&\
+  cp -rv images $foldr/BlastItWithPiss/images &&\
   echo "Copying resources and pastas" &&\
-  cp -r resources $foldr/BlastItWithPiss/resources &&\
+  cp -rv resources $foldr/BlastItWithPiss/resources &&\
   echo "Copying libraries" &&\
-  cp -r libs/$lbdir/. $foldr/BlastItWithPiss &&\
+  cp -rv libs/$lbdir/. $foldr/BlastItWithPiss &&\
   echo "Copying license, source instructions and music recommendations" &&\
-  cp LICENSE $foldr/BlastItWithPiss &&\
-  cp WHERETOGETTHESOURCE $foldr/BlastItWithPiss &&\
-  cp music $foldr/BlastItWithPiss &&\
+  cp -v LICENSE $foldr/BlastItWithPiss &&\
+  cp -v WHERETOGETTHESOURCE $foldr/BlastItWithPiss &&\
+  cp -v music $foldr/BlastItWithPiss &&\
   echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
   echo "\n"
  else
