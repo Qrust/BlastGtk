@@ -239,9 +239,10 @@ main = withSocketsDo $ do
 
   let rawPutLog s = do
         when (isJust hlog) $
-            flip hPutStrLn s $ fromJust hlog
-        putStrLn s
-        maybe (return ()) hFlush hlog
+            whenM (hIsOpen (fromJust hlog)) $ do
+                hPutStrLn (fromJust hlog) s
+                hFlush (fromJust hlog)
+        whenM (hIsOpen stdout) $ putStrLn s
 {-
   let readLog =
         maybe (return "")
