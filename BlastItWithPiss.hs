@@ -22,14 +22,6 @@ import System.Process
 import System.Exit
 import Network-}
 
--- TODO support ANTIGATE, CAPTCHABOT, etc. add multipart/form-data to http-conduit
--- TODO support PROXYs. (It's more about frontend than library,
---                       library only provides API for one agent(proxy) anyway.)
--- TODO entry point for proxy checker
-
--- TODO Increase modularity.
--- TODO Support 2chnu, alterchan.
-
 data MaybeRandom a = Always a
                    | Random
 

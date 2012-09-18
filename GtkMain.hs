@@ -25,20 +25,26 @@ import System.Environment.Executable (splitExecutablePath)
 import System.Time
 #endif
 
--- TODO build & pack script
--- TODO don't recompile from scratch in build-production
+-- TODO investigate — captcha needed when posting in /b/
+--      might be related to wakabapl thread & dummy params
 -- TODO Updater
--- TODO background mode
--- TODO mochepasta resources/mocha images/mocha-*
 -- TODO реклама вайпалки в самом вайпе
+-- TODO mochepasta resources/mocha
 -- TODO update mocha-repo description
 -- TODO update description when snoyman releases http-conduit-1.7.0
+-- TODO support ANTIGATE, CAPTCHABOT, etc. add multipart/form-data to http-conduit
+-- TODO support PROXYs. (It's more about frontend than library,
+--                       library only provides API for one agent(proxy) anyway.)
+-- TODO entry point for proxy checker
+-- TODO background mode
 -- TODO FIX FREEZES
 
 -- FIXME Oh dog, what a mess.
 --       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
 -- TODO Less boilerplate, less explicit parameter passing. (Roll out some monad)
 -- TODO More type safety.
+-- TODO Increase modularity.
+-- TODO Support 2chnu, alterchan.
 
 data PastaSet = Mocha
               | Kakashki
@@ -106,9 +112,10 @@ generateRandomStrings lengthBounds a b = do
 
 defaultConf :: Conf
 defaultConf =
-    Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG]
+    Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
           coActiveBoards = [NE, MDK]
-         ,coPastaSet = Mocha
+           -- FIXME coPastaSet = Mocha
+         ,coPastaSet = Kakashki
          ,coCreateThreads = True
          ,coImageFolder = "images"
          ,coAttachImages = True

@@ -35,19 +35,20 @@ cabal configure --builddir=builddir/$foldr -f bindist --verbose\
  --disable-executable-profiling\
  $optimi $ghcopt\
  --prefix=`pwd`/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss
-cabal build --builddir=builddir/$foldr --verbose
-cabal copy --builddir=builddir/$foldr --verbose
-echo "Removing ${foldr}/tempprefixdir"
-rm -rf $foldr/tempprefixdir
-echo "Copying images"
-cp -r images $foldr/BlastItWithPiss/images
-echo "Copying resources and pastas"
-cp -r resources $foldr/BlastItWithPiss/resources
-echo "Copying libraries"
-cp -r libs/$lbdir/. $foldr/BlastItWithPiss
-echo "Copying license, source instructions and music recommendations"
-cp LICENSE $foldr/BlastItWithPiss
-cp WHERETOGETTHESOURCE $foldr/BlastItWithPiss
-cp music $foldr/BlastItWithPiss
-echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols"
-echo "\n"
+cabal build --builddir=builddir/$foldr --verbose &&\
+ cabal copy --builddir=builddir/$foldr --verbose &&\
+ echo "Removing ${foldr}/tempprefixdir" &&\
+ rm -rf $foldr/tempprefixdir &&\
+ echo "Copying images" &&\
+ cp -r images $foldr/BlastItWithPiss/images &&\
+ echo "Copying resources and pastas" &&\
+ cp -r resources $foldr/BlastItWithPiss/resources &&\
+ echo "Copying libraries" &&\
+ cp -r libs/$lbdir/. $foldr/BlastItWithPiss &&\
+ echo "Copying license, source instructions and music recommendations" &&\
+ cp LICENSE $foldr/BlastItWithPiss &&\
+ cp WHERETOGETTHESOURCE $foldr/BlastItWithPiss &&\
+ cp music $foldr/BlastItWithPiss &&\
+ echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
+ echo "\n"
+ 
