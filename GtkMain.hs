@@ -1,4 +1,4 @@
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PackageImports, NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Main where
 import Import hiding (on)
@@ -18,6 +18,8 @@ import System.IO.Temp
 import Network (withSocketsDo)
 import Control.Exception
 import qualified Data.ByteString.Lazy as L
+import Paths_blast_it_with_piss (version)
+import Data.Version (showVersion)
 #ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 #endif
@@ -392,9 +394,14 @@ main = withSocketsDo $ do
     wbuf <- textViewGetBuffer wlog
     -- VERY SLOW for some reason on texts > 100 kilobytes
     -- Not a haskell issue, print prints instantly, widget lags like hell for a minute.
-    -- textBufferSetText wbuf =<< readLog
+    --  textBufferSetText wbuf =<< readLog
     wad <- textViewGetVadjustment wlog
     adjustmentSetValue wad =<< adjustmentGetUpper wad
+
+    wlabelversion <- builderGetObject b castToLabel "labelversion"
+    labelSetMarkup wlabelversion $
+        ("<small><a href=\"https://github.com/exbb2/BlastItWithPiss\">" ++) . (++"</a></small>") $
+            showVersion version
 
     -- setup mutable variables
 
