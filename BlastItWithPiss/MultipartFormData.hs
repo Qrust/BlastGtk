@@ -14,7 +14,13 @@ data Field = Field {fieldAttrs :: [(ByteString, ByteString)]
                    ,fieldHeaders :: [Header]
                    ,fieldBody :: !LByteString
                    }
-    deriving (Eq, Show)
+    deriving (Show)
+
+instance Eq Field where
+    (==) x y | Just a <- lookup "name" $ fieldAttrs x
+             , Just b <- lookup "name" $ fieldAttrs y
+                = a == b
+             | otherwise = False
 
 instance Ord Field where
     compare x y | Just a <- lookup "name" $ fieldAttrs x

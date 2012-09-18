@@ -168,9 +168,8 @@ instance NFData (Request a) where
 ---}
 
 prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
-prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields' maxlength = do
-    --print =<< getCurrentTime
-    let otherfields = filter (not . reservedField) otherfields' 
+prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
+    --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
                                     (ut, []) -> (ut, [])
                                     (ut, r) -> (ut, r)
@@ -196,11 +195,15 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                 else [field "nabiki" mempty]
             ) ++
             ([field "makewatermark" "on" | makewatermark]
-            ) ++
+            )
+            `union`
             (otherfields)
     boundary <- randomBoundary
     let body = formatMultipart boundary fields
-    --putStrLn $ UTF8.toString $ (\(RequestBodyBS a) -> a) $ body
+    {-
+    liftIO $ putStrLn $ UTF8.toString $ (\(RequestBodyLBS a) -> a) $ body
+    undefined
+    -}
     req' <- parseUrl wakabapl
     let req = req' {method = methodPost
                    ,requestHeaders =
@@ -213,17 +216,8 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                    ,requestBody = body
                    ,responseTimeout = Nothing
                    }
-    --print =<< getCurrentTime
+    --liftIO $ print =<< getCurrentTime
     return $!! (req, if null rest then Success else SuccessLongPost rest)
-  where reservedField f = any (`fieldNameIs` f) ["parent"
-                                                ,"kasumi"
-                                                ,"shampoo"
-                                                ,"file"
-                                                ,"sage"
-                                                ,"nabiki"
-                                                ,"recaptcha_challenge_field"
-                                                ,"recaptcha_response_field"
-                                                ,"makewatermark"]
 
 post :: (Request (ResourceT IO), Outcome) -> Blast Outcome
 post (req, success) = do

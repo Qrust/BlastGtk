@@ -16,11 +16,14 @@ import qualified Text.Show as Show
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 
-{-import Control.Concurrent (forkIO)
+{-
+import Control.Concurrent (forkIO)
 import GHC.Conc (threadStatus, ThreadStatus(..))
 import System.Process
 import System.Exit
-import Network-}
+import Network
+import qualified Data.ByteString.Lazy as L
+--}
 
 data MaybeRandom a = Always a
                    | Random
@@ -354,16 +357,16 @@ main = withSocketsDo $ do
                                       ,"Слава Україні, Героям Слава!"-- -}
                                       ]
     timages <- atomically $ newTVar ["images/jew-swede.jpg"]
-    tuseimages <- atomically $ newTVar True
+    tuseimages <- atomically $ newTVar False
     tcreatethreads <- atomically $ newTVar False
     tmakewatermark <- atomically $ newTVar False
     mthread <- atomically $ newTVar $ Random
     mmode <- atomically $ newTVar $ Random
     to <- atomically $ newTQueue
-    th <- forkIO (entryPoint Log print ShSettings{..} to MDK MuSettings{..})
+    th <- forkIO (entryPoint Log ShSettings{..} to MDK MuSettings{..})
     forever $ do
         t <- atomically $ tryReadTQueue to
-        case t of
+        case t of{-
             Just x -> case x of
                 OutcomeMessage thread (SuccessLongPost _) -> putStrLn $ show thread ++ " " ++ "SuccessLongPost"
                 OutcomeMessage thread out -> putStrLn $ show thread ++ " " ++ show out
@@ -378,8 +381,9 @@ main = withSocketsDo $ do
                     c <- readProcess captchabin ["captcha.jpeg"] []
                     send (Answer c)
                 NoPastas -> putStrLn "NoPastas"
-                NoImages -> putStrLn "NoImages"
+                NoImages -> putStrLn "NoImages"-}
             Nothing -> do st <- threadStatus th
                           if st==ThreadDied || st==ThreadFinished
                             then exitFailure
-                            else threadDelay (2 * 1000000)-}
+                            else threadDelay (2 * 1000000)
+--}

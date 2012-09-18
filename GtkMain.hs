@@ -33,10 +33,14 @@ import System.Time
 -- TODO Updater
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
--- TODO mochepasta resources/mocha
+-- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
+--      , даже "я посрал" — приветствуется.
+--      И о том что если вы забанены или кажется что что-то не так, то можно
+--      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe)
+--      и посмотреть если апдейты (Когда апдейтер будет готов)
+-- TODO mochepasta resources/mocha, switch boards
 -- TODO update mocha-repo description
 -- TODO update description when snoyman releases http-conduit-1.7.0
--- TODO display popup with info on where to submit bugreports on first launch.
 -- TODO support ANTIGATE, CAPTCHABOT, etc. add multipart/form-data to http-conduit
 -- TODO support PROXYs. (It's more about frontend than library,
 --                       library only provides API for one agent(proxy) anyway.)
@@ -120,7 +124,11 @@ defaultConf =
     Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
           coActiveBoards = [NE, MDK]
            -- FIXME coPastaSet = Mocha
+#ifdef BINDIST
          ,coPastaSet = Kakashki
+#else
+         ,coPastaSet = Mocha
+#endif
          ,coCreateThreads = True
          ,coImageFolder = "images"
          ,coAttachImages = True
@@ -446,7 +454,12 @@ main = withSocketsDo $ do
     let fromIOEM v = handle (\(_::IOException) -> v)
 
     let generatePasta Mocha = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/mocha"
-                                           return []) $ readPasta "resources/mocha"
+                                           return []) $ readPasta $
+#ifdef BINDIST
+                                            "resources/mocha"
+#else
+                                            "testkokoko"
+#endif
         generatePasta Kakashki = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/sadism"
                                               return []) $ readPasta "resources/sadism"
         generatePasta Char = generateRandomStrings (1, 30) (100, 5000) ('a','z')
