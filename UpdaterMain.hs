@@ -36,13 +36,24 @@ errorNoBuildAvailable Linux = "Случилось абсолютно невоз�
 errorNoBuildAvailable Windows = "Не обнаружено версии вайпалки для утятницы \"Пекач\"\nРешение:\n1. Соснуть хуйцов\n2.Сделать бочку."
 errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(через news-конфу колчана, по скайпу kudahkukarek, или через открытие баг-репорта в Issues репозитория вайпалки)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
 
+noSpace :: String -> String
+noSpace = dropWhile isSpace . reverse . dropWhile isSpace
+
+-- how about DwarfFortress-like syntax? [key:value]
+-- or we could just parse yaml/json/xml(since we already depend on tagsoup)
+-- and stop bothering with own parsers.
 keyValuesToManifest :: [(String, String)] -> Either String UpdateManifest
 keyValuesToManifest = undefined
+
+data UpdaterConf = UpdaterCond
+    {updateWithoutAsking :: Bool
+    }
 
 data UpdateManifest = UpdateManifest
     {version :: Version
     ,binaryAndResourcesZipArchives :: [(URL, MD5Sum)]
     ,imagePackZipArchives :: [(URL, MD5Sum)]
+    ,changelog :: String
     ,configCompatible :: Version -- ^ Если наша версия или ниже, то оставляем конфиг, в противном случае бэкапим.
     }
 {-

@@ -20,14 +20,16 @@ rm -fv BlastItWithPiss-BETA-*-x86-*.zip
 # FIXME Update when no longer is BETA
 (echo "Packaging Linux";
  sh build-production.sh &&\
- cd linux-dist && zip -r ../BlastItWithPiss-BETA-linux-x86-$currentversion.zip BlastItWithPiss/)&
+ cd linux-dist && zip -r9 ../BlastItWithPiss-BETA-linux-x86-$currentversion.zip BlastItWithPiss/)&
 # FIXME Update when no longer is BETA
 (echo "Packaging DOS";
  wine sh build-production.sh &&\
- cd dos-dist && zip -r ../BlastItWithPiss-BETA-windows-x86-$currentversion.zip BlastItWithPiss/)&
+ cd dos-dist && zip -r9 ../BlastItWithPiss-BETA-windows-x86-$currentversion.zip BlastItWithPiss/)&
 fg
 fg # wait until all builds finish
 # TODO is there a github api for downloads?
+# http://developer.github.com/v3/repos/downloads/ here it is
+# TODO automate uploading of new versions and manifest generation
 git commit -a && git push
 echo "Done packaging, now upload those."
 firefox "https://github.com/exbb2/BlastItWithPiss/downloads"&

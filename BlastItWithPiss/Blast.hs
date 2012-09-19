@@ -27,7 +27,7 @@ import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
 
 userAgent :: ByteString
-userAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
+userAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
 
 type Blast = BrowserAction
 
@@ -36,6 +36,9 @@ canonicalizeBrowser = do
     setUserAgent $ Just userAgent
     setMaxRedirects Nothing
     setTimeout $ Just $ 10 * 1000000
+    --FIXME
+    setCookieFilter $ \_ _ -> return False
+    --
 
 canonicalizeReq :: Request a -> Request a
 canonicalizeReq = id

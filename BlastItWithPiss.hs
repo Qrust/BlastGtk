@@ -237,14 +237,15 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                 -- FIXME precise timing
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
-            beforePost <- liftIO $ getPOSIXTime
+            -- FIXME beforePost <- liftIO $ getPOSIXTime
             out <- blast $ post p
+            afterPost <- liftIO $ getPOSIXTime
             blastOut (OutcomeMessage out)
             when (successOutcome out) $ blastLog "post succeded"
             let (nthreadtime, nposttime) =
                     if mode == CreateNew
-                        then (beforePost, lposttime)
-                        else (lthreadtime, beforePost)
+                        then (afterPost, lposttime)
+                        else (lthreadtime, afterPost)
                 ret = return (nthreadtime, nposttime)
             case out of
                 Success -> ret
@@ -255,10 +256,10 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                         else ret
                 TooFastPost -> do
                         blastLog "TooFastPost, retrying in 0.5 seconds"
-                        return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
+                        return (lthreadtime, afterPost - (ssachPostTimeout board - 0.5))
                 TooFastThread -> do
                         blastLog "TooFastThread, retrying in 15 minutes"
-                        return (beforePost - (ssachThreadTimeout board / 2), lposttime)
+                        return (afterPost - (ssachThreadTimeout board / 2), lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                         blastLog $ show o ++ ", requerying"
                         blastPost True lthreadtime lposttime w mode thread postdata
@@ -314,8 +315,8 @@ blastLoop w lthreadtime lposttime = do
 -- > if st==ThreadDied || st==ThreadFinished
 -- >    then resurrect
 -- >    else continue
-entryPoint :: LogDetail -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> IO ()
-entryPoint lgDetail shS output board muS = do
+getEntryPoint :: LogDetail -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> IO (Blast ())
+getEntryPoint lgDetail shS output board muS = do
     x <- try $ parseForm ssach . parseTags . UTF8.toString <$> simpleHttp (ssachPage board 0)
     case x of
         Left (a::SomeException) -> do now <- getPOSIXTime
@@ -323,10 +324,10 @@ entryPoint lgDetail shS output board muS = do
                                          OutMessage
                                             (OriginStamp now board CreateNew Nothing)
                                             (LogMessage $ "Couldn't parse page form, got exception " ++ show a)
-                                      --throwIO a
+                                      throwIO a
         Right w -> do
             l <- defLogS w
-            runBlast $ runReaderT (blastLoop w 0 0) $
+            return $ runReaderT (blastLoop w 0 0) $
                 BlastLogData board
                              lgDetail
                              l

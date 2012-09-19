@@ -3,6 +3,7 @@
 module Main where
 import Import hiding (on)
 import "blast-it-with-piss" BlastItWithPiss
+import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
 import "blast-it-with-piss" BlastItWithPiss.MonadChoice
@@ -10,13 +11,11 @@ import Graphics.UI.Gtk
 import GHC.Conc
 import Control.Concurrent.STM
 import Data.IORef
-import System.IO (openFile, IOMode(..), hFileSize, hClose, hFlush, hSetEncoding, utf8, stdout)
 import System.Environment.UTF8
 import System.FilePath
 import System.Directory
 import System.IO.Temp
 import Network (withSocketsDo)
-import Control.Exception
 import qualified Data.ByteString.Lazy as L
 import Paths_blast_it_with_piss (version)
 import Data.Version (showVersion)
@@ -27,16 +26,14 @@ import System.Environment.Executable (splitExecutablePath)
 import System.Time
 #endif
 
--- TODO investigate — captcha needed when posting in /b/
---      might be related to wakabapl thread & dummy params
---      ^ Nope, They can't be related.
 -- TODO Updater
+-- TODO configurable timeout
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
 -- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
 --      , даже "я посрал" — приветствуется.
 --      И о том что если вы забанены или кажется что что-то не так, то можно
---      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe)
+--      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть если апдейты (Когда апдейтер будет готов)
 -- TODO mochepasta resources/mocha, switch boards
 -- TODO update mocha-repo description
@@ -45,6 +42,7 @@ import System.Time
 -- TODO support PROXYs. (It's more about frontend than library,
 --                       library only provides API for one agent(proxy) anyway.)
 -- TODO entry point for proxy checker
+-- TODO ^ bundle proxy checker
 -- TODO background mode
 -- TODO FIX FREEZES
 
@@ -73,6 +71,7 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coAnnoyErrors :: Bool
                  ,coSettingsShown :: Bool
                  ,coLogShown :: Bool
+                 ,coFirstLaunch :: Bool
                  }
     deriving (Eq, Show, Read)
 
@@ -142,6 +141,7 @@ defaultConf =
          ,coAnnoyErrors = True
          ,coSettingsShown = False
          ,coLogShown = False
+         ,coFirstLaunch = True
          }
 
 mochanNames :: [String]
@@ -198,8 +198,8 @@ achievements =
         ]
 
 getAchievement :: Int -> Maybe String
-getAchievement i =
-    findMap (\(p, a) -> if i >= p then Just a else Nothing) $ achievements
+getAchievement a =
+    findMap (\(p, t) -> if a >= p then Just t else Nothing) $ achievements
 
 ignoreExceptions :: IO () -> IO ()
 ignoreExceptions m = void (try m :: IO (Either SomeException ()))
@@ -523,10 +523,10 @@ main = withSocketsDo $ do
             writeIORef pastaMod npd
 
     let regenerateImages = do
-        i <- readIORef imageFolder
-        images <- filterImages <$> fromIOEM (do tempError 3 $ "Невозможно прочитать изображения из папки " ++ i
+        ni <- readIORef imageFolder
+        images <- filterImages <$> fromIOEM (do tempError 3 $ "Невозможно прочитать изображения из папки " ++ ni
                                                 return [])
-                                            (map (i </>) <$> getDirectoryContents i)
+                                            (map (ni </>) <$> getDirectoryContents ni)
         li <- readIORef imagesLast
         when (images /= li) $ do
             writeIORef imagesLast =<< readTVarIO timages
@@ -597,8 +597,12 @@ main = withSocketsDo $ do
                 writeLog $ "Spawning new thread for " ++ renderBoard board
                 mthread <- atomically $ newTVar Random
                 mmode <- atomically $ newTVar Random
-                threadid <- forkIO $
-                    entryPoint Log ShSettings{..} tqOut board MuSettings{..}
+                threadid <- forkIO $ do
+                    -- TODO setCurrentProxy proxy
+                    -- TODO Socks proxys
+                    entry <- getEntryPoint Log ShSettings{..} tqOut board MuSettings{..}
+                    runBlast $ do
+                        entry
                 return [WipeUnit threadid]
             else return []
 
@@ -667,7 +671,7 @@ main = withSocketsDo $ do
                         Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
                         Banned x -> do banMessage 5 $ "Забанен на доске " ++ renderBoard board
                                                     ++ " Причина: " ++ show x
-                                                    ++ "\nВозможно стоит переподключится"
+                                                    ++ "\nВозможно стоит переподключится\nили начать вайпать /d/"
                                        maybe (return ()) ((`writeIORef` True) . buBanned) $
                                         find ((==board) . buBoard) boardunits
                         SameMessage -> tempError 2 $ renderBoard board ++ ": Запостил одно и то же сообщение"
@@ -721,9 +725,10 @@ main = withSocketsDo $ do
 
     on wbuttoncaptchaok buttonActivated $ do
         x <- entryGetText wentrycaptcha
-        if null x
+        {-if null x
             then captchaMessage "Пожалуйста введите капчу"
-            else sendCaptcha $ Answer x
+            else sendCaptcha $ Answer x-}
+        sendCaptcha $ Answer x
 
     on wbuttoncaptchacancel buttonActivated $ do
         sendCaptcha AbortCaptcha
@@ -803,23 +808,37 @@ main = withSocketsDo $ do
        FIGHT THE POWER!                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             [you lost The Game]
        
     --  write config
-    coActiveBoards <- map buBoard <$>
+    ncoActiveBoards <- map buBoard <$>
                     filterM (toggleButtonGetActive . buWidget) boardunits
-    coPastaSet <- readIORef pastaSet
-    coCreateThreads <- toggleButtonGetActive wcheckthread
-    coAttachImages <- toggleButtonGetActive wcheckimages
-    coWatermark <- toggleButtonGetActive wcheckwatermark
-    coAnnoy <- toggleButtonGetActive wcheckannoy
-    coAnnoyErrors <- toggleButtonGetActive wcheckannoyerrors
-    coTray <- toggleButtonGetActive wchecktray
-    coImageFolder <- readIORef imageFolder
-    coSettingsShown <- expanderGetExpanded wexpandersettings
-    coLogShown <- expanderGetExpanded wexpanderlog
-       
-    tw <- try $ writeFile "config" $ show Conf{..}
+    ncoPastaSet <- readIORef pastaSet
+    ncoCreateThreads <- toggleButtonGetActive wcheckthread
+    ncoAttachImages <- toggleButtonGetActive wcheckimages
+    ncoWatermark <- toggleButtonGetActive wcheckwatermark
+    ncoAnnoy <- toggleButtonGetActive wcheckannoy
+    ncoAnnoyErrors <- toggleButtonGetActive wcheckannoyerrors
+    ncoTray <- toggleButtonGetActive wchecktray
+    ncoImageFolder <- readIORef imageFolder
+    ncoSettingsShown <- expanderGetExpanded wexpandersettings
+    ncoLogShown <- expanderGetExpanded wexpanderlog
+
+    let nconf = Conf{coActiveBoards=ncoActiveBoards
+                    ,coPastaSet=ncoPastaSet
+                    ,coCreateThreads=ncoCreateThreads
+                    ,coAttachImages=ncoAttachImages
+                    ,coWatermark=ncoWatermark
+                    ,coAnnoy=ncoAnnoy
+                    ,coAnnoyErrors=ncoAnnoyErrors
+                    ,coTray=ncoTray
+                    ,coImageFolder=ncoImageFolder
+                    ,coSettingsShown=ncoSettingsShown
+                    ,coLogShown=ncoLogShown
+                    ,coFirstLaunch=False
+                    }
+    
+    tw <- try $ writeFile "config" $ show nconf
     case tw of
         Left (a::SomeException) -> writeLog $ "Couldn't write config, got exception: " ++ show a
-        Right _ -> writeLog $ "Wrote config: " ++ show Conf{..}
+        Right _ -> writeLog $ "Wrote config: " ++ show nconf
        
     -- close log
        
