@@ -830,7 +830,7 @@ main = withSocketsDo $ do
         hClose $ fromJust hlog
 
 #ifndef mingw32_HOST_OS
-    whenM (isOpen stdout) $ do
+    whenM (hIsWritable stdout) $ do
         hFlush stdout
 #endif
        

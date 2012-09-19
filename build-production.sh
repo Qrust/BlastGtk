@@ -15,7 +15,7 @@ case $1 in
     *)
         case `uname` in
             MINGW*) optimi="--ghc-options=-O2 --enable-optimization=2";;
-            MINGW*) optimi="--ghc-options=-fllvm --ghc-options=-O2 --enable-optimization=2";;
+            *) optimi="--ghc-options=-fllvm --ghc-options=-O2 --enable-optimization=2";;
         esac;;
 esac
 echo $ghcopt
