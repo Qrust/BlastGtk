@@ -219,7 +219,7 @@ helpMessage = "No help message for now, sorry" ++ "\n\n" ++ bugMessage
 
 main :: IO ()
 main = withSocketsDo $ do
- hSetEncoding stdout utf8
+ --hSetEncoding stdout utf8
  args <- getArgs
  if any (`elem` args) ["--help", "-h", "-?"]
   then putStrLn helpMessage
@@ -252,10 +252,15 @@ main = withSocketsDo $ do
 
   let rawPutLog s = do
         when (isJust hlog) $
-            whenM (hIsOpen (fromJust hlog)) $ do
+            whenM (hIsWritable (fromJust hlog)) $ do
                 hPutStrLn (fromJust hlog) s
                 hFlush (fromJust hlog)
-        whenM (hIsOpen stdout) $ putStrLn s
+        -- FIXME use appendFile
+#ifndef mingw32_HOST_OS
+        whenM (hIsWritable stdout) $ do
+            putStrLn s
+            hFlush stdout
+#endif
 {-
   let readLog =
         maybe (return "")
@@ -278,6 +283,8 @@ main = withSocketsDo $ do
     -- TODO saving configuration
 
     rawPutLog =<< ("Starting blastgtk. Current POSIX time is " ++) . show <$> getPOSIXTime
+
+    --rawPutLog "Русский текст например"
 
     Conf{..} <- do x <- try $ readFile "config"
                    case x of
@@ -821,6 +828,11 @@ main = withSocketsDo $ do
     when (isJust hlog) $ do
         hFlush $ fromJust hlog
         hClose $ fromJust hlog
+
+#ifndef mingw32_HOST_OS
+    whenM (isOpen stdout) $ do
+        hFlush stdout
+#endif
        
 data {-ROW-}ROW__FIGHT_THE_POWER =
        DO THE IMPOSSIBLE
