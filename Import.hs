@@ -24,14 +24,16 @@ module Import
     ,slice
     ,findWithSurroundings
     ,findWithSurroundingsLE
+    ,delimitBy
     ,delimitByLE
     ,appfst
     ,appsnd
     ,justIf
     ,untilJust
     ,untilNothing
+    ,fromTrySome
     ) where
-import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile)
+import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
 import System.IO as A hiding (readFile, writeFile)
 import System.IO.UTF8 as A (readFile, writeFile)
 -- import Filesystem.Path as A
@@ -49,13 +51,17 @@ import Data.Data as A
 import Control.Arrow as A
 import Data.Function as A
 import Safe as A
-import Data.ByteString as A (ByteString)
 import Data.Text as A (Text)
 import Data.Time as A
 import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
 import Control.DeepSeq as A
+import Data.ByteString as A (ByteString)
 import qualified Data.ByteString.Lazy as LB (ByteString)
+import Data.ByteString.Char8 as A ()
+import Data.ByteString.Lazy.Char8 as A ()
+import Control.Exception.Lifted as A
+import Control.Monad.Trans.Control as A
 import qualified Data.Text.Lazy as LT (Text)
 import qualified Text.Show as S
 
@@ -166,6 +172,13 @@ findWithSurroundingsLE = find' []
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
 
+delimitBy :: (a -> Bool) -> [a] -> [[a]]
+delimitBy _ [] = []
+delimitBy p l =
+    case findWithSurroundings p l of
+        Just (a, _, b) -> a : delimitBy p b
+        Nothing -> [l]
+
 delimitByLE :: Eq a => [a] -> [a] -> [[a]]
 delimitByLE _ [] = []
 delimitByLE d l =
@@ -196,3 +209,10 @@ untilNothing m = do x <- m
                     case x of
                         Just a -> (a :) <$> untilNothing m
                         Nothing -> return []
+
+fromTrySome :: MonadBaseControl IO m => m a -> m a -> m a
+fromTrySome e m = do
+    a <- try m
+    case a of
+        Left (_::SomeException) -> e
+        Right z -> return z

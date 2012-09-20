@@ -45,6 +45,7 @@ import System.Time
 -- TODO ^ bundle proxy checker
 -- TODO background mode
 -- TODO FIX FREEZES
+-- TODO add API as a fallback if can't parse html
 
 -- FIXME Oh dog, what a mess.
 --       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
@@ -122,12 +123,7 @@ defaultConf :: Conf
 defaultConf =
     Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
           coActiveBoards = [NE, MDK]
-           -- FIXME coPastaSet = Mocha
-#ifdef BINDIST
-         ,coPastaSet = Kakashki
-#else
          ,coPastaSet = Mocha
-#endif
          ,coCreateThreads = True
          ,coImageFolder = "images"
          ,coAttachImages = True
@@ -200,9 +196,6 @@ achievements =
 getAchievement :: Int -> Maybe String
 getAchievement a =
     findMap (\(p, t) -> if a >= p then Just t else Nothing) $ achievements
-
-ignoreExceptions :: IO () -> IO ()
-ignoreExceptions m = void (try m :: IO (Either SomeException ()))
 
 bugMessage :: String
 bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
@@ -292,7 +285,8 @@ main = withSocketsDo $ do
                                                   return defaultConf
                     Right c -> case readMay c of
                                 Nothing -> do rawPutLog $ "Couldn't read config because of syntax error, overwriting with defaults. Old version saved at config.old.faulty"
-                                              ignoreExceptions $ writeFile "config.old.faulty" c
+                                              fromTrySome (return ()) $
+                                                writeFile "config.old.faulty" c
                                               return defaultConf
                                 Just n -> return n
 
@@ -597,12 +591,10 @@ main = withSocketsDo $ do
                 writeLog $ "Spawning new thread for " ++ renderBoard board
                 mthread <- atomically $ newTVar Random
                 mmode <- atomically $ newTVar Random
-                threadid <- forkIO $ do
+                threadid <- forkIO $ runBlast $ do
                     -- TODO setCurrentProxy proxy
                     -- TODO Socks proxys
-                    entry <- getEntryPoint Log ShSettings{..} tqOut board MuSettings{..}
-                    runBlast $ do
-                        entry
+                    entryPoint Log ShSettings{..} tqOut board MuSettings{..}
                 return [WipeUnit threadid]
             else return []
 

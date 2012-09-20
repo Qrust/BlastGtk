@@ -10,8 +10,6 @@ import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Post
 import Control.Concurrent.Lifted
 import Control.Concurrent.STM
-import Text.HTML.TagSoup
-import qualified Codec.Binary.UTF8.Generic as UTF8
 import qualified Text.Show as Show
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
@@ -219,7 +217,7 @@ blastCaptcha wakabapl thread = do
 blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
     (board, LogS{..}, ShSettings{..}, _) <- askBLSM
-    (chKey, mcap) <- if cap || mode==CreateNew
+    (chKey, mcap) <- if cap || mode==CreateNew || not ssachAdaptivity
                         then do blastLog "querying captcha"
                                 blastCaptcha wakabapl thread
                         else return ("", Just "")
@@ -315,19 +313,19 @@ blastLoop w lthreadtime lposttime = do
 -- > if st==ThreadDied || st==ThreadFinished
 -- >    then resurrect
 -- >    else continue
-getEntryPoint :: LogDetail -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> IO (Blast ())
-getEntryPoint lgDetail shS output board muS = do
-    x <- try $ parseForm ssach . parseTags . UTF8.toString <$> simpleHttp (ssachPage board 0)
+entryPoint :: LogDetail -> ShSettings -> TQueue OutMessage -> Board -> MuSettings -> Blast ()
+entryPoint lgDetail shS output board muS = do
+    x <- try $ parseForm ssach <$> httpGetStrTags (ssachPage board 0)
     case x of
-        Left (a::SomeException) -> do now <- getPOSIXTime
-                                      atomically $ writeTQueue output $
-                                         OutMessage
-                                            (OriginStamp now board CreateNew Nothing)
-                                            (LogMessage $ "Couldn't parse page form, got exception " ++ show a)
-                                      throwIO a
+        Left (a::SomeException) -> do
+            now <- liftIO $ getPOSIXTime
+            liftIO $ atomically $ writeTQueue output $
+                OutMessage (OriginStamp now board CreateNew Nothing)
+                           (LogMessage $ "Couldn't parse page form, got exception " ++ show a)
+            throwIO a
         Right w -> do
-            l <- defLogS w
-            return $ runReaderT (blastLoop w 0 0) $
+            l <- liftIO $ defLogS w
+            runReaderT (blastLoop w 0 0) $
                 BlastLogData board
                              lgDetail
                              l

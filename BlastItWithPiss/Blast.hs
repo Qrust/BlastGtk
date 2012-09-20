@@ -37,7 +37,7 @@ canonicalizeBrowser = do
     setMaxRedirects Nothing
     setTimeout $ Just $ 10 * 1000000
     --FIXME
-    setCookieFilter $ \_ _ -> return False
+    --setCookieFilter $ \_ _ -> return False
     --
 
 canonicalizeReq :: Request a -> Request a

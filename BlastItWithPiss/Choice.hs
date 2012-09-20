@@ -197,20 +197,22 @@ chooseModeStrategy = fromList
 chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
 chooseMode a b c = chooseModeStrategy $ chooseStrategy a b c
 
-chooseThread' :: MonadChoice m => Mode -> Page -> m (Maybe Int)
-chooseThread' CreateNew Page{..} = do
-    liftIO $ putStrLn "WTF, this should never happen. Whatever..."
+chooseThread' :: MonadChoice m => Bool -> Mode -> Page -> m (Maybe Int)
+chooseThread' _ CreateNew Page{..} = do
+    liftIO $ putStrLn "chooseThread': WTF, this should never happen. Whatever..."
     return Nothing
-chooseThread' mode Page{..}
+chooseThread' canfail mode Page{..}
     --inb4 >kokoko
     | thrds <- if mode == ShitupSticky
                 then filter unlockedSticky threads
-                else threads
-    , add <- if mode /= ShitupSticky
-                then ((0, 50) :)
+                else filter (not . locked) threads -- we include stickys too
+    , add <- if mode /= ShitupSticky && canfail
+                then ((0, 50) :) -- add the possibility of failure
+                                 -- in that case we advance to the next/previous page
                 else id
     , inv <- if mode == BumpUnpopular || mode == BumpOld
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
+                     -- these modes give more weight to unpopular threads
                 else id
     = justIf (/= 0) <$> fromList (add $
                 map (threadId &&& inv . fromIntegral . postcount) thrds)
@@ -223,4 +225,4 @@ chooseThread mode getPage p0 = do
                                 then map getPage $ reverse [pageId p0 .. lastpage p0]
                                 else (return p0 :) $ tailSafe $
                                       map getPage [pageId p0 .. lastpage p0]
-             in Just <$> untilJust (findMapM (chooseThread' mode =<<) iterpages)
+             in Just <$> untilJust (findMapM (chooseThread' True mode =<<) iterpages)

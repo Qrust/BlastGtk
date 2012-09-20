@@ -228,11 +228,12 @@ ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach coun
 
 ssachThreadTimeout :: Num a => Board -> a
 ssachThreadTimeout _ = 30 * 60
-
 ssachPostTimeout :: Num a => Board -> a
-ssachPostTimeout B = 10
--- TODO update later, they probably will revert it in a while
-ssachPostTimeout _ = 60
+-- TODO update later, when they reintroduce adaptivity
+ssachPostTimeout _ = if ssachAdaptivity then 10 else 0
+
+ssachAdaptivity :: Bool
+ssachAdaptivity = False
 
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"

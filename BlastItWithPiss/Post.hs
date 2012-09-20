@@ -35,6 +35,8 @@ data Outcome = Success
              | RecaptchaBan
              | LongPost
              | CorruptedImage
+             | CloudflareCaptcha
+             | CloudflareBan
              | OtherError {errMessage :: ErrorMessage}
              | InternalError {errMessage :: ErrorMessage}
     deriving (Eq, Show, Ord)
@@ -59,6 +61,14 @@ haveAnError tags =
         ,(~== TagOpen ("font"::String) [("size", "5")])
         ,isTagText
         ] tags
+
+cloudflareCaptcha :: [Tag String] -> Bool
+cloudflareCaptcha =
+    isInfixOf [TagOpen "title" [], TagText "Attention required!"]
+
+cloudflareBan :: [Tag String] -> Bool
+cloudflareBan =
+    isInfixOfP [(==TagOpen "title" []), maybe False (isPrefixOf "Access Denied") . maybeTagText]
 
 outcome :: [Tag String] -> Outcome
 outcome tags
@@ -87,7 +97,9 @@ outcome tags
                 -> CorruptedImage
               | otherwise
                 -> OtherError (Err err)
-    | otherwise = Success
+    | cloudflareCaptcha tags = CloudflareCaptcha
+    | cloudflareBan tags = CloudflareBan
+    | otherwise = Success -- FIXME I think we should not do this.
 
 -- | Query adaptive captcha state
 doWeNeedCaptcha :: String -> Maybe Int -> Blast Bool
