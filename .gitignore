@@ -2,5 +2,6 @@ dist/*
 linux-dist/*
 dos-dist/*
 builddir/*
+cabal-dev/*
 BlastItWithPiss*.zip
 wipe-image-pack.zip
