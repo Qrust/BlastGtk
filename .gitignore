@@ -1,0 +1,6 @@
+dist/*
+linux-dist/*
+dos-dist/*
+builddir/*
+BlastItWithPiss*.zip
+wipe-image-pack.zip
