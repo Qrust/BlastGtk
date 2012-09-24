@@ -6,4 +6,5 @@
 :set -XRecordWildCards
 :set -XScopedTypeVariables
 :set -XFlexibleContexts
+:set -XDeriveDataTypeable
 :set -Wall

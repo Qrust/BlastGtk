@@ -95,7 +95,7 @@ data Board = A
            | HH
            | DOM
            | FTB
-    deriving (Eq, Read, Show, Enum, Bounded, Ord)
+    deriving (Eq, Read, Show, Enum, Bounded, Ord, Data, Typeable)
 
 allSsachBoards :: [Board]
 allSsachBoards = [minBound..maxBound]
@@ -233,6 +233,7 @@ ssachPostTimeout :: Num a => Board -> a
 ssachPostTimeout _ = if ssachAdaptivity then 10 else 0
 
 ssachAdaptivity :: Bool
+-- TODO update later, when they reintroduce adaptivity
 ssachAdaptivity = False
 
 hoptoparasha :: IsString a => a
@@ -247,5 +248,8 @@ hoptoparashaThread b t = hoptoparashaBoard b <> "res/" <> show t <> ".html"
 hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
 hoptoparashaPage b 0 = hoptoparashaBoard b
 hoptoparashaPage b i = hoptoparashaBoard b <> show i <> ".html"
+
+cloudflareRecaptchaKey :: String
+cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
 
 -- TODO add 2chnu

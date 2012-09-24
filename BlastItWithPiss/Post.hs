@@ -22,6 +22,18 @@ newtype ErrorMessage = Err {unErrorMessage :: String}
 instance Show ErrorMessage where
     show = unErrorMessage -- show cyrillic as is, instead of escaping it.
 
+newtype ErrorException = ErrorException {unErrorException :: SomeException}
+    deriving (Typeable)
+
+instance Show ErrorException where
+    show = show . unErrorException
+
+instance Eq ErrorException where
+    (==) _ _ = True
+
+instance Ord ErrorException where
+    compare _ _ = EQ
+
 data Outcome = Success
              | SuccessLongPost {rest :: String}
              | Wordfilter
@@ -38,7 +50,8 @@ data Outcome = Success
              | CloudflareCaptcha
              | CloudflareBan
              | OtherError {errMessage :: ErrorMessage}
-             | InternalError {errMessage :: ErrorMessage}
+             | InternalError {errException :: ErrorException}
+             | UnknownError
     deriving (Eq, Show, Ord)
 
 message :: Outcome -> String
@@ -70,8 +83,8 @@ cloudflareBan :: [Tag String] -> Bool
 cloudflareBan =
     isInfixOfP [(==TagOpen "title" []), maybe False (isPrefixOf "Access Denied") . maybeTagText]
 
-outcome :: [Tag String] -> Outcome
-outcome tags
+detectOutcome :: [Tag String] -> Outcome
+detectOutcome tags
     | wordfiltered tags = Wordfilter
     | Just err <- haveAnError tags =
         case () of
@@ -97,9 +110,13 @@ outcome tags
                 -> CorruptedImage
               | otherwise
                 -> OtherError (Err err)
-    | cloudflareCaptcha tags = CloudflareCaptcha
-    | cloudflareBan tags = CloudflareBan
-    | otherwise = Success -- FIXME I think we should not do this.
+    | otherwise = UnknownError
+
+detectCloudflare :: [Tag String] -> Maybe Outcome
+detectCloudflare tags
+    | cloudflareCaptcha tags = Just CloudflareCaptcha
+    | cloudflareBan tags = Just CloudflareBan
+    | otherwise = Nothing
 
 -- | Query adaptive captcha state
 doWeNeedCaptcha :: String -> Maybe Int -> Blast Bool
@@ -110,6 +127,7 @@ doWeNeedCaptcha wakabapl thread = do
 
 getChallengeKey :: String -> Blast String
 getChallengeKey key = do
+-- TODO use JSON parser(since we'll be using it for config and update manifest anyway)
     rawjs <- httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
     return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjs) $
         mapMaybe getChallenge $ lines rawjs
@@ -125,20 +143,12 @@ getCaptchaImage :: String -> Blast LByteString
 getCaptchaImage chKey =
     httpGet $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
-getCaptcha :: String -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
-getCaptcha wakabapl thread key chKey =
+ssachGetCaptcha :: String -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
+ssachGetCaptcha wakabapl thread key chKey =
     ifM (doWeNeedCaptcha wakabapl thread)
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
-
-data PostData = PostData
-        {subject:: String
-        ,text   :: String
-        ,image  :: !(Maybe Image)
-        ,sage   :: !Bool
-        ,makewatermark :: !Bool
-        }
 --FIXME
 --{-
 instance NFData Outcome
@@ -179,13 +189,23 @@ instance NFData (Request a) where
 
 ---}
 
-prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
-prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
+data PostData = PostData
+        {subject:: String
+        ,text   :: String
+        ,image  :: !(Maybe Image)
+        ,sage   :: !Bool
+        ,makewatermark :: !Bool
+        }
+
+prepare :: Bool -> Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
+prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
                                     (ut, []) -> (ut, [])
                                     (ut, r) -> (ut, r)
-    text <- escape maxlength wordfilter unesctext
+    text <- if esc
+                then escape maxlength wordfilter unesctext
+                else return unesctext
     let fields =
             [field "parent" (maybe "" show thread)
             ,field "kasumi" (UTF8.fromString subject)
@@ -217,31 +237,43 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
     undefined
     -}
     req' <- parseUrl wakabapl
-    let req = req' {method = methodPost
+    let req = req' {
+                    method = methodPost
                    ,requestHeaders =
                         [(hContentType, "multipart/form-data; boundary=" <> boundary)
                         ,(hReferer, ssachBoard board)
                         ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                         ,(hAcceptLanguage, "ru,en;q=0.5")
                         ]
-                   ,redirectCount = 0
                    ,requestBody = body
-                   ,responseTimeout = Nothing
+
+                   ,responseTimeout = Just 30
+                   ,redirectCount = 0
+                   ,checkStatus = \_ _ -> Nothing
                    }
     --liftIO $ print =<< getCurrentTime
     return $!! (req, if null rest then Success else SuccessLongPost rest)
 
-post :: (Request (ResourceT IO), Outcome) -> Blast Outcome
+post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe [Tag String])
 post (req, success) = do
     catches
-        (outcome <$> httpReqStrTags req)
-        [Handler $ \ex -> case ex of
-            StatusCodeException st heads
-                | statusCode st >= 300 && statusCode st < 400
-                , lookup "Location" heads
-                  >$> maybe False (isInfixOf "res/" . UTF8.toString)
-                    -> return success
-            unknownex -> return $ InternalError (Err $ show unknownex)
-        ,Handler $ \(async :: AsyncException) -> throwIO async
-        ,Handler $ \(something :: SomeException) -> return $ InternalError (Err $ show something)
+        (do Response st _ heads bod <- httpReq req
+            let tags = toStrTags bod
+            case()of
+             _ | (statusCode st >= 300 && statusCode st < 400)
+                 && (maybe False (isInfixOf "res/" . UTF8.toString) $
+                        lookup "Location" heads)
+                -> return (success, Nothing)
+               | statusCode st == 403
+                -> maybe (throwIO $ StatusCodeException st heads)
+                    (return . flip (,) (Just tags)) $ detectCloudflare tags
+               | statusCode st >= 200 && statusCode st <= 300
+                -> return (detectOutcome tags, Just tags)
+               | otherwise
+                -> throwIO (StatusCodeException st heads)
+            )
+        [Handler $ \(async :: AsyncException) ->
+            throwIO async
+        ,Handler $ \(something :: SomeException) ->
+            return (InternalError (ErrorException something), Nothing)
         ]

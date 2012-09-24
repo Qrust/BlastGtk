@@ -4,11 +4,17 @@ module BlastItWithPiss.Blast
     ,module Network.HTTP.Conduit.Browser
     ,module Network.Mime
     ,module Network.HTTP.Types
-    ,userAgent
     ,Blast
+    ,BlastProxy(..)
+    ,readBlastProxy
+    ,maybeNoProxy
+    ,userAgent
     ,canonicalizeBrowser
     ,canonicalizeReq
     ,runBlast
+    ,httpSetProxy
+    ,toStr
+    ,toStrTags
     ,httpReq
     ,httpReqStr
     ,httpReqStrTags
@@ -21,22 +27,49 @@ import Control.Exception.Lifted
 import Text.HTML.TagSoup
 import Network.Mime
 import Network.HTTP.Types
+import Network.Socket.Internal
+import Network.Socks5
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.Browser
+import qualified Text.Show as Show
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
 
+type Blast = BrowserAction
+
+data BlastProxy = HttpProxy !Proxy
+                | SocksProxy !SocksConf
+                | NoProxy
+
+instance Show BlastProxy where
+    show (HttpProxy (Proxy h p)) =
+        "http: " ++ (UTF8.toString h) ++ show p
+    show (SocksProxy SocksConf{socksHost=sh, socksPort=PortNum p}) =
+        "socks5: " ++ sh ++ show p
+    show NoProxy = ""
+
+readBlastProxy :: Bool -> String -> Maybe BlastProxy
+readBlastProxy isSocks s =
+    case break (==':') (dropWhile isSpace s) of
+        (host@(_:_), (_:port)) ->
+            if isSocks
+                then SocksProxy . defaultSocksConf host . PortNum <$> readMay port
+                else HttpProxy . Proxy (fromString host) <$> readMay port
+        _ -> Nothing
+
+maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
+maybeNoProxy v _ NoProxy = v
+maybeNoProxy _ f p = f p
+
 userAgent :: ByteString
 userAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
-
-type Blast = BrowserAction
 
 canonicalizeBrowser :: BrowserAction ()
 canonicalizeBrowser = do
     setUserAgent $ Just userAgent
     setMaxRedirects Nothing
     setTimeout $ Just $ 10 * 1000000
-    --FIXME
+    --
     --setCookieFilter $ \_ _ -> return False
     --
 
@@ -49,14 +82,30 @@ runBlast f =
         canonicalizeBrowser
         f)
 
+httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
+httpSetProxys h s = do
+    setCurrentProxy h
+    setCurrentSocksProxy s
+
+httpSetProxy :: BlastProxy -> Blast ()
+httpSetProxy NoProxy = httpSetProxys Nothing Nothing
+httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
+httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
+
+toStr :: LByteString -> String
+toStr = UTF8.toString
+
+toStrTags :: LByteString -> [Tag String]
+toStrTags = parseTags . toStr
+
 httpReq :: Request (ResourceT IO) -> Blast (Response LByteString)
 httpReq = makeRequestLbs
 
 httpReqStr :: Request (ResourceT IO) -> Blast String
-httpReqStr u = UTF8.toString . responseBody <$> httpReq u
+httpReqStr u = toStr . responseBody <$> httpReq u
 
 httpReqStrTags :: Request (ResourceT IO) -> Blast [Tag String]
-httpReqStrTags u = parseTags <$> httpReqStr u
+httpReqStrTags u = toStrTags . responseBody <$> httpReq u
 
 httpGet :: String -> Blast LByteString
 httpGet u = do

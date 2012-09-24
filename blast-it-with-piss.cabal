@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.0.0.15
+version: 0.0.0.16
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: kudah@jabber.ru, https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -10,7 +10,7 @@ author: xmpp:news@conference.1chan.ru/kudah, skype:kudahkukarek, https://github.
 category: Network
 stability: experimental
 build-type: Simple
-cabal-version: >=1.8
+cabal-version: >= 1.8
 tested-with: GHC == 7.4.1
 
 flag bindist
@@ -34,14 +34,12 @@ library
                   ,http-conduit >= 1.7
                   ,http-types
                   ,mime-types
+                  ,socks
                   ,resourcet
                   ,case-insensitive
                   ,tagsoup
                   ,utf8-string
                   ,deepseq
---                  ,system-filepath
---                  ,process
-
 
     exposed-modules:
                    BlastItWithPiss
@@ -74,6 +72,7 @@ library
                ,RecordWildCards
                ,ScopedTypeVariables
                ,FlexibleContexts
+               ,DeriveDataTypeable
 
 executable blastgtk
     main-is: GtkMain.hs
@@ -100,6 +99,10 @@ executable blastgtk
     if flag(bindist)
         cpp-options: -DBINDIST
         build-depends: executable-path
+        if os(windows)
+            ghc-options: -optl-mwindows
+        else
+            ghc-options: -optl-Wl,-rpath,$ORIGIN
 
     ghc-options: -Wall -threaded 
 
@@ -110,40 +113,81 @@ executable blastgtk
                ,RecordWildCards
                ,ScopedTypeVariables
                ,FlexibleContexts
+               ,DeriveDataTypeable
+               ,PackageImports
 
---executable blastcli
---    main-is: CliMain.hs
---    build-depends: base
---                  ,blast-it-with-piss
---
---    if flag(bindist)
---        cpp-options: -DBINDIST
---
---    ghc-options: -Wall -threaded 
---
---    extensions: NoImplicitPrelude, CPP, PatternGuards
---               ,OverloadedStrings
---               ,PatternGuards
---               ,RecordWildCards
---               ,ScopedTypeVariables
---
----- updater app. Checks and installs updates, then runs blastgtk
---executable BlastItWithPiss
---    main-is: UpdaterMain.hs
---    build-depends: base
---                  ,process
---                  ,directory
---                  ,filepath
---                  ,executable-path
---                  ,http-conduit
---
---    if flag(bindist)
---        cpp-options: -DBINDIST
---
---    ghc-options: -Wall -threaded 
---
---    extensions: NoImplicitPrelude, CPP, PatternGuards
---               ,OverloadedStrings
---               ,PatternGuards
---               ,RecordWildCards
---               ,ScopedTypeVariables
+--~executable proxychecker
+--~    main-is: CheckProxyMain.hs
+--~    build-depends: base
+--~                  ,blast-it-with-piss
+--~                  ,cmdargs
+--~                  ,network
+--~
+--~                  ,time
+--~                  ,transformers
+--~                  ,monad-control
+--~                  ,lifted-base
+--~                  ,bytestring
+--~                  ,utf8-string
+--~                  ,text
+--~                  ,safe
+--~                  ,deepseq
+--~
+--~    if flag(bindist)
+--~        cpp-options: -DBINDIST
+--~
+--~    ghc-options: -Wall -threaded 
+--~
+--~    extensions: NoImplicitPrelude
+--~               ,CPP
+--~               ,PatternGuards
+--~               ,OverloadedStrings
+--~               ,PatternGuards
+--~               ,RecordWildCards
+--~               ,ScopedTypeVariables
+--~               ,FlexibleContexts
+--~               ,DeriveDataTypeable
+--~               ,PackageImports
+
+--~executable blastcli
+--~    main-is: CliMain.hs
+--~    build-depends: base
+--~                  ,blast-it-with-piss
+--~
+--~    if flag(bindist)
+--~        cpp-options: -DBINDIST
+--~        build-depends: executable-path
+--~
+--~    ghc-options: -Wall -threaded 
+--~
+--~    extensions: NoImplicitPrelude, CPP, PatternGuards
+--~               ,OverloadedStrings
+--~               ,PatternGuards
+--~               ,RecordWildCards
+--~               ,ScopedTypeVariables
+--~
+--~--~ updater app. Checks and installs updates, then runs blastgtk
+--~executable BlastItWithPiss
+--~    main-is: UpdaterMain.hs
+--~    build-depends: base
+--~                  ,process
+--~                  ,directory
+--~                  ,filepath
+--~                  ,executable-path
+--~                  ,http-conduit
+--~
+--~    if flag(bindist)
+--~        cpp-options: -DBINDIST
+--~        build-depends: executable-path
+--~        if os(windows)
+--~            ghc-options: -optl-mwindows
+--~        else
+--~            ghc-options: -optl-Wl,-rpath,$ORIGIN
+--~
+--~    ghc-options: -Wall -threaded 
+--~
+--~    extensions: NoImplicitPrelude, CPP, PatternGuards
+--~               ,OverloadedStrings
+--~               ,PatternGuards
+--~               ,RecordWildCards
+--~               ,ScopedTypeVariables
