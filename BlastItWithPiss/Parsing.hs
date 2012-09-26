@@ -1,14 +1,16 @@
 {-# LANGUAGE NoOverloadedStrings #-}
 module BlastItWithPiss.Parsing where
-import Import
+import Import hiding (fromString)
 import BlastItWithPiss.Board
 import BlastItWithPiss.MultipartFormData (Field(..), field)
 import Text.HTML.TagSoup
+import Text.StringLike
 import qualified Codec.Binary.UTF8.Generic as UTF8
 -- html-conduit(cursor?)?
 
-newtype Post = Post
+data Post = Post
     {postId :: Int
+    ,postContents :: String
     }
     deriving (Show, Eq, Ord)
 
@@ -52,24 +54,28 @@ instance NFData Thread where
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
 
+innerTextWithBr :: StringLike a => [Tag a] -> a
+innerTextWithBr = strConcat . mapMaybe aux
+    where aux (TagOpen x []) | x == fromString "br" = Just (fromChar '\n')
+          aux a = maybeTagText a
+
 parsePosts :: [Tag String] -> [Post]
-parsePosts posts = catMaybes
-    (filter
-        (\x -> x ~== TagOpen "div" [("class","oppost")]
-            || x ~== TagOpen "td" [("class","reply")]) posts >$> map readPost)
-  where readPost (TagOpen "div" (("id", postid):_)) =
-            Post <$> (readMay =<< stripPrefix "post_" postid)
-        readPost (TagOpen "td" [_,("id",postid)]) =
-            Post <$> readMay postid
+parsePosts posts =
+    mapMaybe readPost $ 
+        sections (~== TagOpen "blockquote" [("class", "postMessage")])
+                 posts
+  where readPost (TagOpen "blockquote" (("id", 'm':postid):_):rest) =
+            Post <$> readMay postid <*>
+                pure (innerTextWithBr $ takeUntil (==TagClose "blockquote") rest)
         readPost _ = Nothing
 
 parseThreadParameters :: [Tag String] -> Thread
-parseThreadParameters (TagOpen "div" (("id", postid):_):thrd)
-    | Just tid <- readMay =<< stripPrefix "post_" postid
+parseThreadParameters withOp@(TagOpen "div" (("id", postid):_):thrd)
+    | Just tid <- readMay =<< stripPrefix "thread_" postid
      ,pin <- any (~== TagOpen "img" [("src", "/sticky.png")]) thrd
      ,lck <- any (~== TagOpen "img" [("src", "/locked.png")]) thrd
-     ,vposts <- parsePosts thrd
-     ,postn <- fromMaybe 0 (processpost =<< find (\t -> fromMaybe False $ isPrefixOf "Пропущено " <$> maybeTagText t) thrd)
+     ,vposts <- parsePosts withOp
+     ,postn <- fromMaybe 0 (subtract 1 <$> findMap omittedCount thrd)
              + length vposts
      = Thread {threadId = tid
               ,postcount = postn
@@ -77,8 +83,10 @@ parseThreadParameters (TagOpen "div" (("id", postid):_):thrd)
               ,pinned = pin
               ,locked = lck
               }
-  where processpost (TagText x) = readMay $ takeUntil isSpace $ fromJust $ stripPrefix "Пропущено " x
-        processpost _ = Nothing
+  where omittedCount (TagText x) =
+                (readMay . takeUntil isSpace =<< stripPrefix "Пропущено " (dropWhile isSpace x))
+            <|> (readMay $ takeUntil isSpace $ dropWhile isSpace x) --int
+        omittedCount _ = Nothing
 parseThreadParameters thrd = error $ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" ++ show thrd
 
 parseThread :: [Tag String] -> Thread
@@ -86,37 +94,36 @@ parseThread =
     parseThreadParameters . tail . dropUntil (~== TagOpen "div" [("class", "thread")])
 
 parseSpeed :: [Tag String] -> Maybe Int
-parseSpeed t = getSpeed (parseSpeed' False t <|> parseSpeed' True t)
+parseSpeed t = getSpeed (parseSpeed' t)
+-- FIXME seems that sosaka hides speed sometimes
   where stripSpeedPrefix a = stripPrefix "[Скорость борды: " a
                          <|> stripPrefix "[Posting speed: " a
         isInfixOfSpeed a = isInfixOf "Скорость борды" a
-                         || isInfixOf "Posting speed" a
+                        || isInfixOf "Posting speed" a
         getSpeed mtext =
--- FIXME seems that sosaka hides speed sometimes
                 readMay . takeWhile (not . isSpace) =<<
                     stripSpeedPrefix =<< mtext
-        parseSpeed' uncommented tags =
-            case getInfixOfP
-                    [(~== if uncommented
-                            then TagOpen "div" [("class", "speed")]
-                            else TagComment "<div class=\"speed\">")
+        parseSpeed' tags =
+            fromTagText . last <$>
+                getInfixOfP
+                    [\x -> x ~== TagOpen "div" [("class", "speed")]
+                        || x ~== TagComment "<div class=\"speed\">"
                     ,maybe False isInfixOfSpeed . maybeTagText
-                    ] tags
-            of Nothing -> Nothing
-               Just ts -> Just $ fromTagText $ last ts
+                    ]
+                    tags
 
 parsePages :: [Tag String] -> (Int, Int)
 parsePages =
-    (mapMaybe maybeTagText .
-        takeUntil (== TagClose "tbody") .
-            dropUntilLP [(~== TagOpen "table" [("border", "1")])
-                        ,(== TagOpen "tbody" []), (== TagOpen "tr" [])
-                        ,(== TagOpen "td" [])]
-    ) >>> \ts ->
-        --fromMaybe (error "parsePages: couldn't find current page") (findMap aux ts)
 -- FIXME seems that sosaka hides pages sometimes
-        fromMaybe 0 (findMap aux ts) >$>
-            \c -> (c, maximum (c : mapMaybe readMay ts))
+    dropUntilLP [(~== TagOpen "table" [("border", "1")])
+                 ,(== TagOpen "tbody" [])
+                 ,(== TagOpen "tr" [])
+                 ,(== TagOpen "td" [])
+                 ] >>>
+        takeUntil (== TagClose "tbody") >>>
+            mapMaybe maybeTagText >>>
+                \ts -> fromMaybe 0 (findMap aux ts) >$>
+                    \c -> (c, maximum (c : mapMaybe readMay ts))
   where aux t = if '[' `elem` t
                     then readMay $ filter (`notElem` "[]") t
                     else Nothing
@@ -127,18 +134,20 @@ parsePage board html =
     Page {pageId = i
          ,lastpage = ps
          -- if parse fails assume last recorded speed, or 0 if none recorded.
-         ,speed = parseSpeed html >$>
-                    fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate)
-         ,threads = map parseThreadParameters $ tail $ splitBy (~== TagOpen "div" [("class", "thread")]) html
+         ,speed = fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate) $
+                    parseSpeed html
+         ,threads = map parseThreadParameters $
+                        partitions (~== TagOpen "div" [("class", "thread")]) html
          }
 
--- Only valid for one board.
+-- Only valid within one board.
 parseForm :: String -> [Tag String] -> (String, [Field])
 parseForm host tags =
-    dropUntil (~== TagOpen "form" [("id", "postform")]) tags
-    >$> \(f:html) ->
-        (getWakabaPl f, takeUntil (~== TagClose "form") html
-                        >$> map inputToField . filter aux)
+    dropUntil (~== TagOpen "form" [("id", "postform")]) tags >$>
+        \(f:html) -> (getWakabaPl f,
+                        map inputToField . filter aux $
+                            takeUntil (~== TagClose "form") html
+                     )
   where getWakabaPl f = host <> fromAttrib "action" f
         aux t | t ~== TagOpen "input" [("type", "radio")]
                 = fromAttrib "checked" t == "checked"
@@ -148,5 +157,3 @@ parseForm host tags =
             field (UTF8.fromString $ fromAttrib "name" tag)
                   (UTF8.fromString $ fromAttrib "value" tag)
 
---test :: IO ()
---test = undefined

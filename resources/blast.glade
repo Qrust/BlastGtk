@@ -818,6 +818,8 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Вы можете отключить постинг картинок если у вас слабый интернет.
+Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
                                         <property name="use_underline">True</property>
                                         <property name="active">True</property>
                                         <property name="draw_indicator">True</property>
@@ -835,6 +837,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Мочемарка шкварит картинку, и, если это картинка про мочу/сосаку/педали, придает ей иронии.</property>
                                         <property name="use_underline">True</property>
                                         <property name="draw_indicator">True</property>
                                       </object>
@@ -1182,6 +1185,9 @@ _ошибках</property>
                                               <object class="GtkEntry" id="entryhttpproxyfile">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                                 <property name="editable">False</property>
                                                 <property name="invisible_char">●</property>
                                                 <property name="primary_icon_activatable">False</property>
@@ -1201,6 +1207,9 @@ _ошибках</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
+                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                                 <child>
                                                   <object class="GtkImage" id="image5">
                                                     <property name="visible">True</property>
@@ -1301,6 +1310,9 @@ _ошибках</property>
                                               <object class="GtkEntry" id="entrysocksproxyfile">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                                 <property name="editable">False</property>
                                                 <property name="invisible_char">●</property>
                                                 <property name="invisible_char_set">True</property>
@@ -1321,6 +1333,9 @@ _ошибках</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
+                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                                 <child>
                                                   <object class="GtkImage" id="image6">
                                                     <property name="visible">True</property>
@@ -1356,6 +1371,33 @@ _ошибках</property>
                                 <property name="expand">True</property>
                                 <property name="fill">True</property>
                                 <property name="position">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHSeparator" id="hseparator4">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">3</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="checknoproxy">
+                                <property name="label" translatable="yes">К тому же постить без
+прокси</property>
+                                <property name="use_action_appearance">False</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">True</property>
+                                <property name="position">4</property>
                               </packing>
                             </child>
                           </object>

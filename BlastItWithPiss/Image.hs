@@ -6,12 +6,15 @@ import Network.Mime
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
-mimeMap :: MimeMap
-mimeMap = insert "jpe" "image/jpeg" defaultMimeMap
-
 data Image = Image {filename :: !String
                    ,contentType :: !ByteString
                    ,bytes :: !LByteString}
+
+instance NFData Image where
+    rnf Image{..} = rnf (filename, contentType, bytes)
+
+mimeMap :: MimeMap
+mimeMap = insert "jpe" "image/jpeg" defaultMimeMap
 
 appendJunkB :: MonadChoice m => LByteString -> m LByteString
 appendJunkB b = do

@@ -20,23 +20,22 @@ module Import
     ,isInfixOfP
     ,getPrefixOfP
     ,getInfixOfP
-    ,splitBy
+    ,delimitBy
+    ,delimitByLE
     ,slice
     ,findWithSurroundings
     ,findWithSurroundingsLE
-    ,delimitBy
-    ,delimitByLE
     ,appfst
     ,appsnd
     ,justIf
     ,untilJust
     ,untilNothing
     ,fromTrySome
+    ,modifyIORefM
     ) where
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
 import System.IO as A hiding (readFile, writeFile)
 import System.IO.UTF8 as A (readFile, writeFile)
--- import Filesystem.Path as A
 import Data.Monoid as A
 import Data.Maybe as A
 import Data.List as A
@@ -57,17 +56,25 @@ import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
 import Control.DeepSeq as A
 import Data.ByteString as A (ByteString)
-import qualified Data.ByteString.Lazy as LB (ByteString)
+import qualified Data.ByteString.Lazy as LB (ByteString, toChunks)
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
 import Control.Exception.Lifted as A
 import Control.Monad.Trans.Control as A
 import qualified Data.Text.Lazy as LT (Text)
 import qualified Text.Show as S
+import Data.IORef as A
 
 type LByteString = LB.ByteString
 
 type LText = LT.Text
+
+#if !MIN_VERSION_bytestring(0,10,0)
+instance NFData ByteString
+
+instance NFData LB.ByteString where
+    rnf r = LB.toChunks r `deepseq` ()
+#endif
 
 {-# INLINE show #-}
 show :: (Show a, IsString b) => a -> b
@@ -147,16 +154,25 @@ getPrefixOfP = getPrefixOfP' []
 getInfixOfP :: [a -> Bool] -> [a] -> Maybe [a]
 getInfixOfP ps xs = findMap (getPrefixOfP ps) $ tails xs
 
-splitBy :: (a -> Bool) -> [a] -> [[a]]
-splitBy _ [] = []
-splitBy f l =
+delimitBy :: (a -> Bool) -> [a] -> [[a]]
+delimitBy _ [] = []
+delimitBy f l =
     case break f l of
         (a, []) -> [a]
-        (a, _:xs) -> a : splitBy f xs
+        (a, _:xs) -> a : delimitBy f xs
+
+delimitByLE :: Eq a => [a] -> [a] -> [[a]]
+delimitByLE _ [] = []
+delimitByLE d l =
+    case findWithSurroundingsLE d l of
+        Just (a, _, b) -> a : delimitByLE d b
+        Nothing -> [l]
 
 slice :: Int -> [a] -> [[a]]
 slice _ [] = []
-slice len list = case splitAt len list of (s, ss) -> s : slice len ss
+slice len list =
+    case splitAt len list of
+        (s, ss) -> s : slice len ss
 
 findWithSurroundings :: (a -> Bool) -> [a] -> Maybe ([a], a, [a])
 findWithSurroundings p l =
@@ -171,20 +187,6 @@ findWithSurroundingsLE = find' []
             | Just ts <- stripPrefix pr l =
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
-
-delimitBy :: (a -> Bool) -> [a] -> [[a]]
-delimitBy _ [] = []
-delimitBy p l =
-    case findWithSurroundings p l of
-        Just (a, _, b) -> a : delimitBy p b
-        Nothing -> [l]
-
-delimitByLE :: Eq a => [a] -> [a] -> [[a]]
-delimitByLE _ [] = []
-delimitByLE d l =
-    case findWithSurroundingsLE d l of
-        Just (a, _, b) -> a : delimitByLE d b
-        Nothing -> [l]
 
 {-# INLINE appfst #-}
 appfst :: (a -> c) -> (a, b) -> (c, b)
@@ -216,3 +218,7 @@ fromTrySome e m = do
     case a of
         Left (_::SomeException) -> e
         Right z -> return z
+
+modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
+modifyIORefM r m =
+    writeIORef r =<< m =<< readIORef r

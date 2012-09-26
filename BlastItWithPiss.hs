@@ -25,9 +25,6 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data MaybeRandom a = Always a
-                   | Random
-
 data ShSettings = ShSettings {tpastas :: TVar [String]
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
@@ -35,8 +32,8 @@ data ShSettings = ShSettings {tpastas :: TVar [String]
                              ,tmakewatermark :: TVar Bool
                              }
 
-data MuSettings = MuSettings {mthread :: TVar (MaybeRandom (Maybe Int))
-                             ,mmode :: TVar (MaybeRandom Mode)
+data MuSettings = MuSettings {mthread :: TVar (Maybe (Maybe Int))
+                             ,mmode :: TVar (Maybe Mode)
                              }
 
 data CaptchaType = CaptchaPosting | CaptchaCloudflare
@@ -46,7 +43,6 @@ data CaptchaAnswer = Answer String
                    | AbortCaptcha
     deriving (Eq, Show, Ord)
 
--- TODO add proxy info
 data OriginStamp = OriginStamp !POSIXTime !BlastProxy !Board !Mode !(Maybe Int)
 
 data Message = OutcomeMessage !Outcome
@@ -111,12 +107,12 @@ instance Show Message where
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
 
-whenRandomSTM :: MonadIO m => TVar (MaybeRandom a) -> m a -> m a
-whenRandomSTM t m = do
-    r <- liftIO $ readTVarIO t
-    case r of
-        Always a -> return a
-        Random -> m
+instance NFData CaptchaAnswer
+
+instance NFData OutMessage
+
+flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
+flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
 
 defLogS :: IO LogSettings
 defLogS = atomically $ do
@@ -161,14 +157,14 @@ askProxyS = asks bldPrS
 askOut :: BlastLog (TQueue OutMessage)
 askOut = asks bldOut
 
-rec :: TVar a -> a -> BlastLog a
+rec :: NFData a => TVar a -> a -> BlastLog a
 rec t a = do
     d <- askLogD
     when (d == Log) $
-        liftIO $ atomically $ writeTVar t a
+        liftIO $ atomically $ writeTVar t $!! a
     return a 
 
-recM :: TVar a -> BlastLog a -> BlastLog a
+recM :: NFData a => TVar a -> BlastLog a -> BlastLog a
 recM t m = rec t =<< m
 
 blastOut :: Message -> BlastLog ()
@@ -180,7 +176,7 @@ blastOut msg = do
     liftIO $ do
         (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
         now <- getPOSIXTime
-        atomically $ writeTQueue to $
+        atomically $ writeTQueue to $!!
             OutMessage (OriginStamp now proxy board mode thread) msg
 
 blastLog :: String -> BlastLog ()
@@ -216,12 +212,7 @@ blastPasta :: Maybe Image -> BlastLog String
 blastPasta image = do
     ShSettings{..} <- askShS
     pastas <- liftIO $ readTVarIO tpastas
-    if null pastas
-        then do when (isNothing image) $ do
-                    blastOut NoPastas
-                    blastLog "threw NoPastas"
-                return ""
-        else chooseFromList pastas
+    mchooseFromList pastas
 
 blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe String)
 blastCaptcha wakabapl thread = do
@@ -231,7 +222,7 @@ blastCaptcha wakabapl thread = do
         Nothing -> return (chKey, Just "")
         Just bytes -> do
             m <- newEmptyMVar
-            blastOut $ SupplyCaptcha CaptchaPosting bytes (putMVar m)
+            blastOut $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!)
             blastLog "blocking on captcha mvar"
             a <- takeMVar m
             blastLog "got captcha mvar"
@@ -269,7 +260,7 @@ blastCloudflare what url tags
                     chKey <- blast $ getChallengeKey cloudflareRecaptchaKey
                     bytes <- blast $ getCaptchaImage chKey
                     m <- newEmptyMVar
-                    blastOut $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m)
+                    blastOut $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!)
                     a <- takeMVar m
                     case a of
                         Answer s -> do
@@ -312,7 +303,6 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
             when (mode /= CreateNew && not canPost) $ do
                 let slptime = (lposttime + ssachPostTimeout board) - beforeSleep
                 blastLog $ "sleeping " ++ show slptime ++ " seconds before post. FIXME using threadDelay for sleeping, instead of a more precise timer"
-                -- FIXME precise timing
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
             -- FIXME beforePost <- liftIO $ getPOSIXTime
@@ -350,7 +340,6 @@ blastLoop w lthreadtime lposttime = do
     let hands =
           [Handler $ \(_::HttpException) -> blastLoop w lthreadtime lposttime
                           -- Dunno what to do except restart.
-          ,Handler $ \(a::AsyncException) -> throwIO a
           ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 throwIO a
@@ -361,14 +350,15 @@ blastLoop w lthreadtime lposttime = do
         canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                             (return $ now - lthreadtime >= ssachThreadTimeout board)
                             (return False)
-        let getPage p = blast $ (parsePage board $!!) <$> httpGetStrTags (ssachPage board p)
+        let getPage p = blast $ parsePage board <$> httpGetStrTags (ssachPage board p)
         p0 <- getPage 0
         --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
         blastLog $ "page params" ++ show (pageId p0, lastpage p0, speed p0, length $ threads p0)
         mode <- recM gmode $
-                    whenRandomSTM mmode $ chooseMode board canmakethread p0
-        thread <- recM gthread $
-                    whenRandomSTM mthread $ chooseThread mode getPage p0
+                    flMaybeSTM mmode return $ chooseMode board canmakethread p0
+        (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
+                        chooseThread mode getPage p0
+        void $ rec gthread thread
         blastLog $ "chose mode " ++ show mode
         rimage <- blastImage mode
         image <- recM gimage $

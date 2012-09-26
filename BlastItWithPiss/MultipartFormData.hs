@@ -3,7 +3,7 @@ import Import hiding (concat)
 import BlastItWithPiss.MonadChoice
 import Network.HTTP.Types
 import Network.HTTP.Conduit
-import Data.CaseInsensitive (original)
+import Data.CaseInsensitive (CI, foldedCase, original)
 import qualified Data.ByteString.Lazy as L
 --import Codec.Binary.UTF8.Generic (toString, fromString)
 
@@ -28,7 +28,12 @@ instance Ord Field where
                     = compare a b
                 | otherwise
                     = mempty
-                
+
+instance NFData a => NFData (CI a) where
+    rnf ci = original ci `deepseq` foldedCase ci `deepseq` ()
+
+instance NFData Field where
+    rnf Field{..} = rnf (fieldAttrs, fieldHeaders, fieldBody)
 
 field :: ByteString -> LByteString -> Field
 field n v = Field [("name", n)] [] v
@@ -52,7 +57,7 @@ randomBoundary = do
     dashcount <- getRandomR (9, 50)
     charcount <- getRandomR (30, 50)
     fromString . (replicate dashcount '-' <>)
-               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains that only alphanumeric characters are allowed in boundary, it works however.
+               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains that about < and > in boundary, it works however.
 
 formatMultipart :: ByteString -> [Field] -> RequestBody a
 formatMultipart boundary fields =

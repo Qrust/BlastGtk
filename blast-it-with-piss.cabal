@@ -80,6 +80,7 @@ executable blastgtk
                   ,blast-it-with-piss
                   ,filepath
                   ,directory
+                  ,containers
                   ,temporary
                   ,time
                   ,old-time

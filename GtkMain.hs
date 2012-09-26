@@ -10,15 +10,16 @@ import "blast-it-with-piss" BlastItWithPiss.MonadChoice
 import Graphics.UI.Gtk
 import GHC.Conc
 import Control.Concurrent.STM
-import Data.IORef
 import System.Environment.UTF8
 import System.FilePath
 import System.Directory
 import System.IO.Temp
 import Network (withSocketsDo)
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Map as M
 import Paths_blast_it_with_piss (version)
 import Data.Version (showVersion)
+import Control.Monad.Trans.Maybe
 #ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 #endif
@@ -43,19 +44,22 @@ import System.Time
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть если апдейты (Когда апдейтер будет готов)
 -- TODO update mocha-repo description
--- TODO update description when snoyman releases http-conduit-1.7.0
--- TODO add multipart/form-data to http-conduit
--- TODO configurable timeout
--- TODO background mode
--- TODO FIX FREEZES
--- TODO add API as a fallback if can't parse html
--- TODO don't regenerate threads until asked to.
 
 -- FIXME Oh dog, what a mess.
 --       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
 -- TODO Less boilerplate, less explicit parameter passing. (Roll out some monad)
 -- TODO More type safety.
 -- TODO Increase modularity, fix mess with captcha keys and the like.
+
+-- TODO update description when snoyman releases http-conduit-1.7.0
+-- TODO add multipart/form-data to http-conduit
+-- TODO add API as a fallback if can't parse html
+-- TODO don't regenerate threads until asked to.
+-- TODO configurable escaping
+-- TODO configurable timeout
+-- TODO config last thread time
+-- TODO background mode
+-- TODO FIX FREEZES
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality in their own modules
 -- TODO Support 2chnu, alterchan.
 
@@ -79,21 +83,25 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coAdditionalShown :: Bool
                  ,coLogShown :: Bool
                  ,coFirstLaunch :: Bool
+                 ,coUseHttpProxy :: Bool
                  ,coHttpProxyFile :: String
+                 ,coUseSocksProxy :: Bool
                  ,coSocksProxyFile :: String
+                 ,coUseNoProxy :: Bool
                  }
     deriving (Eq, Show, Read)
 
-data WipeUnit = WipeUnit {wuThreadId :: ThreadId
-                         ,wuProxy :: BlastProxy
+data WipeUnit = WipeUnit {wuProxy :: BlastProxy
+                         ,wuThreadId :: ThreadId
+                         ,wuBanned :: IORef Bool
                          }
+    deriving (Eq)
 
 data BoardUnit = BoardUnit {buBoard :: Board
                            ,buWidget :: CheckButton
                            -- TODO We don't support proxys yet, so boardunit
                            --      never has more than one wipeunit
                            ,buWipeUnits :: IORef [WipeUnit]
-                           ,buBanned :: IORef Bool
                            -- TODO right now we don't support configuring per-board
                            --      wipe preferences
                            --,buMuSettings :: MuSettings
@@ -148,8 +156,11 @@ defaultConf =
          ,coAdditionalShown = False
          ,coLogShown = False
          ,coFirstLaunch = True
+         ,coUseHttpProxy = False
          ,coHttpProxyFile = ""
+         ,coUseSocksProxy = False
          ,coSocksProxyFile = ""
+         ,coUseNoProxy = True
          }
 
 mochanNames :: [String]
@@ -416,7 +427,7 @@ main = withSocketsDo $ do
         wc <- checkButtonNewWithLabel $ renderBoard board
         when (board `elem` coActiveBoards) $ toggleButtonSetActive wc True
         boxPackStart wvboxboards wc PackNatural 0
-        BoardUnit board wc <$> newIORef [] <*> newIORef False
+        BoardUnit board wc <$> newIORef []
 
     wbuttonselectall <- builderGetObject b castToButton "buttonselectall"
     wbuttonselectnone <- builderGetObject b castToButton "buttonselectnone"
@@ -434,13 +445,20 @@ main = withSocketsDo $ do
         ("<small><a href=\"https://github.com/exbb2/BlastItWithPiss\">" ++) . (++"</a></small>") $
             showVersion version
 
+    wcheckhttpproxy <- builderGetObject b castToCheckButton "checkhttpproxy"
+    toggleButtonSetActive wcheckhttpproxy coUseHttpProxy
     wentryhttpproxyfile <- builderGetObject b castToEntry "entryhttpproxyfile"
     entrySetText wentryhttpproxyfile coHttpProxyFile
     wbuttonhttpproxyfile <- builderGetObject b castToButton "buttonhttpproxyfile"
 
+    wchecksocksproxy <- builderGetObject b castToCheckButton "checksocksproxy"
+    toggleButtonSetActive wchecksocksproxy coUseSocksProxy
     wentrysocksproxyfile <- builderGetObject b castToEntry "entrysocksproxyfile"
     entrySetText wentrysocksproxyfile coSocksProxyFile
     wbuttonsocksproxyfile <- builderGetObject b castToButton "buttonsocksproxyfile"
+
+    wchecknoproxy <- builderGetObject b castToCheckButton "checknoproxy"
+    toggleButtonSetActive wchecknoproxy coUseNoProxy
 
     -- setup mutable variables
 
@@ -481,24 +499,23 @@ main = withSocketsDo $ do
 
     let fromIOEM v = handle (\(_::IOException) -> v)
 
-    let generatePasta Mocha = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/mocha"
-                                           return []) $ readPasta $
+    let appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""
+                                     return d) $ m f
+
+    let generatePasta Mocha = appFile [] readPasta $
 #ifdef BINDIST
                                             "resources/mocha"
 #else
                                             "testkokoko"
 #endif
-        generatePasta Kakashki = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/sadism"
-                                              return []) $ readPasta "resources/sadism"
+        generatePasta Kakashki = appFile [] readPasta "resources/sadism"
         generatePasta Char = generateRandomStrings (1, 30) (100, 5000) ('a','z')
         generatePasta Num = generateRandomStrings (1, 30) (100, 5000) ('0', '9')
         generatePasta FromThread = -- TODO постить из треда
                                 error "NOT IMPLEMENTED"
     
-    let pastaDate Mocha = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/mocha"
-                                       return nullTime) $ getModificationTime "resources/mocha"
-        pastaDate Kakashki = fromIOEM (do tempError 3 "Невозможно прочитать файл resources/mocha"
-                                          return nullTime) $ getModificationTime "resources/sadism"
+    let pastaDate Mocha = appFile nullTime getModificationTime "resources/mocha"
+        pastaDate Kakashki = appFile nullTime getModificationTime "resources/sadism"
         pastaDate _ = timeRightNow
 
     let filterImages = filter ((`elem` [".jpg",".jpe",".jpeg",".gif",".png"]) . takeExtension)
@@ -506,17 +523,42 @@ main = withSocketsDo $ do
     previousUpper <- newIORef =<< adjustmentGetUpper wad
 
     wipeStarted <- newIORef False
-    pastaSet <- newIORef coPastaSet
 
     postCount <- newIORef 0
     activeCount <- newIORef 0
     bannedCount <- newIORef 0
 
+    pastaSet <- newIORef coPastaSet
     pastaMod <- newIORef nullTime
+
     imagesLast <- newIORef []
 
-    -- captcha vars
+    proxies <- newIORef M.empty
+    httpproxyMod <- newIORef nullTime
+    socksproxyMod <- newIORef nullTime
+
     pendingCaptchas <- newIORef []
+
+    -- setup shared mutable state
+
+    tqOut <- atomically $ newTQueue
+
+    tpastas <- atomically $ newTVar []
+    timages <- atomically $ newTVar []
+
+    tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
+    on wcheckimages toggled $
+        atomically . writeTVar tuseimages =<< toggleButtonGetActive wcheckimages
+
+    tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
+    on wcheckthread toggled $
+        atomically . writeTVar tcreatethreads =<< toggleButtonGetActive wcheckthread
+
+    tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
+    on wcheckwatermark toggled $
+        atomically . writeTVar tmakewatermark =<< toggleButtonGetActive wcheckwatermark
+
+    -- captcha functions
 
     let formatCaptchaMessage CaptchaPosting (OriginStamp _ proxy board _ thread) =
             "Введите капчу для " ++
@@ -564,24 +606,7 @@ main = withSocketsDo $ do
                         writeIORef messageLock False
                     else switchCaptcha
 
-    -- setup shared mutable state
-
-    tqOut <- atomically $ newTQueue
-
-    tpastas <- atomically $ newTVar []
-    timages <- atomically $ newTVar []
-
-    tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
-    on wcheckimages toggled $
-        atomically . writeTVar tuseimages =<< toggleButtonGetActive wcheckimages
-
-    tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
-    on wcheckthread toggled $
-        atomically . writeTVar tcreatethreads =<< toggleButtonGetActive wcheckthread
-
-    tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
-    on wcheckwatermark toggled $
-        atomically . writeTVar tmakewatermark =<< toggleButtonGetActive wcheckwatermark
+    -- generate pasta, images & proxys for the first time
 
     let regeneratePasta = do
         ps <- readIORef pastaSet
@@ -599,14 +624,39 @@ main = withSocketsDo $ do
                                             (map (ni </>) <$> getDirectoryContents ni)
         li <- readIORef imagesLast
         when (images /= li) $ do
-            writeIORef imagesLast =<< readTVarIO timages
             atomically $ writeTVar timages images
+            writeIORef imagesLast =<< readTVarIO timages
+
+    let regenerateProxies = do
+        let getProxyMap wcheckproxy wentryproxyfile proxymod = do
+            ifM (toggleButtonGetActive wcheckproxy) (do
+                pf <- entryGetText wentryproxyfile
+                d <- readIORef proxymod
+                nd <- appFile nullTime getModificationTime pf
+                if' (nd > d) (do
+                    writeLog "regen http proxy"
+                    writeIORef proxymod nd
+                    catMaybes . map (readBlastProxy False) . lines <$>
+                        appFile [] readFile pf)
+                    (return mempty))
+                (return mempty)
+        let robustEnterpriseSolutionBestPractices x a = do
+                y <- M.fromList <$> forM a (\p -> (,) p <$> defPrS)
+                return $ M.intersection x y `M.union` y
+        nnp <- ifM (toggleButtonGetActive wchecknoproxy)
+                   (return [NoProxy]) (return [])
+        nhps <- getProxyMap wcheckhttpproxy wentryhttpproxyfile httpproxyMod
+        nsps <- getProxyMap wchecksocksproxy wentrysocksproxyfile socksproxyMod
+        modifyIORefM proxies
+            (`robustEnterpriseSolutionBestPractices` (nnp ++ nhps ++ nsps))
 
     regeneratePasta
     regenerateImages
+    regenerateProxies
+
+    -- main loop functions
 
     let updWipeMessage = do
-        --mo <- chooseFromList mochanNames
         pc <- readIORef postCount
         let psc = "Сделано постов: " ++ show pc
         bnd <- do ac <- readIORef activeCount
@@ -620,14 +670,21 @@ main = withSocketsDo $ do
         if null exc -- TODO we don't support multiple proxys & wipeunits yet
             then do
                 writeLog $ "Spawning new thread for " ++ renderBoard board
-                mthread <- atomically $ newTVar Random
-                mmode <- atomically $ newTVar Random
+                mthread <- atomically $ newTVar Nothing
+                mmode <- atomically $ newTVar Nothing
                 threadid <- forkIO $ runBlast $ do
                     -- TODO setCurrentProxy proxy
                     -- TODO Socks proxys
                     entryPoint board (error "OLOL") Log ShSettings{..} MuSettings{..} (error "UAF") tqOut
-                return [WipeUnit threadid (error "UOF")]
+                return [WipeUnit (error "UOF") threadid (error "nobanned")]
             else return []
+
+    let setBanned :: Board -> BlastProxy -> Bool -> IO ()
+        setBanned board proxy st = do
+            maybe (return ()) ((`writeIORef` st) . wuBanned) =<< runMaybeT (do
+                ws <- maybe mzero (liftIO . readIORef . buWipeUnits) $
+                        find ((==board) . buBoard) boardunits
+                maybe mzero return $ find ((==proxy) . wuProxy) ws)
 
     let maintainBoardUnit :: (Int, Int) -> BoardUnit -> IO (Int, Int)
         maintainBoardUnit (active, banned) BoardUnit{..} = do
@@ -648,7 +705,7 @@ main = withSocketsDo $ do
                     then regenerateExcluding buBoard new
                     else return []
         writeIORef buWipeUnits $ new ++ regend
-        isBanned <- readIORef buBanned
+        isBanned <- readIORef (error "bubanned")
         return (active + (if isActive then 1 else 0)
                ,banned + (if isBanned then 1 else 0))
 
@@ -678,7 +735,7 @@ main = withSocketsDo $ do
             maintainBoardUnits
             updWipeMessage
             outs <- atomically $ untilNothing $ tryReadTQueue tqOut
-            forM_ outs $ \s@(OutMessage st@(OriginStamp _ _ board _ _) m) ->
+            forM_ outs $ \s@(OutMessage st@(OriginStamp _ proxy board _ _) m) ->
               case m of
                 OutcomeMessage o -> do
                     case o of
@@ -686,17 +743,14 @@ main = withSocketsDo $ do
                         _ -> writeLog (show s)
                     case o of
                         Success -> do modifyIORef postCount (+1)
-                                      maybe (return ()) ((`writeIORef` False) . buBanned) $
-                                        find ((==board) . buBoard) boardunits
+                                      setBanned board proxy False
                         SuccessLongPost _ -> do modifyIORef postCount (+1)
-                                                maybe (return ()) ((`writeIORef` False) . buBanned) $
-                                                    find ((==board) . buBoard) boardunits
+                                                
                         Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
                         Banned x -> do banMessage 5 $ "Забанен на доске " ++ renderBoard board
                                                     ++ " Причина: " ++ show x
                                                     ++ "\nВозможно стоит переподключится\nили начать вайпать /d/"
-                                       maybe (return ()) ((`writeIORef` True) . buBanned) $
-                                        find ((==board) . buBoard) boardunits
+                                       setBanned board proxy True
                         SameMessage -> tempError 2 $ renderBoard board ++ ": Запостил одно и то же сообщение"
                         SameImage -> tempError 2 $ renderBoard board ++ ": Запостил одну и ту же пикчу"
                         TooFastPost -> return () -- tempError 2 $ renderBoard board ++ ": Вы постите слишком часто, умерьте пыл"
@@ -704,8 +758,7 @@ main = withSocketsDo $ do
                         NeedCaptcha -> return ()
                         WrongCaptcha -> tempError 3 "Неправильно введена капча"
                         RecaptchaBan -> do banMessage 7 $ "Забанен рекапчой, охуеть. Переподключайся, мудило"
-                                           maybe (return ()) ((`writeIORef` True) . buBanned) $
-                                            find ((==board) . buBoard) boardunits
+                                           setBanned board proxy True
                         LongPost -> tempError 1 $ renderBoard board ++ ": Запостил слишком длинный пост"
                         CorruptedImage -> tempError 2 $ renderBoard board ++ ": Запостил поврежденное изображение"
                         OtherError x -> tempError 7 $ renderBoard board ++ ": " ++ show x
@@ -718,7 +771,6 @@ main = withSocketsDo $ do
                 NoImages -> do writeLog (show s)
                                tempError 3 "Невозможно прочитать пикчи, постим капчу"
             yield
-        -- TODO config last thread time
 
     timeoutAdd (mainloop >> return True) 50 --kiloseconds, 20 fps.
 
@@ -804,8 +856,11 @@ main = withSocketsDo $ do
             ncoAnnoyErrors <- toggleButtonGetActive wcheckannoyerrors
             ncoTray <- toggleButtonGetActive wchecktray
             ncoImageFolder <- entryGetText wentryimagefolder
+            ncoUseHttpProxy <- toggleButtonGetActive wcheckhttpproxy
             ncoHttpProxyFile <- entryGetText wentryhttpproxyfile
+            ncoUseSocksProxy <- toggleButtonGetActive wchecksocksproxy
             ncoSocksProxyFile <- entryGetText wentrysocksproxyfile
+            ncoUseNoProxy <- toggleButtonGetActive wchecknoproxy
             ncoSettingsShown <- expanderGetExpanded wexpandersettings
             ncoAdditionalShown <- expanderGetExpanded wexpanderadditional
             ncoLogShown <- expanderGetExpanded wexpanderlog
@@ -823,8 +878,11 @@ main = withSocketsDo $ do
                             ,coAdditionalShown=ncoAdditionalShown
                             ,coLogShown=ncoLogShown
                             ,coFirstLaunch=False
+                            ,coUseHttpProxy=ncoUseHttpProxy
                             ,coHttpProxyFile=ncoHttpProxyFile
+                            ,coUseSocksProxy=ncoUseSocksProxy
                             ,coSocksProxyFile=ncoSocksProxyFile
+                            ,coUseNoProxy=ncoUseNoProxy
                             }
             
             tw <- try $ writeFile "config" $ show nconf

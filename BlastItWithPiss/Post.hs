@@ -153,16 +153,6 @@ ssachGetCaptcha wakabapl thread key chKey =
 --{-
 instance NFData Outcome
 
-#if !MIN_VERSION_bytestring(0,10,0)
-instance NFData ByteString
-
-instance NFData L.ByteString where
-    rnf r = L.toChunks r `deepseq` ()
-#endif
-
-instance NFData a => NFData (CI a) where
-    rnf ci = original ci `deepseq` foldedCase ci `deepseq` ()
-
 instance NFData (RequestBody a) where
     rnf (RequestBodyBS b) = b `deepseq` ()
     rnf (RequestBodyLBS b) = b `deepseq` ()

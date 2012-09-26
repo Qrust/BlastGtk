@@ -15,6 +15,8 @@ data Mode = SagePopular
 
 type Strategy = [(Mode, Rational)]
 
+instance NFData Mode
+
 sageMode :: Mode -> Bool
 sageMode SagePopular = True
 sageMode _ = False
@@ -120,7 +122,7 @@ strategies =
             [SagePopular / 33
             ,BumpUnpopular / 33
             ,ShitupSticky / 100
-            ,BumpOld / 33
+            ,BumpOld / 34
             ,CreateNew / always]
         ,D /
             [SagePopular / 10
@@ -135,11 +137,6 @@ strategies =
             ,BumpOld / 50
             ,CreateNew / 0]
         ]
-
-{- disregard for now
-bumplimits :: Board -> Int
-bumplimits = undefined
--}
 
 -- | For boards not listed in "strategies"
 defaultStrategy :: Strategy
@@ -217,12 +214,15 @@ chooseThread' canfail mode Page{..}
     = justIf (/= 0) <$> fromList (add $
                 map (threadId &&& inv . fromIntegral . postcount) thrds)
 
-chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int)
-chooseThread mode getPage p0 = do
-    if mode==CreateNew
-        then return Nothing
-        else let iterpages = if mode==BumpOld
-                                then map getPage $ reverse [pageId p0 .. lastpage p0]
-                                else (return p0 :) $ tailSafe $
-                                      map getPage [pageId p0 .. lastpage p0]
-             in Just <$> untilJust (findMapM (chooseThread' True mode =<<) iterpages)
+chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
+chooseThread CreateNew _ p0 = return (Nothing, p0)
+chooseThread mode getPage p0
+    | iterpages <-
+        if mode==BumpOld
+            then map getPage $ reverse [pageId p0 .. lastpage p0] -- traverse from end
+            else (return p0 : ) $ -- traverse from beginning while not redownloading first page
+                    map getPage $ tailSafe [pageId p0 .. lastpage p0]
+    = untilJust $ flip findMapM iterpages $ \gp -> do
+            pg <- gp
+            maybe Nothing (Just . flip (,) pg . Just) <$>
+                chooseThread' True mode pg

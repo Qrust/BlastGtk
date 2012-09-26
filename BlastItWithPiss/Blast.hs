@@ -40,13 +40,29 @@ type Blast = BrowserAction
 data BlastProxy = HttpProxy !Proxy
                 | SocksProxy !SocksConf
                 | NoProxy
+    deriving (Eq, Ord)
 
 instance Show BlastProxy where
     show (HttpProxy (Proxy h p)) =
-        "http: " ++ (UTF8.toString h) ++ show p
-    show (SocksProxy SocksConf{socksHost=sh, socksPort=PortNum p}) =
-        "socks5: " ++ sh ++ show p
+        (UTF8.toString h) ++ ":" ++ show p
+    show (SocksProxy (SocksConf h (PortNum p) _)) =
+        h ++ ":" ++ show p
     show NoProxy = ""
+
+instance Eq Proxy where
+    (Proxy h1 p1) == (Proxy h2 p2) = h1 == h2 && p1 == p2
+
+instance Eq SocksConf where
+    (SocksConf h1 p1 v1) == (SocksConf h2 p2 v2) =
+        h1==h2 && p1 == p2 && v1 == v2
+
+instance Ord Proxy where
+    compare (Proxy h1 p1) (Proxy h2 p2) =
+        compare h1 h2 <> compare p1 p2
+
+instance Ord SocksConf where
+    compare (SocksConf h1 p1 v1) (SocksConf h2 p2 v2) =
+        compare h1 h2 <> compare p1 p2 <> compare v1 v2
 
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =

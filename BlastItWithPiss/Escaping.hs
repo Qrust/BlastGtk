@@ -103,8 +103,9 @@ randomizeLang str =
             _ -> return c
 
 insertAfterIxs :: [(Int, a)] -> [a] -> [a]
-insertAfterIxs ixs as = case foldl' aux (0, [], as) ixs of
-                            (_, pas, as) -> concat (reverse pas) ++ as
+insertAfterIxs ixs as =
+    case foldl' aux (0, [], as) ixs of
+        (_, pas, as) -> concat (reverse pas) ++ as
   where aux (cur, pas, as) (ix, a) =
             case splitAt (ix-cur) as of
                 (f, s) -> (ix, [a]:f:pas, s)
