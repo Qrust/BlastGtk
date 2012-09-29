@@ -9,6 +9,9 @@ import Import
 import Control.Monad.Trans.Resource
 import Control.Monad.Random
 
+-- same as
+-- > type MonadChoice a = (MonadRandom a, MonadIO a, Applicative a)
+
 instance MonadIO m => MonadRandom (ResourceT m) where
     getRandom = liftIO getRandom
     getRandoms = liftIO getRandoms

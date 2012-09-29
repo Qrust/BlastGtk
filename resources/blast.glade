@@ -543,6 +543,26 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
+                                          <object class="GtkRadioButton" id="radio-fromthread">
+                                            <property name="label" translatable="yes">Посты из _тредов</property>
+                                            <property name="use_action_appearance">False</property>
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">True</property>
+                                            <property name="receives_default">False</property>
+                                            <property name="tooltip_text" translatable="yes">Репостить посты из тредов которые вы вайпаете.
+Общение в треде нарушается, никто нихуя не понимает.
+Плюс модерам сложнее детектировать вайп.</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="draw_indicator">True</property>
+                                            <property name="group">radio-mocha</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">True</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
                                           <object class="GtkRadioButton" id="radio-mocha">
                                             <property name="label" translatable="yes">Копипаста про _мочу</property>
                                             <property name="use_action_appearance">False</property>
@@ -557,7 +577,7 @@
                                           <packing>
                                             <property name="expand">True</property>
                                             <property name="fill">True</property>
-                                            <property name="position">0</property>
+                                            <property name="position">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -570,26 +590,6 @@
                                             <property name="tooltip_text" translatable="yes">Мама больно какала тебе в рот!
 Ты анальный садизм, я твоя мама какала тебе в рот. Зачем ты измазался, сынок? Кто твоя мама? Я твоя мама какала, ты какашкин! Зачем ты измазался сынок? Это КЕФИРЧИК! Дай я тебя покакаю! Ты анальный кефирчик я мама твоя ласковая мама! А почему из ПОПКИ торчит рука робота? Я гарантирую, твоя мама, ЛАСКОВАЯ мама, а я какашкин, ласковый какашкин, у меня доктор брил усы лобковые усы махал писюлькой больно какал мне в рот. Ты больно плакал, а мама била тебя ремешком по попке и какала тебе в рот!
 Только робот хранит тебя от бед! Он сильный и смешной! Ты смешной какашкин! Даже доктор поможет тебе он не поможет тебе ты говна поешь говна поешь говна поешь, какашкин, ласковый робот, смажь кремом смажь кремом смажь кремом. Тебе уже легче тебе хуже тебе легче тебе жуже тебе желче теле жужу тебе жкол теле жожужу! Мажь кремом мама сказала мажь кремом. А то больно мама какала и стегала ремешком робот плакал угощал я КАКАШКИН!!! СМЕШНОЙ какашкин. Убейте меня КАКАЛА МНЕ в рот КАЛАКА мне в КАКАЛА маКА нет!!! НЕТ!!!! КАКАЛДА МНЕ В РОТ!!! КАКАКЛА мне в рот. МАЩЬ КРЕМОМ!!!!! Маленький сучонок, дай я тебя поцелую.</property>
-                                            <property name="use_underline">True</property>
-                                            <property name="draw_indicator">True</property>
-                                            <property name="group">radio-mocha</property>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">True</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">1</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkRadioButton" id="radio-fromthread">
-                                            <property name="label" translatable="yes">Посты из _тредов</property>
-                                            <property name="use_action_appearance">False</property>
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">True</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="tooltip_text" translatable="yes">Репостить посты из тредов которые вы вайпаете.
-Общение в треде нарушается, никто нихуя не понимает.
-Плюс модерам сложнее детектировать вайп.</property>
                                             <property name="use_underline">True</property>
                                             <property name="draw_indicator">True</property>
                                             <property name="group">radio-mocha</property>
@@ -1146,6 +1146,7 @@ _ошибках</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Прокси слабо тестировались. Если что-то не так — пишите в тред.</property>
                                     <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
@@ -1270,6 +1271,7 @@ _ошибках</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Прокси слабо тестировались. Если что-то не так — пишите в тред.</property>
                                     <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
@@ -1392,6 +1394,7 @@ _ошибках</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>

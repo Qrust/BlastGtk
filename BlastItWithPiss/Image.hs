@@ -3,8 +3,8 @@ import Import hiding (insert)
 import BlastItWithPiss.MonadChoice
 import Data.Map (insert)
 import Network.Mime
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import System.FilePath (takeFileName)
 
 data Image = Image {filename :: !String
                    ,contentType :: !ByteString
@@ -29,6 +29,6 @@ appendJunk i = do
 readImageWithoutJunk :: MonadIO m => String -> m Image
 readImageWithoutJunk fn = do
     bs <- liftIO $ L.readFile fn
-    return Image{filename = fn
+    return Image{filename = takeFileName fn
                 ,contentType = mimeByExt mimeMap defaultMimeType $ fromString fn
                 ,bytes = bs}

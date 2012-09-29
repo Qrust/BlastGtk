@@ -47,7 +47,7 @@ instance Show BlastProxy where
         (UTF8.toString h) ++ ":" ++ show p
     show (SocksProxy (SocksConf h (PortNum p) _)) =
         h ++ ":" ++ show p
-    show NoProxy = ""
+    show NoProxy = "@"
 
 instance Eq Proxy where
     (Proxy h1 p1) == (Proxy h2 p2) = h1 == h2 && p1 == p2

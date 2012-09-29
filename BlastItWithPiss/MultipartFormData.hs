@@ -57,7 +57,7 @@ randomBoundary = do
     dashcount <- getRandomR (9, 50)
     charcount <- getRandomR (30, 50)
     fromString . (replicate dashcount '-' <>)
-               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains that about < and > in boundary, it works however.
+               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains about < and > in boundary, it works however.
 
 formatMultipart :: ByteString -> [Field] -> RequestBody a
 formatMultipart boundary fields =

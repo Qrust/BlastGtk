@@ -161,7 +161,7 @@ rec :: NFData a => TVar a -> a -> BlastLog a
 rec t a = do
     d <- askLogD
     when (d == Log) $
-        liftIO $ atomically $ writeTVar t $!! a
+        a `deepseq` liftIO (atomically $ writeTVar t a)
     return a 
 
 recM :: NFData a => TVar a -> BlastLog a -> BlastLog a
@@ -176,8 +176,8 @@ blastOut msg = do
     liftIO $ do
         (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
         now <- getPOSIXTime
-        atomically $ writeTQueue to $!!
-            OutMessage (OriginStamp now proxy board mode thread) msg
+        let a = OutMessage (OriginStamp now proxy board mode thread) msg
+        a `deepseq` (atomically $ writeTQueue to a)
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
@@ -255,7 +255,9 @@ blastCloudflare what url tags
                         else do blastLog "Got cloudflare cookies"
                                 blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
                                 what
-                else do
+                else handle (\(a::SomeException) -> do
+                                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                                throwIO a) $ do
                     blastLog "locked cloudflare captcha"
                     chKey <- blast $ getChallengeKey cloudflareRecaptchaKey
                     bytes <- blast $ getCaptchaImage chKey
@@ -269,14 +271,22 @@ blastCloudflare what url tags
                                     ,("recaptcha_response_key", UTF8.fromString s)
                                     ,("message", "")
                                     ,("act", "captcha")
-                                    ] $ fromJust $ parseUrl url
+                                    ] $ (fromJust $ parseUrl url)
+                                        {checkStatus = \_ _ -> Nothing
+                                        ,redirectCount = 0}
                             void $ blast $ httpReq rq
                             ck <- blast $ getCookieJar
-                            liftIO $ atomically $ do
-                                putTMVar pcloudflareCaptchaLock ()
-                                putTMVar psharedCookies ck
-                            blastLog "finished working on captcha"
-                            what
+                            let ckl = length $ destroyCookieJar ck
+                            if ckl==0
+                                then do blastLog "Couldn't get Cloudflare cookies. Retrying."
+                                        liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                                        blastCloudflare what url tags
+                                else do blastLog $ "Cloudflare cookie count: " ++ show (length $ destroyCookieJar ck)
+                                        liftIO $ atomically $ do
+                                            putTMVar pcloudflareCaptchaLock ()
+                                            putTMVar psharedCookies ck
+                                        blastLog "finished working on captcha"
+                                        what
                         ReloadCaptcha -> cloudflareChallenge
                         AbortCaptcha -> do
                             blastLog "Aborting cloudflare captcha. This might have unforeseen consequences."
@@ -340,6 +350,7 @@ blastLoop w lthreadtime lposttime = do
     let hands =
           [Handler $ \(_::HttpException) -> blastLoop w lthreadtime lposttime
                           -- Dunno what to do except restart.
+          ,Handler $ \(a::AsyncException) -> throwIO a
           ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 throwIO a

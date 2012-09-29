@@ -10,12 +10,6 @@ import qualified Text.Show as S
 import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
 
---FIXME
---{-
-import Data.CaseInsensitive
-import qualified Data.ByteString.Lazy as L
----}
-
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)
 

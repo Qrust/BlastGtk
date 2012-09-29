@@ -1,5 +1,4 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Main where
 import Import hiding (on)
 import "blast-it-with-piss" BlastItWithPiss
@@ -7,7 +6,8 @@ import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
 import "blast-it-with-piss" BlastItWithPiss.MonadChoice
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk hiding (get, set)
+import qualified Graphics.UI.Gtk as G (get)
 import GHC.Conc
 import Control.Concurrent.STM
 import System.Environment.UTF8
@@ -17,151 +17,52 @@ import System.IO.Temp
 import Network (withSocketsDo)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Map as M
-import Paths_blast_it_with_piss (version)
+import Paths_blast_it_with_piss
 import Data.Version (showVersion)
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Reader
 #ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 #endif
-#if MIN_VERSION_time(1,2,0)
+#if !MIN_VERSION_directory(1,2,0)
 import System.Time
 #endif
 
--- TODO прокси
--- TODO вайпать постами из треда/страницы
--- TODO don't escape RandomNum and RandomChar.
--- TODO switch to JSON for config and manifest
--- TODO support ANTIGATE, CAPTCHABOT, etc.
--- TODO Updater
--- TODO use appendFile,  don't output anything on shindos
--- TODO bundle proxy checker
--- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
---      и соответствующая опция для отключения рекламы вайпалки
--- TODO mochepasta resources/mocha, change default boards
--- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
---      , даже "я посрал" — приветствуется.
---      И о том что если вы забанены или кажется что что-то не так, то можно
---      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
---      и посмотреть если апдейты (Когда апдейтер будет готов)
--- TODO update mocha-repo description
-
--- FIXME Oh dog, what a mess.
---       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
--- TODO Less boilerplate, less explicit parameter passing. (Roll out some monad)
--- TODO More type safety.
--- TODO Increase modularity, fix mess with captcha keys and the like.
-
--- TODO update description when snoyman releases http-conduit-1.7.0
--- TODO add multipart/form-data to http-conduit
--- TODO add API as a fallback if can't parse html
--- TODO don't regenerate threads until asked to.
--- TODO configurable escaping
--- TODO configurable timeout
--- TODO config last thread time
--- TODO background mode
--- TODO FIX FREEZES
--- TODO Move ssach/recaptcha/cloudflare-specific functionality in their own modules
--- TODO Support 2chnu, alterchan.
-
-data PastaSet = Mocha
-              | Kakashki
-              | Num
-              | Char
-              | FromThread
-    deriving (Eq, Show, Ord, Read, Enum, Bounded)
-
-data Conf = Conf {coActiveBoards :: [Board]
-                 ,coPastaSet :: PastaSet
-                 ,coCreateThreads :: Bool
-                 ,coImageFolder :: String
-                 ,coAttachImages :: Bool
-                 ,coAnnoy :: Bool
-                 ,coTray :: Bool
-                 ,coWatermark :: Bool
-                 ,coAnnoyErrors :: Bool
-                 ,coSettingsShown :: Bool
-                 ,coAdditionalShown :: Bool
-                 ,coLogShown :: Bool
-                 ,coFirstLaunch :: Bool
-                 ,coUseHttpProxy :: Bool
-                 ,coHttpProxyFile :: String
-                 ,coUseSocksProxy :: Bool
-                 ,coSocksProxyFile :: String
-                 ,coUseNoProxy :: Bool
-                 }
-    deriving (Eq, Show, Read)
-
-data WipeUnit = WipeUnit {wuProxy :: BlastProxy
-                         ,wuThreadId :: ThreadId
-                         ,wuBanned :: IORef Bool
-                         }
-    deriving (Eq)
-
-data BoardUnit = BoardUnit {buBoard :: Board
-                           ,buWidget :: CheckButton
-                           -- TODO We don't support proxys yet, so boardunit
-                           --      never has more than one wipeunit
-                           ,buWipeUnits :: IORef [WipeUnit]
-                           -- TODO right now we don't support configuring per-board
-                           --      wipe preferences
-                           --,buMuSettings :: MuSettings
-                           }
-
 #if MIN_VERSION_directory(1,2,0)
-nullTime :: UTCTime
+type ModificationTime = UTCTime
+#else
+type ModificationTime = ClockTime
+#endif
+
+getResourceFile :: String -> IO String
+#if defined(BINDIST)||defined(TEST)
+getResourceFile x = return $ "resources" </> x
+#else
+getResourceFile x = getDataFileName $ "resources" </> x
+#endif
+
+configDir :: IO String
+#if defined(BINDIST)||defined(TEST)
+configDir = return "."
+#else
+configDir = do c <- getAppUserDataDirectory "BlastItWithPiss"
+               createDirectoryIfMissing False c
+               return c
+#endif
+
+nullTime :: ModificationTime
+#if MIN_VERSION_directory(1,2,0)
 nullTime = UTCTime (ModifiedJulianDay 0) 0
 #else
-nullTime :: ClockTime
 nullTime = TOD 0 0
 #endif
 
+timeRightNow :: IO ModificationTime
 #if MIN_VERSION_directory(1,2,0)
-timeRightNow :: IO UTCTime
 timeRightNow = getCurrentTime
 #else
-timeRightNow :: IO ClockTime
 timeRightNow = getClockTime
 #endif
-
-readPasta :: FilePath -> IO [String]
-readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f
-
-generateRandomString :: (Int, Int) -> (Char, Char) -> IO String
-generateRandomString lengthBounds charBounds = do
-    len <- getRandomR lengthBounds
-    take len <$> getRandomRs charBounds
-
-generateRandomStrings :: (Int, Int) -> (Int, Int) -> (Char, Char) -> IO [String]
-generateRandomStrings lengthBounds a b = do
-    len <- getRandomR lengthBounds
-    replicateM len $ generateRandomString a b
-
-defaultConf :: Conf
-defaultConf =
-    Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
-          coActiveBoards = [NE, MDK]
-         ,coPastaSet = Mocha
-         ,coCreateThreads = True
-         ,coImageFolder = "images"
-         ,coAttachImages = True
-         ,coAnnoy = True
-#ifdef BINDIST
-         ,coTray = True
-#else
-         ,coTray = False
-#endif
-         ,coWatermark = False
-         ,coAnnoyErrors = True
-         ,coSettingsShown = False
-         ,coAdditionalShown = False
-         ,coLogShown = False
-         ,coFirstLaunch = True
-         ,coUseHttpProxy = False
-         ,coHttpProxyFile = ""
-         ,coUseSocksProxy = False
-         ,coSocksProxyFile = ""
-         ,coUseNoProxy = True
-         }
 
 mochanNames :: [String]
 mochanNames =
@@ -219,22 +120,123 @@ getAchievement :: Int -> Maybe String
 getAchievement a =
     findMap (\(p, t) -> if a >= p then Just t else Nothing) $ achievements
 
-bugMessage :: String
-bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
-          ++ " file a bug report to the author(https://github.com/exbb2/BlastItWithPiss/issues)"
-          ++ " with attached files log.txt, and, if you have one, log.txt.bak.\n"
-          ++ "NOTE: aforementioned logs contain address of the image folder that you specified"
-          ++ " if you customized the program. If this data is sensitive to you, you might want"
-          ++ " to clear it from the logs before you submit them.\n"
-          ++ "Thanks, and have fun. Hopefully, it has been worth the weight."
-
+-- TODO прокси
+-- TODO support ANTIGATE, CAPTCHABOT, DECAPTCHER etc.
+-- TODO вайпать постами из треда/страницы choosePost
+-- TODO don't escape RandomNum and RandomChar.
+-- TODO don't regenerate banned
+-- TODO switch to JSON for config and manifest
+-- TODO Updater
+-- TODO use appendFile,  don't output anything on shindos
+-- TODO bundle proxy checker
 -- TODO helpMessage
-helpMessage :: String
-helpMessage = "No help message for now, sorry" ++ "\n\n" ++ bugMessage
+-- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
+--      и соответствующая опция для отключения рекламы вайпалки
+-- TODO mochepasta resources/mocha, change default boards
+-- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
+--      , даже "я посрал" — приветствуется.
+--      И о том что если вы забанены или кажется что что-то не так, то можно
+--      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
+--      и посмотреть если апдейты (Когда апдейтер будет готов)
+-- TODO update mocha-repo description
 
--- if only filechooserbutton fucking worked properly...
-onFileChooserEntryButton :: Bool -> Button -> Entry -> (String -> IO ()) -> IO ()
-onFileChooserEntryButton b wfbutton wfentry writeLog = void $ do
+-- FIXME Oh dog, what a mess.
+--       Just look at all the copy-paste code, and env dependencies. It's gonna crumble!
+-- TODO Less boilerplate, less explicit parameter passing. (Roll out some monad)
+-- TODO More type safety.
+-- TODO Increase modularity, fix mess with captcha keys and the like.
+
+-- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO update description when snoyman releases http-conduit-1.7.0
+-- TODO add multipart/form-data to http-conduit
+-- TODO add API as a fallback if can't parse html
+-- TODO don't regenerate threads until asked to.
+-- TODO configurable escaping
+-- TODO configurable timeout
+-- TODO config last thread time
+-- TODO background mode
+-- TODO FIX FREEZES
+-- TODO Move ssach/recaptcha/cloudflare-specific functionality in their own modules
+-- TODO Support 2chnu, alterchan.
+
+data PastaSet = Mocha
+              | Kakashki
+              | Num
+              | Char
+              | FromThread
+    deriving (Eq, Show, Ord, Read, Enum, Bounded)
+
+data Conf = Conf {coActiveBoards :: [Board]
+                 ,coPastaSet :: PastaSet
+                 ,coCreateThreads :: Bool
+                 ,coImageFolder :: String
+                 ,coAttachImages :: Bool
+                 ,coAnnoy :: Bool
+                 ,coTray :: Bool
+                 ,coWatermark :: Bool
+                 ,coAnnoyErrors :: Bool
+                 ,coSettingsShown :: Bool
+                 ,coAdditionalShown :: Bool
+                 ,coLogShown :: Bool
+                 ,coFirstLaunch :: Bool
+                 ,coUseHttpProxy :: Bool
+                 ,coHttpProxyFile :: String
+                 ,coUseSocksProxy :: Bool
+                 ,coSocksProxyFile :: String
+                 ,coUseNoProxy :: Bool
+                 }
+    deriving (Eq, Show, Read)
+
+data WipeUnit = WipeUnit {wuProxy :: BlastProxy
+                         ,wuThreadId :: ThreadId
+                         ,wuBanned :: IORef Bool
+                         }
+    deriving (Eq)
+
+data BoardUnit = BoardUnit {buBoard :: Board
+                           ,buWidget :: CheckButton
+                           ,buWipeUnits :: IORef [WipeUnit]
+                           -- TODO right now we don't support configuring per-board
+                           --      wipe preferences
+                           --,buMuSettings :: MuSettings
+                           }
+
+data State = S
+    {messageLock :: Bool
+    ,previousUpper :: Double
+    ,wipeStarted :: Bool
+    ,postCount :: Int
+    ,activeCount :: Int
+    ,bannedCount :: Int
+    ,pastaSet :: PastaSet
+    ,pastaMod :: ModificationTime
+    ,imagesLast :: [String]
+    ,proxies :: M.Map BlastProxy ProxySettings
+    ,httpproxyMod :: ModificationTime
+    ,httpproxyLast :: [BlastProxy]
+    ,socksproxyMod :: ModificationTime
+    ,socksproxyLast :: [BlastProxy]
+    ,pendingCaptchas :: [(OriginStamp, Message)]
+    }
+
+type S = ReaderT (IORef State) IO
+
+readPasta :: FilePath -> IO [String]
+readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f
+
+generateRandomString :: (Int, Int) -> (Char, Char) -> IO String
+generateRandomString lengthBounds charBounds = do
+    len <- getRandomR lengthBounds
+    take len <$> getRandomRs charBounds
+
+generateRandomStrings :: (Int, Int) -> (Int, Int) -> (Char, Char) -> IO [String]
+generateRandomStrings lengthBounds a b = do
+    len <- getRandomR lengthBounds
+    replicateM len $ generateRandomString a b
+
+-- if only FileChooserButton worked properly...
+onFileChooserEntryButton :: Bool -> Button -> Entry -> (String -> IO ()) -> IO () -> IO ()
+onFileChooserEntryButton b wfbutton wfentry writeLog fin = void $ do
     if b
         then aux FileChooserActionSelectFolder (\d -> fileChooserSetCurrentFolder d =<< entryGetText wfentry)
         else aux FileChooserActionOpen (flip fileChooserSetCurrentFolder ".")
@@ -250,12 +252,63 @@ onFileChooserEntryButton b wfbutton wfentry writeLog = void $ do
                 widgetShow d
                 r <- dialogRun d
                 case r of
-                    ResponseAccept ->
+                    ResponseAccept -> do
                         fileChooserGetFilename d >>=
                             maybe (writeLog "Impossible happened: ResponseAccept with Nothing.")
-                                  (\f -> entrySetText wfentry f)
+                                  (\f -> entrySetText wfentry f >> fin)
                     _ -> return ()
                 widgetHide d
+
+defaultConf :: Conf
+defaultConf =
+    Conf { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
+          coActiveBoards = [NE, MDK]
+         ,coPastaSet = Mocha
+         ,coCreateThreads = True
+         ,coImageFolder = "images"
+         ,coAttachImages = True
+         ,coAnnoy = True
+#ifdef TEST
+         ,coTray = False
+#else
+         ,coTray = True
+#endif
+         ,coWatermark = False
+         ,coAnnoyErrors = True
+         ,coSettingsShown = False
+         ,coAdditionalShown = False
+         ,coLogShown = False
+         ,coFirstLaunch = True
+         ,coUseHttpProxy = False
+         ,coHttpProxyFile = ""
+         ,coUseSocksProxy = False
+         ,coSocksProxyFile = ""
+         ,coUseNoProxy = True
+         }
+
+get :: S State
+get = liftIO . readIORef =<< ask
+
+set :: State -> S ()
+set n = liftIO . (`writeIORef` n) =<< ask
+
+mod :: (State -> State) -> S ()
+mod f = set =<< f <$> get
+
+modM :: (State -> S State) -> S ()
+modM m = set =<< m =<< get
+
+bugMessage :: String
+bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
+          ++ " file a bug report to the author(https://github.com/exbb2/BlastItWithPiss/issues)"
+          ++ " with attached files log.txt, and, if you have one, log.txt.bak.\n"
+          ++ "NOTE: aforementioned logs contain address of the image folder that you specified"
+          ++ " if you customized the program. If this data is sensitive to you, you might want"
+          ++ " to clear it from the logs before you submit them.\n"
+          ++ "Thanks, and have fun. Hopefully, it has been worth the weight."
+
+helpMessage :: String
+helpMessage = "No help message for now, sorry\n\n" ++ bugMessage
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -269,7 +322,7 @@ main = withSocketsDo $ do
   setCurrentDirectory path
 #endif
   -- setup loging
-#ifdef BINDIST
+#ifndef TEST
   putStrLn bugMessage
 #endif
   hlog <- do
@@ -306,14 +359,17 @@ main = withSocketsDo $ do
 
     --rawPutLog "Русский текст например"
 
-    Conf{..} <- do x <- try $ readFile "config"
+    configfile <- (</> "config") <$> configDir
+
+    Conf{..} <- do x <- try $ readFile $ configfile
                    case x of
-                    Left (a::SomeException) -> do rawPutLog $ "Couldn't read config, loading defaults. Exception was: " ++ show a
+                    Left (a::SomeException) -> do rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" , loading defaults. Exception was: " ++ show a
                                                   return defaultConf
                     Right c -> case readMay c of
-                                Nothing -> do rawPutLog $ "Couldn't read config because of syntax error, overwriting with defaults. Old version saved at config.old.faulty"
+                                Nothing -> do let confold = configfile <.> "old.faulty"
+                                              rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" because of syntax error, overwriting with defaults. Old version saved at \"" ++ confold ++ "\""
                                               fromTrySome (return ()) $
-                                                writeFile "config.old.faulty" c
+                                                writeFile confold c
                                               return defaultConf
                                 Just n -> return n
 
@@ -323,14 +379,14 @@ main = withSocketsDo $ do
 
     initGUI
     b <- builderNew
-    builderAddFromFile b "resources/blast.glade"
+    builderAddFromFile b =<< getResourceFile "blast.glade"
 
     window <- builderGetObject b castToWindow "window1"
     windowSetTitle window "Вайпалка мочана"
 
     -- setup tray
 
-    wtray <- statusIconNewFromFile "resources/2ch.so.png"
+    wtray <- statusIconNewFromFile =<< getResourceFile "2ch.so.png"
     statusIconSetTooltip wtray "Вайпалка мочана"
     statusIconSetName wtray "blast-it-with-piss"
 
@@ -346,7 +402,7 @@ main = withSocketsDo $ do
     let popupWindow = do widgetShow window; windowDeiconify window
 
     let toggleWindow = do
-        ifM (get window widgetVisible)
+        ifM (G.get window widgetVisible)
             hideWindow
             popupWindow
 
@@ -483,7 +539,7 @@ main = withSocketsDo $ do
         writeLog $ "blasgtk, " ++ show n ++ ": Captcha message: " ++ s
         whenM (toggleButtonGetActive wcheckannoy) $ popupWindow
         labelSetText wlabelmessage s
-        -- we remove messageLock in sendCaptcha
+        -- we remove messageLock in removeCaptcha
 
     let banMessage t s = do
         writeIORef messageLock True
@@ -502,20 +558,19 @@ main = withSocketsDo $ do
     let appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""
                                      return d) $ m f
 
-    let generatePasta Mocha = appFile [] readPasta $
-#ifdef BINDIST
-                                            "resources/mocha"
+    let generatePasta Mocha = appFile [] readPasta =<<
+#ifdef TEST
+                                            return "./testkokoko"
 #else
-                                            "testkokoko"
+                                            getResourceFile "mocha"
 #endif
-        generatePasta Kakashki = appFile [] readPasta "resources/sadism"
+        generatePasta Kakashki = appFile [] readPasta =<< getResourceFile "sadism"
         generatePasta Char = generateRandomStrings (1, 30) (100, 5000) ('a','z')
         generatePasta Num = generateRandomStrings (1, 30) (100, 5000) ('0', '9')
-        generatePasta FromThread = -- TODO постить из треда
-                                error "NOT IMPLEMENTED"
+        generatePasta FromThread = error "NOT IMPLEMENTED"
     
-    let pastaDate Mocha = appFile nullTime getModificationTime "resources/mocha"
-        pastaDate Kakashki = appFile nullTime getModificationTime "resources/sadism"
+    let pastaDate Mocha = appFile nullTime getModificationTime =<< getResourceFile "mocha"
+        pastaDate Kakashki = appFile nullTime getModificationTime =<< getResourceFile "sadism"
         pastaDate _ = timeRightNow
 
     let filterImages = filter ((`elem` [".jpg",".jpe",".jpeg",".gif",".png"]) . takeExtension)
@@ -535,7 +590,9 @@ main = withSocketsDo $ do
 
     proxies <- newIORef M.empty
     httpproxyMod <- newIORef nullTime
+    httpproxyLast <- newIORef []
     socksproxyMod <- newIORef nullTime
+    socksproxyLast <- newIORef []
 
     pendingCaptchas <- newIORef []
 
@@ -568,7 +625,7 @@ main = withSocketsDo $ do
         formatCaptchaMessage CaptchaCloudflare (OriginStamp _ proxy _ _ _) =
             "Введите капчу Cloudflare для " ++ show proxy
 
-    let switchCaptcha = do
+    let activateCaptcha = do
         pc <- readIORef pendingCaptchas
         case pc of
             [] -> tempError 2 $ "Switching while there are no captchas."
@@ -589,9 +646,9 @@ main = withSocketsDo $ do
             containerAdd wprogressalignment wvboxcaptcha
             widgetGrabFocus wentrycaptcha
             widgetGrabDefault wbuttoncaptchaok
-            switchCaptcha
+            activateCaptcha
 
-    let sendCaptcha a = do
+    let removeCaptcha a = do
         cs <- readIORef pendingCaptchas
         case cs of
             [] -> tempError 2 $ "Ответил на несуществующий запрос капчи"
@@ -604,7 +661,7 @@ main = withSocketsDo $ do
                         containerRemove wprogressalignment wvboxcaptcha
                         containerAdd wprogressalignment wprogresswipe
                         writeIORef messageLock False
-                    else switchCaptcha
+                    else activateCaptcha
 
     -- generate pasta, images & proxys for the first time
 
@@ -619,36 +676,39 @@ main = withSocketsDo $ do
 
     let regenerateImages = do
         ni <- entryGetText wentryimagefolder
-        images <- filterImages <$> fromIOEM (do tempError 3 $ "Невозможно прочитать изображения из папки " ++ ni
-                                                return [])
-                                            (map (ni </>) <$> getDirectoryContents ni)
+        images <- filterImages <$> fromIOEM
+                    (do whenM (toggleButtonGetActive wcheckimages) $ tempError 3 $ "Невозможно прочитать изображения из папки " ++ ni
+                        return [])
+                    (map (ni </>) <$> getDirectoryContents ni)
         li <- readIORef imagesLast
         when (images /= li) $ do
             atomically $ writeTVar timages images
             writeIORef imagesLast =<< readTVarIO timages
 
     let regenerateProxies = do
-        let getProxyMap wcheckproxy wentryproxyfile proxymod = do
+        let getProxyMap isSocks wcheckproxy wentryproxyfile proxymod proxylast = do
             ifM (toggleButtonGetActive wcheckproxy) (do
                 pf <- entryGetText wentryproxyfile
                 d <- readIORef proxymod
                 nd <- appFile nullTime getModificationTime pf
-                if' (nd > d) (do
-                    writeLog "regen http proxy"
-                    writeIORef proxymod nd
-                    catMaybes . map (readBlastProxy False) . lines <$>
-                        appFile [] readFile pf)
-                    (return mempty))
-                (return mempty)
-        let robustEnterpriseSolutionBestPractices x a = do
+                if (nd > d)
+                    then do writeLog "regen http proxy"
+                            writeIORef proxymod nd
+                            nps <- catMaybes . map (readBlastProxy isSocks) . lines <$>
+                                appFile [] readFile pf
+                            writeIORef proxylast nps
+                            return nps
+                    else readIORef proxylast)
+                (do writeIORef proxylast []; return [])
+        let robustEnterpriseQualityBestPracticesSolution x a = do
                 y <- M.fromList <$> forM a (\p -> (,) p <$> defPrS)
                 return $ M.intersection x y `M.union` y
         nnp <- ifM (toggleButtonGetActive wchecknoproxy)
                    (return [NoProxy]) (return [])
-        nhps <- getProxyMap wcheckhttpproxy wentryhttpproxyfile httpproxyMod
-        nsps <- getProxyMap wchecksocksproxy wentrysocksproxyfile socksproxyMod
+        nhps <- getProxyMap False wcheckhttpproxy wentryhttpproxyfile httpproxyMod httpproxyLast
+        nsps <- getProxyMap True wchecksocksproxy wentrysocksproxyfile socksproxyMod socksproxyLast
         modifyIORefM proxies
-            (`robustEnterpriseSolutionBestPractices` (nnp ++ nhps ++ nsps))
+            (`robustEnterpriseQualityBestPracticesSolution` (nnp ++ nhps ++ nsps))
 
     regeneratePasta
     regenerateImages
@@ -667,17 +727,17 @@ main = withSocketsDo $ do
         updMessage $ psc ++ bnd ++ ach
 
     let regenerateExcluding board exc = do
-        if null exc -- TODO we don't support multiple proxys & wipeunits yet
-            then do
-                writeLog $ "Spawning new thread for " ++ renderBoard board
-                mthread <- atomically $ newTVar Nothing
-                mmode <- atomically $ newTVar Nothing
-                threadid <- forkIO $ runBlast $ do
-                    -- TODO setCurrentProxy proxy
-                    -- TODO Socks proxys
-                    entryPoint board (error "OLOL") Log ShSettings{..} MuSettings{..} (error "UAF") tqOut
-                return [WipeUnit (error "UOF") threadid (error "nobanned")]
-            else return []
+        prx <- M.assocs <$> readIORef proxies
+        catMaybes <$> forM prx (\(p, s) ->
+            if any ((==p) . wuProxy) exc
+                then return Nothing
+                else do writeLog $ "Spawning new thread for " ++ renderBoard board
+                        mthread <- atomically $ newTVar Nothing
+                        mmode <- atomically $ newTVar Nothing
+                        threadid <- forkIO $ runBlast $ do
+                            entryPoint board p Log ShSettings{..} MuSettings{..} s tqOut
+                        Just . WipeUnit p threadid <$> newIORef False
+            )
 
     let setBanned :: Board -> BlastProxy -> Bool -> IO ()
         setBanned board proxy st = do
@@ -686,26 +746,33 @@ main = withSocketsDo $ do
                         find ((==board) . buBoard) boardunits
                 maybe mzero return $ find ((==proxy) . wuProxy) ws)
 
+    let maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> IO (Maybe WipeUnit)
+        maintainWipeUnit BoardUnit{..} isActive isWiping w@WipeUnit{..} = do
+            st <- threadStatus wuThreadId
+            isBanned <- readIORef wuBanned
+            pxs <- M.keys <$> readIORef proxies
+            if st == ThreadDied || st == ThreadFinished
+                then do
+                    writeLog $ "blasgtk: Thread for " ++ renderBoard buBoard ++ " died. Removing"
+                    return Nothing
+                else if not isActive || not isWiping || isBanned || notElem wuProxy pxs
+                        then do
+                            writeLog $ "blasgtk: Killing thread for " ++ renderBoard buBoard
+                            killThread wuThreadId
+                            return Nothing -- TODO don't regenerate banned threads
+                        else return $ Just w
+
     let maintainBoardUnit :: (Int, Int) -> BoardUnit -> IO (Int, Int)
-        maintainBoardUnit (active, banned) BoardUnit{..} = do
+        maintainBoardUnit (active, banned) bu@BoardUnit{..} = do
         isActive <- toggleButtonGetActive buWidget
         isWiping <- readIORef wipeStarted
-        let collectGarbage w@WipeUnit{..} = do
-            do st <- threadStatus wuThreadId
-               if st == ThreadDied || st == ThreadFinished
-                then do writeLog $ "blasgtk: Thread for " ++ renderBoard buBoard ++ " died. Removing"
-                        return Nothing
-                else if not isActive || not isWiping
-                        then do writeLog $ "blasgtk: Killing thread for " ++ renderBoard buBoard
-                                killThread wuThreadId
-                                return Nothing
-                        else return $ Just w
-        new <- catMaybes <$> (mapM collectGarbage =<< readIORef buWipeUnits)
+        new <- catMaybes <$> (mapM (maintainWipeUnit bu isActive isWiping) =<< readIORef buWipeUnits)
         regend <- if isActive && isWiping
                     then regenerateExcluding buBoard new
                     else return []
         writeIORef buWipeUnits $ new ++ regend
-        isBanned <- readIORef (error "bubanned")
+        isBanned <- --FIXME FIXME FIXME readIORef buBanned
+                    return False
         return (active + (if isActive then 1 else 0)
                ,banned + (if isBanned then 1 else 0))
 
@@ -723,7 +790,7 @@ main = withSocketsDo $ do
         writeIORef wipeStarted False
         maintainBoardUnits
         pc <- readIORef pendingCaptchas
-        forM_ pc $ const $ sendCaptcha AbortCaptcha
+        forM_ pc $ const $ removeCaptcha AbortCaptcha
 
     -- main loop
 
@@ -732,6 +799,7 @@ main = withSocketsDo $ do
             progressBarPulse wprogresswipe
             regeneratePasta
             regenerateImages
+            regenerateProxies
             maintainBoardUnits
             updWipeMessage
             outs <- atomically $ untilNothing $ tryReadTQueue tqOut
@@ -763,6 +831,10 @@ main = withSocketsDo $ do
                         CorruptedImage -> tempError 2 $ renderBoard board ++ ": Запостил поврежденное изображение"
                         OtherError x -> tempError 7 $ renderBoard board ++ ": " ++ show x
                         InternalError x -> tempError 7 $ renderBoard board ++ ": " ++ show x
+                        CloudflareCaptcha -> do banMessage 7 $ "Если эта ошибка появляется то это баг, сообщите нам об этом"
+                                                setBanned board proxy True
+                        CloudflareBan -> do banMessage 7 $ "Эту проксю пидорнули по клаудфлеру, она бесполезна"
+                                            setBanned board proxy True
                         UnknownError -> tempError 4 $ renderBoard board ++ ": Неизвестная ошибка, что-то пошло не так"
                 c@SupplyCaptcha{} -> addCaptcha (st, c)
                 LogMessage _ -> writeLog (show s)
@@ -795,30 +867,45 @@ main = withSocketsDo $ do
                 )
 
     on weventboxcaptcha buttonPressEvent $ do
-        liftIO $ sendCaptcha ReloadCaptcha
+        liftIO $ removeCaptcha ReloadCaptcha
         return True
 
     on wbuttoncaptchaok buttonActivated $ do
         x <- entryGetText wentrycaptcha
         {-if null x
             then captchaMessage "Пожалуйста введите капчу"
-            else sendCaptcha $ Answer x-}
-        sendCaptcha $ Answer x
+            else removeCaptcha $ Answer x-}
+        removeCaptcha $ Answer x
 
     on wbuttoncaptchacancel buttonActivated $ do
-        sendCaptcha AbortCaptcha
+        removeCaptcha AbortCaptcha
 
     _ <- forM pastaradio $ \(p, w) -> do
             on w toggled $
                 whenM (toggleButtonGetActive w) $ do
-                    writeIORef pastaMod nullTime
+                    writeIORef pastaMod nullTime -- force update
                     writeIORef pastaSet p
 
-    onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder writeLog
+    onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder writeLog (return ())
 
-    onFileChooserEntryButton False wbuttonhttpproxyfile wentryhttpproxyfile writeLog
+    on wcheckhttpproxy buttonActivated $ do
+        writeIORef httpproxyMod nullTime -- force update
+        regenerateProxies
 
-    onFileChooserEntryButton False wbuttonsocksproxyfile wentrysocksproxyfile writeLog
+    onFileChooserEntryButton False wbuttonhttpproxyfile wentryhttpproxyfile writeLog $ do
+        writeIORef httpproxyMod nullTime -- force update
+        regenerateProxies
+
+    on wchecksocksproxy buttonActivated $ do
+        writeIORef socksproxyMod nullTime -- force update
+        regenerateProxies
+
+    onFileChooserEntryButton False wbuttonsocksproxyfile wentrysocksproxyfile writeLog $ do
+        writeIORef socksproxyMod nullTime -- force update
+        regenerateProxies
+
+    on wchecknoproxy buttonActivated $ do
+        regenerateProxies -- force update
 
     on wbuttonselectall buttonActivated $ do
         forM_ boardunits $
@@ -885,10 +972,10 @@ main = withSocketsDo $ do
                             ,coUseNoProxy=ncoUseNoProxy
                             }
             
-            tw <- try $ writeFile "config" $ show nconf
+            tw <- try $ writeFile configfile $ show nconf
             case tw of
-                Left (a::SomeException) -> writeLog $ "Couldn't write config, got exception: " ++ show a
-                Right _ -> writeLog $ "Wrote config: " ++ show nconf
+                Left (a::SomeException) -> writeLog $ "Couldn't write config to \"" ++ configfile ++ "\" , got exception: " ++ show a
+                Right _ -> writeLog $ "Wrote config \"" ++ configfile ++"\": " ++ show nconf
 
     onDestroy window $ do
         writeConfig

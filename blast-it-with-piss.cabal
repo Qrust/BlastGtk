@@ -3,33 +3,51 @@ synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
 version: 0.0.0.16
 homepage: https://github.com/exbb2/BlastItWithPiss
-bug-reports: kudah@jabber.ru, https://github.com/exbb2/BlastItWithPiss/issues
+bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
 license-file: LICENSE
-author: xmpp:news@conference.1chan.ru/kudah, skype:kudahkukarek, https://github.com/exbb2
+author: xmpp:kudah@jabber.ru, skype:kudahkukarek, https://github.com/exbb2
+maintainer: xmpp:kudah@jabber.ru, skype:kudahkukarek, https://github.com/exbb2
 category: Network
 stability: experimental
 build-type: Simple
 cabal-version: >= 1.8
 tested-with: GHC == 7.4.1
+data-files: build-production.sh
+           ,resources/blast.glade
+           ,resources/2ch.so.png
+           ,resources/mocha
+           ,resources/sadism
+           ,images/jew-swede.jpg
+           ,images/sad-monkey.jpg
+           ,images/newscreen.png
+
+source-repository head
+    type: git
+    location: git://github.com/exbb2/BlastItWithPiss.git
 
 flag bindist
-    description: Set executable's directory to be the current working directory.
+    description: Set executable's directory as the current working directory.
+    default: False
+
+flag test
+    description: Build DEBUG version, otherwise build release.
     default: False
 
 library
     build-depends: base
-                  ,containers
                   ,lifted-base
                   ,stm >= 2.4
+                  ,random
+                  ,containers
                   ,time
                   ,bytestring
                   ,text
-                  ,random
+                  ,safe
+                  ,filepath
                   ,MonadRandom
                   ,monad-control
                   ,transformers
-                  ,safe
                   ,network
                   ,http-conduit >= 1.7
                   ,http-types
@@ -58,6 +76,9 @@ library
     if flag(bindist)
         cpp-options: -DBINDIST
 
+    if flag(test)
+        cpp-options: -DTEST
+
     ghc-options: -Wall -threaded 
     
     extensions: NoImplicitPrelude
@@ -76,6 +97,9 @@ library
 
 executable blastgtk
     main-is: GtkMain.hs
+
+    other-modules: Import, Paths_blast_it_with_piss
+    
     build-depends: base
                   ,blast-it-with-piss
                   ,filepath
@@ -105,6 +129,9 @@ executable blastgtk
         else
             ghc-options: -optl-Wl,-rpath,$ORIGIN
 
+    if flag(test)
+        cpp-options: -DTEST
+
     ghc-options: -Wall -threaded 
 
     extensions: CPP
@@ -119,6 +146,9 @@ executable blastgtk
 
 --~executable proxychecker
 --~    main-is: CheckProxyMain.hs
+--~
+--~    other-modules: Import
+--~    
 --~    build-depends: base
 --~                  ,blast-it-with-piss
 --~                  ,cmdargs
@@ -136,6 +166,9 @@ executable blastgtk
 --~
 --~    if flag(bindist)
 --~        cpp-options: -DBINDIST
+--~
+--~    if flag(test)
+--~        cpp-options: -DTEST
 --~
 --~    ghc-options: -Wall -threaded 
 --~
@@ -184,6 +217,9 @@ executable blastgtk
 --~            ghc-options: -optl-mwindows
 --~        else
 --~            ghc-options: -optl-Wl,-rpath,$ORIGIN
+--~
+--~    if flag(test)
+--~        cpp-options: -DTEST
 --~
 --~    ghc-options: -Wall -threaded 
 --~

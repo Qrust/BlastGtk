@@ -4,4 +4,14 @@ dos-dist/*
 builddir/*
 cabal-dev/*
 BlastItWithPiss*.zip
-wipe-image-pack.zip
+wipe-image-pack*.zip
+Setup
+*.bak
+.windows-serial
+*NOTES
+*.wire
+config
+config.old.faulty
+log.txt
+log.txt.bak
+VersionIncrementerMain
