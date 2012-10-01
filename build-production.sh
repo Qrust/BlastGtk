@@ -42,9 +42,9 @@ cabal configure --builddir=builddir/$foldr -f bindist --verbose\
   cp -rv resources $foldr/BlastItWithPiss/resources
   echo "Copying libraries"
   cp -rv libs/$lbdir/. $foldr/BlastItWithPiss
-  echo "Copying license, source instructions and music recommendations"
+  echo "Copying license, source dist and music recommendations"
   cp -v LICENSE $foldr/BlastItWithPiss
-  cp -v WHERETOGETTHESOURCE $foldr/BlastItWithPiss
+  cabal sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
   cp -v music $foldr/BlastItWithPiss
   echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
   echo "\n"
