@@ -138,7 +138,8 @@
   <object class="GtkWindow" id="window1">
     <property name="width_request">420</property>
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">BLAST IT WITH PISS</property>
+    <property name="title" translatable="yes">Вайпалка Мочана</property>
+    <property name="role">wipe-status</property>
     <property name="resizable">False</property>
     <property name="window_position">center</property>
     <property name="icon">2ch.so.png</property>
@@ -904,15 +905,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkCheckButton" id="check-annoy">
-                                    <property name="label" translatable="yes">_Разворачивать окно при
-капче или бане</property>
+                                  <object class="GtkCheckButton" id="check-annoyerrors">
+                                    <property name="label" translatable="yes">Разворачивать окно при
+_ошибках</property>
                                     <property name="use_action_appearance">False</property>
-                                    <property name="width_request">1</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Не нужно это отключать. По-крайней мере выключите создание тредов, потому что вайп остановится при первой же капче.</property>
                                     <property name="use_underline">True</property>
                                     <property name="active">True</property>
                                     <property name="draw_indicator">True</property>
@@ -924,22 +923,19 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="check-annoyerrors">
-                                    <property name="label" translatable="yes">Разворачивать окно при
-_ошибках</property>
+                                  <object class="GtkCheckButton" id="checkhideonsubmit">
+                                    <property name="label" translatable="yes">Сворачивать после ввода
+капчи</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Иногда вайпалка глючит или сосака шатает вакабу, в этих случаях окно вайпалки появится с сообщением об ошибке.
-По-большей части эту опцию можно спокойно отключить, пропущенные ошибки можно посмотреть в логе.</property>
-                                    <property name="use_underline">True</property>
-                                    <property name="active">True</property>
+                                    <property name="tooltip_text" translatable="yes">Будет сворачиваться когда вы ввели всю нужную капчу</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
                                     <property name="position">1</property>
                                   </packing>
                                 </child>
@@ -1091,9 +1087,39 @@ _ошибках</property>
                                 </child>
                               </object>
                               <packing>
-                                <property name="expand">True</property>
-                                <property name="fill">True</property>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
                                 <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHSeparator" id="hseparator5">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="check-annoy">
+                                <property name="label" translatable="yes">_Разворачивать окно при
+капче или бане</property>
+                                <property name="use_action_appearance">False</property>
+                                <property name="width_request">1</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="use_underline">True</property>
+                                <property name="active">True</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">3</property>
                               </packing>
                             </child>
                           </object>

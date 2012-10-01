@@ -49,6 +49,7 @@ import Data.Typeable as A
 import Data.Data as A
 import Control.Arrow as A
 import Data.Function as A
+import Data.Default as A
 import Safe as A
 import Data.Text as A (Text)
 import Data.Time as A

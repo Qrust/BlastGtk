@@ -38,6 +38,7 @@ library
     build-depends: base
                   ,lifted-base
                   ,stm >= 2.4
+                  ,data-default
                   ,random
                   ,containers
                   ,time
@@ -98,7 +99,24 @@ library
 executable blastgtk
     main-is: GtkMain.hs
 
-    other-modules: Import, Paths_blast_it_with_piss
+    other-modules: Import
+                  ,Paths_blast_it_with_piss
+
+                  ,GtkBlast.Achievement
+                  ,GtkBlast.Conf
+                  ,GtkBlast.Directory
+                  ,GtkBlast.Environment
+                  ,GtkBlast.GtkUtils
+                  ,GtkBlast.GuiCaptcha
+                  ,GtkBlast.Image
+                  ,GtkBlast.IO
+                  ,GtkBlast.Log
+                  ,GtkBlast.Maintenance
+                  ,GtkBlast.MutableConfigurableWidgets
+                  ,GtkBlast.MuVar
+                  ,GtkBlast.Pasta
+                  ,GtkBlast.Proxy
+                  ,GtkBlast.ROW_ROW_FIGHT_THE_POWER
     
     build-depends: base
                   ,blast-it-with-piss
@@ -120,6 +138,7 @@ executable blastgtk
                   ,glib
                   ,network
                   ,deepseq
+                  ,data-default
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -144,44 +163,45 @@ executable blastgtk
                ,DeriveDataTypeable
                ,PackageImports
 
---~executable proxychecker
---~    main-is: CheckProxyMain.hs
---~
---~    other-modules: Import
---~    
---~    build-depends: base
---~                  ,blast-it-with-piss
---~                  ,cmdargs
---~                  ,network
---~
---~                  ,time
---~                  ,transformers
---~                  ,monad-control
---~                  ,lifted-base
---~                  ,bytestring
---~                  ,utf8-string
---~                  ,text
---~                  ,safe
---~                  ,deepseq
---~
---~    if flag(bindist)
---~        cpp-options: -DBINDIST
---~
---~    if flag(test)
---~        cpp-options: -DTEST
---~
---~    ghc-options: -Wall -threaded 
---~
---~    extensions: NoImplicitPrelude
---~               ,CPP
---~               ,PatternGuards
---~               ,OverloadedStrings
---~               ,PatternGuards
---~               ,RecordWildCards
---~               ,ScopedTypeVariables
---~               ,FlexibleContexts
---~               ,DeriveDataTypeable
---~               ,PackageImports
+executable proxychecker
+    main-is: CheckProxyMain.hs
+
+    other-modules: Import
+    
+    build-depends: base
+                  ,blast-it-with-piss
+                  ,cmdargs
+                  ,network
+
+                  ,time
+                  ,transformers
+                  ,monad-control
+                  ,lifted-base
+                  ,bytestring
+                  ,utf8-string
+                  ,text
+                  ,safe
+                  ,deepseq
+                  ,data-default
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+
+    if flag(test)
+        cpp-options: -DTEST
+
+    ghc-options: -Wall -threaded 
+
+    extensions: NoImplicitPrelude
+               ,CPP
+               ,PatternGuards
+               ,OverloadedStrings
+               ,PatternGuards
+               ,RecordWildCards
+               ,ScopedTypeVariables
+               ,FlexibleContexts
+               ,DeriveDataTypeable
+               ,PackageImports
 
 --~executable blastcli
 --~    main-is: CliMain.hs

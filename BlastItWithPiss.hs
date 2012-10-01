@@ -1,4 +1,19 @@
-module BlastItWithPiss where
+module BlastItWithPiss
+    (ShSettings(..)
+    ,MuSettings(..)
+    ,CaptchaType(..)
+    ,CaptchaAnswer(..)
+    ,OriginStamp(..)
+    ,Message(..)
+    ,OutMessage(..)
+    ,LogSettings(..)
+    ,LogDetail(..)
+    ,ProxySettings(..)
+    ,defLogS
+    ,defPrS
+    ,entryPoint
+    ,sortSsachBoardsByPopularity
+    ) where
 import Import
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Image
@@ -348,8 +363,9 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
     let hands =
-          [Handler $ \(_::HttpException) -> blastLoop w lthreadtime lposttime
-                          -- Dunno what to do except restart.
+          [Handler $ \(a::HttpException) -> do
+                blastLog $ "Got http exception, restarting. Exception was: " ++ show a
+                blastLoop w lthreadtime lposttime -- Dunno what to do except restart.
           ,Handler $ \(a::AsyncException) -> throwIO a
           ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
@@ -409,12 +425,10 @@ entryPoint board proxy lgDetail shS muS prS output = do
         case x of
             Left (a::SomeException) -> do
                 blastLog $ "Couldn't parse page form, got exception " ++ show a
-                throwIO a
             Right w@(wakabapl, otherfields) -> do
                 void $ rec gwakabapl wakabapl
                 void $ rec gotherfields otherfields
                 blastLoop w 0 0
-                
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
 sortSsachBoardsByPopularity boards = runBlast $ do
