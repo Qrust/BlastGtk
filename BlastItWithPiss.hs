@@ -9,6 +9,7 @@ module BlastItWithPiss
     ,LogSettings(..)
     ,LogDetail(..)
     ,ProxySettings(..)
+    ,defMuS
     ,defLogS
     ,defPrS
     ,entryPoint
@@ -53,16 +54,21 @@ data MuSettings = MuSettings {mthread :: TVar (Maybe (Maybe Int))
 
 data CaptchaType = CaptchaPosting | CaptchaCloudflare
 
-data CaptchaAnswer = Answer String
+data CaptchaAnswer = Answer !String
                    | ReloadCaptcha
                    | AbortCaptcha
     deriving (Eq, Show, Ord)
 
-data OriginStamp = OriginStamp !POSIXTime !BlastProxy !Board !Mode !(Maybe Int)
+data OriginStamp = OriginStamp {oTime :: !POSIXTime
+                               ,oProxy :: !BlastProxy
+                               ,oBoard :: !Board
+                               ,oMode :: !Mode
+                               ,oThread :: !(Maybe Int)
+                               }
 
 data Message = OutcomeMessage !Outcome
              | LogMessage !String
-             | SupplyCaptcha {captchaType :: CaptchaType
+             | SupplyCaptcha {captchaType :: !CaptchaType
                              ,captchaBytes :: !LByteString
                              ,captchaSend :: !(CaptchaAnswer -> IO ())
                              }
@@ -122,12 +128,34 @@ instance Show Message where
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
 
-instance NFData CaptchaAnswer
+instance NFData CaptchaType
 
-instance NFData OutMessage
+instance NFData CaptchaAnswer where
+    rnf (Answer s) = rnf s
+    rnf ReloadCaptcha = ()
+    rnf AbortCaptcha = ()
+
+instance NFData OriginStamp where
+    rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
+
+instance NFData Message where
+    rnf (OutcomeMessage o) = rnf o
+    rnf (LogMessage s) = rnf s
+    rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
+    rnf NoPastas = ()
+    rnf NoImages = ()
+
+instance NFData OutMessage where
+    rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
 
 flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
 flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
+
+defMuS :: IO MuSettings
+defMuS = atomically $ do
+    mthread <- newTVar Nothing
+    mmode <- newTVar Nothing
+    return MuSettings{..}
 
 defLogS :: IO LogSettings
 defLogS = atomically $ do
@@ -192,7 +220,7 @@ blastOut msg = do
         (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
         now <- getPOSIXTime
         let a = OutMessage (OriginStamp now proxy board mode thread) msg
-        a `deepseq` (atomically $ writeTQueue to a)
+        atomically $ a `deepseq` writeTQueue to a
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
@@ -417,7 +445,7 @@ entryPoint board proxy lgDetail shS muS prS output = do
     flip runReaderT (BlastLogData proxy board lgDetail defl shS muS prS output) $ do
         let url = ssachPage board 0
         let chkStatus st@Status{statusCode=c} heads
-                | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads
+                | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads Nothing
                 | otherwise = Nothing
         x <- try $ do
             tgs <- blast $ withCheckStatus (Just chkStatus) $ httpGetStrTags url
@@ -440,46 +468,3 @@ sortSsachBoardsByPopularity boards = runBlast $ do
     let (got, failed) = partition (isJust . snd) maybeb
         sorted = reverse $ sortBy (\(_,a) (_,b) -> compare (fromJust a) (fromJust b)) got
     return (map (appsnd fromJust) sorted, fst $ unzip $ failed)
-{-
-main :: IO ()
-main = withSocketsDo $ do
-    tpastas <- atomically $ newTVar $ [
-                                    --{-
-                                       "Я уже завтракал, мам"
-                                      ,"Я у мамы молодец"
-                                      ,"Долблюсь в попотан"
-                                      ,"Ебать, спортсмен не выпал ни одного раза"
-                                      ,concat $ replicate 600 "Длинный пост "
-                                      ,"Слава Україні, Героям Слава!"-- -}
-                                      ]
-    timages <- atomically $ newTVar ["images/jew-swede.jpg"]
-    tuseimages <- atomically $ newTVar False
-    tcreatethreads <- atomically $ newTVar False
-    tmakewatermark <- atomically $ newTVar False
-    mthread <- atomically $ newTVar $ Random
-    mmode <- atomically $ newTVar $ Random
-    to <- atomically $ newTQueue
-    th <- forkIO (entryPoint Log ShSettings{..} to MDK MuSettings{..})
-    forever $ do
-        t <- atomically $ tryReadTQueue to
-        case t of{-
-            Just x -> case x of
-                OutcomeMessage thread (SuccessLongPost _) -> putStrLn $ show thread ++ " " ++ "SuccessLongPost"
-                OutcomeMessage thread out -> putStrLn $ show thread ++ " " ++ show out
-                SupplyCaptcha bytes send -> do
-                    L.writeFile "captcha.jpeg" bytes
-                    let captchabin =
-#ifdef mingw32_HOST_OS
-                            ".\\captcha.exe"
-#else
-                            "./captcha"
-#endif
-                    c <- readProcess captchabin ["captcha.jpeg"] []
-                    send (Answer c)
-                NoPastas -> putStrLn "NoPastas"
-                NoImages -> putStrLn "NoImages"-}
-            Nothing -> do st <- threadStatus th
-                          if st==ThreadDied || st==ThreadFinished
-                            then exitFailure
-                            else threadDelay (2 * 1000000)
---}

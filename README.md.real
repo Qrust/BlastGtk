@@ -18,6 +18,7 @@ http://www.0-chan.ru/c/res/33.html
 + Если вы на шинде, то вам придется установить и настроить MinGW, MSYS и GTK.
 + Клонируйте этот репозиторий через git, или скачайте его как архив (например https://github.com/exbb2/BlastItWithPiss/zipball/master)
 + В данный момент некоторые изменения в http-conduit не приняты в апстрим, поэтому вам придется установить патченную версию https://github.com/exbb2/http-conduit
++ Пакета antigate ещё нету в Hackage, поэтому вам придется установить его из https://github.com/exbb2/antigate
 + Зайдите в папку репозитория, откройте консолечку, выполните команду "cabal update", потом "cabal install --only-dependencies", потом "sh build-production.sh" — В папке linux-dist/dos-dist будет готовая вайпалка.
 + Алсо, можно сконпелять просто через "cabal install", тогда настройки будут храниться не в текущей директории, а в ~/.BlastItWithPiss, бинарники и ресурсы будут установлены в стандартных локациях для Cabal'а(e.g. ~/.cabal/bin, ~/.cabal/share).
 + Если у вас что-то не получается — гуглите, читайте HaskellWiki и пердольтесь консолькой до просветления.

@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyDataDecls #-}
+{-# OPTIONS_GHC -w #-}
 module GtkBlast.ROW_ROW_FIGHT_THE_POWER
     (
 
@@ -8,7 +9,7 @@ module GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 
 
-
+    
      i ,am ,playing ,the ,game
 
     ,the ,one ,that'll ,take ,me ,to ,my ,end

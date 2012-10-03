@@ -1,25 +1,26 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module GtkBlast.Maintenance
-    (maintainWipeUnit
-    ,regenerateExcluding
-    ,maintainBoardUnit
-    ,maintainBoardUnits
-    ,startWipe
-    ,killWipe
-    ,setBanned
-    ,reactToMessage
+module GtkBlast.Mainloop
+    (wipebuttonEnvPart
+    ,mainloop
     ) where
 import Import hiding (on)
 import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
-import GtkBlast.GuiCaptcha
+import GtkBlast.EnvPart
+import GtkBlast.Captcha
+import GtkBlast.Pasta
+import GtkBlast.Image
+import GtkBlast.Proxy
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
+import Graphics.UI.Gtk hiding (get,set)
+import Control.Concurrent(forkOS)
 import GHC.Conc
+import Control.Concurrent.STM
 import qualified Data.Map as M
 import Control.Monad.Trans.Maybe
 
@@ -50,7 +51,7 @@ regenerateExcluding board exc = do
             else do writeLog $ "Spawning new thread for " ++ renderBoard board
                     mthread <- io $ atomically $ newTVar Nothing
                     mmode <- io $ atomically $ newTVar Nothing
-                    threadid <- io $ forkIO $ runBlast $ do
+                    threadid <- io $ forkOS $ runBlast $ do
                         entryPoint board p Log shS MuSettings{..} s tqOut
                     Just . WipeUnit p threadid <$> io (newIORef False)
         )
@@ -87,10 +88,35 @@ killWipe :: E ()
 killWipe = do
     E{..} <- ask
     writeLog "Stopping wipe..."
+    killAllCaptcha
     set wipeStarted False
     maintainBoardUnits
-    pc <- get pendingCaptchas
-    forM_ pc $ const $ removeCaptcha AbortCaptcha
+
+wipebuttonEnvPart :: Builder -> EnvPart
+wipebuttonEnvPart b = EP
+    (\env _ -> do
+        wbuttonwipe <- builderGetObject b castToButton "wipebutton"
+
+        void $ on wbuttonwipe buttonActivated $ do
+            ifM (not <$> readIORef (wipeStarted env))
+                (runE env $ do
+                    E{..} <- ask
+                    startWipe
+                    io $ buttonSetLabel wbuttonwipe "Прекратить _Вайп"
+                    io $ progressBarPulse wprogresswipe
+                    updWipeMessage
+                    )
+                (runE env $ do
+                    E{..} <- ask
+                    killWipe
+                    io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
+                    io $ progressBarSetFraction wprogresswipe 0
+                    updMessage "Вайп ещё не начат"
+                    )
+        return wbuttonwipe
+        )
+    (const return)
+    (const id)
 
 setBanned :: [BoardUnit] -> Board -> BlastProxy -> Bool -> IO ()
 setBanned boardUnits board proxy st = do
@@ -144,3 +170,16 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                        tempError 3 "Невозможно прочитать пасты, постим повторяющуюся строку \"NOPASTA\""
         NoImages -> do writeLog (show s)
                        tempError 3 "Невозможно прочитать пикчи, постим капчу"
+
+mainloop :: E ()
+mainloop = do
+    E{..} <- ask
+    whenM (get wipeStarted) $ do
+        io $ progressBarPulse wprogresswipe
+        maintainCaptcha
+        regeneratePasta
+        regenerateImages
+        regenerateProxies
+        maintainBoardUnits
+        updWipeMessage
+    mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)

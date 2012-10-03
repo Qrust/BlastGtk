@@ -1,6 +1,11 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.Directory
-    where
+    (ModificationTime
+    ,getResourceFile
+    ,configDir
+    ,nullTime
+    ,timeRightNow
+    ) where
 import Import
 import GtkBlast.IO
 import System.FilePath

@@ -95,7 +95,9 @@ data Board = A
            | HH
            | DOM
            | FTB
-    deriving (Eq, Read, Show, Enum, Bounded, Ord, Data, Typeable)
+    deriving (Eq, Read, Show, Enum, Bounded, Ord)
+
+instance NFData Board
 
 allSsachBoards :: [Board]
 allSsachBoards = [minBound..maxBound]

@@ -1,23 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
--- FIXME FIXME FIXME
-{-# LANGUAGE ExistentialQuantification #-}
--- FIXME FIXME FIXME
 module Main where
 import Import hiding (on, mod)
 import GtkBlast.IO
-import GtkBlast.MuVar
 import GtkBlast.Directory
 import GtkBlast.Environment
 import GtkBlast.Log
-import GtkBlast.Pasta
-import GtkBlast.Image
-import GtkBlast.Proxy
 import GtkBlast.Conf
-import GtkBlast.MutableConfigurableWidgets
-import GtkBlast.Maintenance
+import GtkBlast.EnvParts (createWidgetsAndFillEnv)
+import GtkBlast.Mainloop (mainloop)
 import Graphics.UI.Gtk hiding (get)
-import GHC.Conc
-import Control.Concurrent.STM
 import System.Environment.UTF8
 import System.Exit
 import System.FilePath
@@ -29,72 +20,57 @@ import System.Environment.Executable (splitExecutablePath)
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 -- TODO don't regenerate banned threads
+-- TODO don't regenerate threads until asked to.
 -- TODO FIXME FIXME readIORef buBanned
 
--- TODO прокси
--- TODO support ANTIGATE, CAPTCHABOT, DECAPTCHER etc.
 -- TODO вайпать постами из треда/страницы choosePost
 -- TODO Move RandomNum/RandomChar generation to worker threads
 -- TODO don't escape RandomNum and RandomChar.
--- TODO don't regenerate banned
+-- TODO отображать состояние антигейта в updWipeMessage (add hook)
+--      например количество капч решаемых в данный момент или stat.php
+-- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO switch to JSON for config and manifest
--- TODO fix conf default boards
+-- TODO mochepasta resources/mocha, change default boards
 -- TODO Updater
--- TODO use appendFile,  don't output anything on shindos
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
 -- TODO helpMessage
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
--- TODO mochepasta resources/mocha, change default boards
 -- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
 --      , даже "я посрал" — приветствуется.
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
--- TODO update mocha-repo description
 
--- TODO breakup everything into modules with explicit export lists
--- TODO split processing from execution
+-- TODO Replace (OriginStamp, Message) with appropriate type
+-- TODO Switch to immutable state, don't modify state from widgets, send events instead.
+-- TODO Add more type safety.(Any type safety?)
 -- TODO cleanup
 -- TODO document
--- TODO Add more type safety.(Any type safety?)
 
--- TODO GTK keyboard completion in board list
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit
 -- TODO add API as a fallback if can't parse html
--- TODO don't regenerate threads until asked to.
+-- TODO i18n
 -- TODO configurable escaping
 -- TODO configurable timeout
 -- TODO config last thread time
 -- TODO Показывать несколько капч одновременно
 -- TODO background mode
 -- TODO FIX FREEZES
--- TODO Move ssach/recaptcha/cloudflare-specific functionality in their own modules
+-- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
 -- TODO Support 2chnu, alterchan.
 
 bugMessage :: String
 bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
           ++ " file a bug report to the author(https://github.com/exbb2/BlastItWithPiss/issues)"
-          ++ " with attached files log.txt, and, if you have one, log.txt.bak.\n"
+          ++ " with attached file log.txt.\n"
           ++ "Thanks, and have fun. Hopefully, it has been worth the weight."
 
 helpMessage :: String
 helpMessage = "No help message for now, sorry\n\n" ++ bugMessage
-
-mainloop :: E ()
-mainloop = do
-    E{..} <- ask
-    whenM (get wipeStarted) $ do
-        io $ progressBarPulse wprogresswipe
-        regeneratePasta
-        regenerateImages
-        regenerateProxies
-        maintainBoardUnits
-        updWipeMessage
-        outs <- io $ atomically $ untilNothing $ tryReadTQueue tqOut
-        forM_ outs reactToMessage
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -114,21 +90,7 @@ main = withSocketsDo $ do
   
     configfile <- (</> "config") <$> configDir
   
-    conf <- do
-        x <- try $ readFile $ configfile
-        case x of
-            Left (a::SomeException) -> do
-                rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" , loading defaults. Exception was: " ++ show a
-                return def
-            Right c ->
-                case readMay c of
-                    Nothing -> do
-                        let confold = configfile <.> "old.faulty"
-                        rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" because of syntax error, overwriting with defaults. Old version saved at \"" ++ confold ++ "\""
-                        fromIOEM (return ()) $
-                            writeFile confold c
-                        return def
-                    Just n -> return n
+    conf <- readConfig configfile
   
     rawPutLog $ "Loaded config: " ++ show conf
   
@@ -136,7 +98,7 @@ main = withSocketsDo $ do
   
     handle (\(a::SomeException) -> do
               rawPutLog $ "Uncaught exception terminated program, sorry: " ++ show a
-              throwIO a) $ do
+              exitFailure) $ do
  
         -- init
     
@@ -144,9 +106,7 @@ main = withSocketsDo $ do
         builder <- builderNew
         builderAddFromFile builder =<< getResourceFile "blast.glade"
     
-        -- setup environment
-    
-        (env, setConf) <- mkAllWidgets builder conf
+        (env, setConf) <- createWidgetsAndFillEnv builder conf
     
         -- start main loop
     
@@ -155,7 +115,7 @@ main = withSocketsDo $ do
                 return True) 50 --kiloseconds, 20 fps.
     
         void $ onDestroy (window env) $ runE env $ do
-            writeConfig configfile setConf
+            writeConfig configfile =<< io (setConf def{coFirstLaunch=False})
             io $ mainQuit
     
         -- start main gui

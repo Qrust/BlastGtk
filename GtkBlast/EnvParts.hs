@@ -1,10 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module GtkBlast.MutableConfigurableWidgets
-    (interpretMuConfs
-    ,mutableConfigWidgets
-    ,mkAllWidgets
+module GtkBlast.EnvParts
+    (envParts
+    ,createWidgetsAndFillEnv
     ) where
 import Import hiding (on, mod)
 import GtkBlast.IO
@@ -13,11 +11,14 @@ import GtkBlast.Directory
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Pasta
-import GtkBlast.GuiCaptcha
+import GtkBlast.GuiCaptcha (guiCaptchaEnvPart)
+import GtkBlast.AntigateCaptcha (antigateCaptchaEnvPart)
+import GtkBlast.Captcha (captchaModeEnvPart)
 import GtkBlast.Proxy
 import GtkBlast.Conf
 import GtkBlast.GtkUtils
-import GtkBlast.Maintenance
+import GtkBlast.Mainloop (wipebuttonEnvPart)
+import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get, set)
@@ -28,90 +29,18 @@ import Data.Version (showVersion)
 import qualified Data.Map as M
 import Control.Monad.Fix
 
-data MutableConfigurable = forall m. M
-           {toMutable :: Env -> Conf -> IO m
-           ,toConf :: m -> Conf -> IO Conf
-           ,toEnv :: m -> Env -> Env
-           }
-
-interpretMuConfs :: [MutableConfigurable] -> Env -> Conf -> IO (Env -> Env, Conf -> IO Conf)
-interpretMuConfs mcs env conf = foldM aux (id, return) mcs
-  where aux (e, c) M{..} = do
-            m <- toMutable env conf
-            return (toEnv m . e, toConf m <=< c)
-
-mutableConfigWidgets :: Builder -> [MutableConfigurable]
-mutableConfigWidgets b =
-    let infixr 1 ?
-        (?) :: Functor f => f a -> (a -> b) -> f b
-        (?) = flip fmap
-
-        rec :: MuVar v a => (Conf -> a) -> IO v -> (Env -> Conf -> IO v)
-        rec gt mv _ conf = do
-            v <- mv
-            setIO v $ gt conf
-            return v
-
-        build :: GObjectClass cls => (GObject -> cls) -> String -> IO cls
+envParts :: Builder -> [EnvPart]
+envParts b =
+    let build :: GObjectClass cls => (GObject -> cls) -> String -> IO cls
         build f n = builderGetObject b f n
     in
     [
-     M
-        (\env _ -> do
-            wvboxcaptcha <- build castToVBox "vboxcaptcha"
-            weventboxcaptcha <- build castToEventBox "eventboxcaptcha"
-            wimagecaptcha <- build castToImage "imagecaptcha"
-            wentrycaptcha <- build castToEntry "entrycaptcha"
-            wbuttoncaptchaok <- build castToButton "buttoncaptchaok"
-            wbuttoncaptchacancel <- build castToButton "buttoncaptchacancel"
-
-            on weventboxcaptcha buttonPressEvent $ do
-                io $ runE env $ removeCaptcha ReloadCaptcha
-                return True
-        
-            on wbuttoncaptchaok buttonActivated $ do
-                x <- entryGetText wentrycaptcha
-                {-if null x
-                    then captchaMessage "Пожалуйста введите капчу"
-                    else removeCaptcha $ Answer x-}
-                runE env $ removeCaptcha $ Answer x
-        
-            on wbuttoncaptchacancel buttonActivated $ do
-                runE env $ removeCaptcha AbortCaptcha
-
-            return (wvboxcaptcha, wimagecaptcha, wentrycaptcha, wbuttoncaptchaok)
-        )
-        (const return)
-        (\(wvc, wic, wec, wbco) e -> e{wvboxcaptcha=wvc
-                                      ,wimagecaptcha=wic
-                                      ,wentrycaptcha=wec
-                                      ,wbuttoncaptchaok=wbco})
-    ,M
-        (\env _ -> do
-            wbuttonwipe <- build castToButton "wipebutton"
-
-            on wbuttonwipe buttonActivated $ do
-                ifM (not <$> readIORef (wipeStarted env))
-                    (runE env $ do
-                        E{..} <- ask
-                        startWipe
-                        io $ buttonSetLabel wbuttonwipe "Прекратить _Вайп"
-                        io $ progressBarPulse wprogresswipe
-                        updWipeMessage
-                        )
-                    (runE env $ do
-                        E{..} <- ask
-                        killWipe
-                        io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
-                        io $ progressBarSetFraction wprogresswipe 0
-                        updMessage "Вайп ещё не начат"
-                        )
-            return wbuttonwipe
-            )
-        (const return)
-        (const id)
-    ,M
-        (\e Conf{..} -> do
+     guiCaptchaEnvPart b
+    ,antigateCaptchaEnvPart b
+    ,captchaModeEnvPart b
+    ,wipebuttonEnvPart b
+    ,EP
+        (\_ Conf{..} -> do
             wradiomocha <- build castToRadioButton "radio-mocha"
             wradiokakashki <- build castToRadioButton "radio-kakashki"
             wradionum <- build castToRadioButton "radio-num"
@@ -131,31 +60,33 @@ mutableConfigWidgets b =
                     then Just $ toggleButtonSetActive w True
                     else Nothing
 
+            pastaMod <- newIORef nullTime
+            pastaSet <- newIORef coPastaSet
+
             forM pastaradio $ \(p, w) -> do
                 on w toggled $
                     whenM (toggleButtonGetActive w) $ do
-                        writeIORef (pastaMod e) nullTime -- force update
-                        writeIORef (pastaSet e) p
+                        writeIORef pastaMod nullTime -- force update
+                        writeIORef pastaSet p
 
-            pastaSet <- newIORef coPastaSet
-
-            return pastaSet
+            return (pastaSet, pastaMod)
             )
-        (\v c -> get v ? \a -> c{coPastaSet=a})
-        (\v e -> e{pastaSet=v})
-    ,M
+        (\(v,_) c -> get v ? \a -> c{coPastaSet=a})
+        (\(ps,pm) e -> e{pastaSet=ps
+                        ,pastaMod=pm})
+    ,EP
         (rec coSettingsShown $ build castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})
         (const id)
-    ,M
+    ,EP
         (rec coAdditionalShown $ build castToExpander "expanderadditional")
         (\v c -> get v ? \a -> c{coAdditionalShown=a})
         (const id)
-    ,M
+    ,EP
         (rec coLogShown $ build castToExpander "expanderlog")
         (\v c -> get v ? \a -> c{coLogShown=a})
         (const id)
-    ,M
+    ,EP
         (\_ _ -> do
             wlabelmessage <- build castToLabel "labelmessage"
             wprogressalignment <- build castToAlignment "progressalignment"
@@ -184,7 +115,7 @@ mutableConfigWidgets b =
                                        ,wprogresswipe=wpw
                                        ,wbuf = wbuf
                                        })
-    ,M
+    ,EP
         (\_ c -> do
             wvboxboards <- build castToVBox "vbox-boards"
         
@@ -198,7 +129,7 @@ mutableConfigWidgets b =
                 filterM (toggleButtonGetActive . buWidget) v
             return c{coActiveBoards=cab})
         (\v e -> e{boardUnits=v})
-    ,M
+    ,EP
         (\e c -> do
             wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
             wcheckimages <- (rec coAttachImages $ build castToCheckButton "check-images") e c
@@ -234,23 +165,23 @@ mutableConfigWidgets b =
                                                   ,shS=shS
                                                   ,wcheckimages=wcheckimages
                                                   })
-    ,M
+    ,EP
         (rec coAnnoy $ build castToCheckButton "check-annoy")
         (\v c -> get v ? \a -> c{coAnnoy=a})
         (\v e -> e{wcheckannoy=v})
-    ,M
+    ,EP
         (rec coHideOnSubmit $ build castToCheckButton "checkhideonsubmit")
         (\v c -> get v ? \a -> c{coHideOnSubmit=a})
         (\v e -> e{wcheckhideonsubmit=v})
-    ,M
+    ,EP
         (rec coAnnoyErrors $ build castToCheckButton "check-annoyerrors")
         (\v c -> get v ? \a -> c{coAnnoyErrors=a})
         (\v e -> e{wcheckannoyerrors=v})
-    ,M
+    ,EP
         (rec coTray $ build castToCheckButton "check-tray")
         (\v c -> get v ? \a -> c{coTray=a})
         (\v e -> e{wchecktray=v})
-    ,M
+    ,EP
         (\e c -> do
             wentryimagefolder <- (rec coImageFolder $ build castToEntry "entryimagefolder") e c
             wbuttonimagefolder <- build castToButton "buttonimagefolder"
@@ -260,7 +191,7 @@ mutableConfigWidgets b =
             return wentryimagefolder)
         (\v c -> get v ? \a -> c{coImageFolder=a})
         (\v e -> e{wentryimagefolder=v})
-    ,M
+    ,EP
         (\env _ -> do
             wbuttonselectall <- build castToButton "buttonselectall"
             wbuttonselectnone <- build castToButton "buttonselectnone"
@@ -274,7 +205,7 @@ mutableConfigWidgets b =
                     (`toggleButtonSetActive` False) . buWidget)
         (const return)
         (const id)
-    ,M
+    ,EP
         (\e c -> do
             wcheckhttpproxy <- (rec coUseHttpProxy $ build castToCheckButton "checkhttpproxy") e c
             wentryhttpproxyfile <- (rec coHttpProxyFile $ build castToEntry "entryhttpproxyfile") e c
@@ -299,7 +230,7 @@ mutableConfigWidgets b =
         (\(wchp, wehpf) e -> e{wcheckhttpproxy=wchp
                               ,wentryhttpproxyfile=wehpf
                               })
-    ,M
+    ,EP
         (\e c -> do
             wchecksocksproxy <- (rec coUseSocksProxy $ build castToCheckButton "checksocksproxy") e c
             wentrysocksproxyfile <- (rec coSocksProxyFile $ build castToEntry "entrysocksproxyfile") e c
@@ -324,7 +255,7 @@ mutableConfigWidgets b =
         (\(wcsp, wespf) e -> e{wchecksocksproxy=wcsp
                               ,wentrysocksproxyfile=wespf
                               })
-    ,M
+    ,EP
         (\ e c -> do
             wchecknoproxy <- (rec coUseNoProxy $ build castToCheckButton "checknoproxy") e c
 
@@ -334,7 +265,7 @@ mutableConfigWidgets b =
             return wchecknoproxy)
         (\v c -> get v ? \a -> c{coUseNoProxy=a})
         (\v e -> e{wchecknoproxy=v})
-    ,M
+    ,EP
         (\_ _ -> do
             wlabelversion <- build castToLabel "labelversion"
             labelSetMarkup wlabelversion $
@@ -342,7 +273,7 @@ mutableConfigWidgets b =
                     showVersion version ++ "</a></small>")
         (const return)
         (const id)
-    ,M
+    ,EP
         (\e _ -> do
             window <- builderGetObject b castToWindow "window1"
             windowSetTitle window "Вайпалка мочана"
@@ -389,8 +320,8 @@ mutableConfigWidgets b =
         (\v e -> e{window=v})
     ]
 
-mkAllWidgets :: Builder -> Conf -> IO (Env, Conf -> IO Conf)
-mkAllWidgets b conf = do
+createWidgetsAndFillEnv :: Builder -> Conf -> IO (Env, Conf -> IO Conf)
+createWidgetsAndFillEnv builder conf = do
     messageLocks <- newIORef 0
   
     wipeStarted <- newIORef False
@@ -398,8 +329,6 @@ mkAllWidgets b conf = do
     postCount <- newIORef 0
     activeCount <- newIORef 0
     bannedCount <- newIORef 0
-
-    pastaMod <- newIORef nullTime
 
     imagesLast <- newIORef []
 
@@ -410,10 +339,8 @@ mkAllWidgets b conf = do
 
     socksproxyMod <- newIORef nullTime
     socksproxyLast <- newIORef []
-  
-    pendingCaptchas <- newIORef []
 
     (re, rs) <- mfix $ \ ~(lolhaskell, _) -> do
-        (setEnv, setConf) <- interpretMuConfs (mutableConfigWidgets b) lolhaskell conf
+        (setEnv, setConf) <- runEnvParts (envParts builder) lolhaskell conf
         return (setEnv E{..}, setConf)
     return (force re, rs)

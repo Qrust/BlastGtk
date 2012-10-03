@@ -26,7 +26,7 @@ rm -rfv $foldr
 mkdir $foldr
 mkdir $foldr/tempprefixdir
 cabal configure --builddir=builddir/$foldr -f bindist --verbose\
- --enable-executable-stripping\
+ --enable-executable-stripping --enable-split-objs\
  --disable-library-profiling\
  --disable-executable-profiling\
  $optimi\

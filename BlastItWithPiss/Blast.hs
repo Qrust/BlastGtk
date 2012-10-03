@@ -64,6 +64,20 @@ instance Ord SocksConf where
     compare (SocksConf h1 p1 v1) (SocksConf h2 p2 v2) =
         compare h1 h2 <> compare p1 p2 <> compare v1 v2
 
+instance NFData Proxy where
+    rnf (Proxy h p) = rnf (h,p)
+
+instance NFData PortNumber where
+    rnf (PortNum p) = rnf p
+
+instance NFData SocksConf where
+    rnf (SocksConf h p v) = rnf (h,p,v)
+
+instance NFData BlastProxy where
+    rnf (HttpProxy p) = rnf p
+    rnf (SocksProxy p) = rnf p
+    rnf NoProxy = ()
+
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =
     case break (==':') (dropWhile isSpace s) of

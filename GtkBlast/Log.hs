@@ -7,7 +7,6 @@ module GtkBlast.Log
     ,writeLog
     ,showMessage
     ,tempError
-    ,captchaMessage
     ,banMessage
     ,updMessage
     ,appFile
@@ -55,17 +54,17 @@ writeLog :: String -> E ()
 writeLog s = ask >>= \w -> io $ writeLogIO (wbuf w) s
 
 showMessage :: (Env -> CheckButton) -> String -> Maybe Int -> Bool -> String -> E ()
-showMessage getCheck k mt red s = do
+showMessage getCheck msgname mUnlockT red msg = do
     E{wlabelmessage=wlabel, ..} <- ask
     wcheck <- asks getCheck
     io $ modifyIORef messageLocks (+1)
     n <- io getPOSIXTime
-    writeLog $ "blasgtk, " ++ show n ++ ": " ++ k ++ ": " ++ s
+    writeLog $ "blasgtk, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
     if red
-        then io $ labelSetMarkup wlabel $ "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
-        else io $ labelSetText wlabel s
+        then io $ labelSetMarkup wlabel $ "<span foreground=\"#ff0000\">" ++ msg ++ "</span>"
+        else io $ labelSetText wlabel msg
     io $ whenM (toggleButtonGetActive wcheck) $ windowPopup window
-    case mt of
+    case mUnlockT of
         Just t -> 
             void $ io $ timeoutAdd (modifyIORef messageLocks (subtract 1) >> return False) (t * 1000)
         Nothing -> return ()
@@ -73,11 +72,6 @@ showMessage getCheck k mt red s = do
 tempError :: Int -> String -> E ()
 tempError t s = do
     showMessage wcheckannoyerrors "Displayed error message" (Just t) True s
-
-captchaMessage :: String -> E ()
-captchaMessage s =
-    showMessage wcheckannoy "Captcha message" Nothing False s
-    -- we remove messageLock in removeCaptcha
 
 banMessage :: Int -> String -> E ()
 banMessage t s =
@@ -89,7 +83,9 @@ updMessage s = do
     locks <- io $ readIORef messageLocks
     if locks==0
         then io $ labelSetText wlabelmessage s
-        else when (locks < 0) $ tempError 5 "Ой-ой, случилось невозможное, срочно доложите об этом автору"
+        else when (locks < 0) $ do
+                io $ writeIORef messageLocks 0
+                tempError 5 "Ой-ой, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
 
 appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
 appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""

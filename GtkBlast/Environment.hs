@@ -9,7 +9,8 @@ module GtkBlast.Environment
     ) where
 import Import
 import GtkBlast.Directory
-import {-# SOURCE #-} GtkBlast.Pasta
+import GtkBlast.Type_PastaSet
+import GtkBlast.Type_CaptchaMode
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Board
@@ -48,7 +49,10 @@ data Env = E
     ,httpproxyLast :: IORef [BlastProxy]
     ,socksproxyMod :: IORef ModificationTime
     ,socksproxyLast :: IORef [BlastProxy]
-    ,pendingCaptchas :: IORef [(OriginStamp, Message)]
+    ,captchaMode :: IORef CaptchaMode
+    ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, Message))]
+    ,antigateLogQueue :: TQueue (Either String String)
+    ,pendingGuiCaptchas :: IORef [(OriginStamp, Message)]
     ,boardUnits :: [BoardUnit]
 
     ,tqOut :: TQueue OutMessage
@@ -74,10 +78,12 @@ data Env = E
     ,wchecksocksproxy :: CheckButton
     ,wentrysocksproxyfile :: Entry
     ,wchecknoproxy :: CheckButton
+    ,wentryantigatekey :: Entry
     }
 
 type E = ReaderT Env IO
 
+-- This is to check that every field is initialized before we start.
 instance NFData Env where
     rnf E{..} =
          messageLocks
@@ -93,7 +99,10 @@ instance NFData Env where
         `seq` httpproxyLast
         `seq` socksproxyMod
         `seq` socksproxyLast
-        `seq` pendingCaptchas
+        `seq` captchaMode
+        `seq` pendingAntigateCaptchas
+        `seq` antigateLogQueue
+        `seq` pendingGuiCaptchas
         `seq` boardUnits
     
         `seq` tqOut
@@ -119,6 +128,7 @@ instance NFData Env where
         `seq` wchecksocksproxy
         `seq` wentrysocksproxyfile
         `seq` wchecknoproxy
+        `seq` wentryantigatekey
         `seq` ()
 
 runE :: Env -> E a -> IO a
