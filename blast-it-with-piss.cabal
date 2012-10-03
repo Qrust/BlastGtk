@@ -21,6 +21,8 @@ data-files: build-production.sh
            ,images/jew-swede.jpg
            ,images/sad-monkey.jpg
            ,images/newscreen.png
+           ,README.md
+           ,README.md.real
 
 source-repository head
     type: git
