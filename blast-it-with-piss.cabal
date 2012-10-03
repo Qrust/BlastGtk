@@ -102,7 +102,6 @@ executable blastgtk
     main-is: GtkMain.hs
 
     other-modules: Import
-                  ,Paths_blast_it_with_piss
 
                   ,GtkBlast.Achievement
                   ,GtkBlast.Conf
@@ -124,6 +123,7 @@ executable blastgtk
                   ,GtkBlast.ROW_ROW_FIGHT_THE_POWER
                   ,GtkBlast.Type_CaptchaMode
                   ,GtkBlast.Type_PastaSet
+                  ,Paths_blast_it_with_piss
     
     build-depends: base
                   ,blast-it-with-piss
