@@ -13,6 +13,7 @@ import "blast-it-with-piss" BlastItWithPiss.Blast
 import qualified Data.Map as M
 import Graphics.UI.Gtk hiding (get, set)
 import System.Directory
+import System.IO.UTF8 (readFile)
 
 regenerateProxies :: E ()
 regenerateProxies = do

@@ -1,32 +1,43 @@
-{-# LANGUAGE NoOverloadedStrings #-}
 module BlastItWithPiss.Parsing where
 import Import hiding (fromString)
 import BlastItWithPiss.Board
 import BlastItWithPiss.MultipartFormData (Field(..), field)
 import Text.HTML.TagSoup
 import Text.StringLike
-import qualified Codec.Binary.UTF8.Generic as UTF8
 -- html-conduit(cursor?)?
 
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Encoding as ST
+
+tgOpen :: T.Text -> [(T.Text, T.Text)] -> Tag T.Text
+tgOpen = TagOpen
+
+tgClose :: T.Text -> Tag T.Text
+tgClose = TagClose
+
+tgComment :: T.Text -> Tag T.Text
+tgComment = TagComment
+
 data Post = Post
-    {postId :: Int
-    ,postContents :: String
+    {postId :: !Int
+    ,postContents :: !String
     }
     deriving (Show, Eq, Ord)
 
 data Thread = Thread
-    {threadId :: Int
-    ,pinned :: Bool
-    ,locked :: Bool
-    ,postcount :: Int
+    {threadId :: !Int
+    ,pinned :: !Bool
+    ,locked :: !Bool
+    ,postcount :: !Int
     ,visibleposts :: [Post]
     }
     deriving (Show, Eq)
 
 data Page = Page
-    {pageId :: Int
-    ,lastpage :: Int
-    ,speed :: Int
+    {pageId :: !Int
+    ,lastpage :: !Int
+    ,speed :: !Int
     ,threads :: [Thread]
     }
     deriving (Show, Eq)
@@ -54,26 +65,26 @@ instance NFData Thread where
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
 
-innerTextWithBr :: StringLike a => [Tag a] -> a
-innerTextWithBr = strConcat . mapMaybe aux
-    where aux (TagOpen x []) | x == fromString "br" = Just (fromChar '\n')
+innerTextWithBr :: [Tag T.Text] -> T.Text
+innerTextWithBr = T.concat . mapMaybe aux
+    where aux (TagOpen x []) | x == "br" = Just "\n"
           aux a = maybeTagText a
 
-parsePosts :: [Tag String] -> [Post]
+parsePosts :: [Tag T.Text] -> [Post]
 parsePosts posts =
     mapMaybe readPost $ 
-        sections (~== TagOpen "blockquote" [("class", "postMessage")])
-                 posts
-  where readPost (TagOpen "blockquote" (("id", 'm':postid):_):rest) =
-            Post <$> readMay postid <*>
-                pure (innerTextWithBr $ takeUntil (==TagClose "blockquote") rest)
+        sections (~== tgOpen "blockquote" [("class", "postMessage")]) posts
+  where readPost :: [Tag T.Text] -> Maybe Post
+        readPost (TagOpen "blockquote" (("id", mpostid):_):rest) =
+            Post <$> (readMay . T.unpack =<< T.stripPrefix "m" mpostid) <*>
+                pure (T.unpack $ innerTextWithBr $ takeUntil (== tgClose "blockquote") rest)
         readPost _ = Nothing
 
-parseThreadParameters :: [Tag String] -> Thread
+parseThreadParameters :: [Tag T.Text] -> Thread
 parseThreadParameters withOp@(TagOpen "div" (("id", postid):_):thrd)
-    | Just tid <- readMay =<< stripPrefix "thread_" postid
-     ,pin <- any (~== TagOpen "img" [("src", "/sticky.png")]) thrd
-     ,lck <- any (~== TagOpen "img" [("src", "/locked.png")]) thrd
+    | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
+     ,pin <- any (~== tgOpen "img" [("src", "/sticky.png")]) thrd
+     ,lck <- any (~== tgOpen "img" [("src", "/locked.png")]) thrd
      ,vposts <- parsePosts withOp
      ,postn <- fromMaybe 0 (subtract 1 <$> findMap omittedCount thrd)
              + length vposts
@@ -84,51 +95,51 @@ parseThreadParameters withOp@(TagOpen "div" (("id", postid):_):thrd)
               ,locked = lck
               }
   where omittedCount (TagText x) =
-                (readMay . takeUntil isSpace =<< stripPrefix "Пропущено " (dropWhile isSpace x))
-            <|> (readMay $ takeUntil isSpace $ dropWhile isSpace x) --int
+                (readMay . T.unpack . T.stripEnd =<< T.stripPrefix "Пропущено " (T.stripStart x))
+            <|> (readMay $ T.unpack $ T.strip x) --int
         omittedCount _ = Nothing
 parseThreadParameters thrd = error $ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" ++ show thrd
 
-parseThread :: [Tag String] -> Thread
+parseThread :: [Tag T.Text] -> Thread
 parseThread =
-    parseThreadParameters . tail . dropUntil (~== TagOpen "div" [("class", "thread")])
+    parseThreadParameters . tail . dropUntil (~== tgOpen "div" [("class", "thread")])
 
-parseSpeed :: [Tag String] -> Maybe Int
+parseSpeed :: [Tag T.Text] -> Maybe Int
 parseSpeed t = getSpeed (parseSpeed' t)
 -- FIXME seems that sosaka hides speed sometimes
-  where stripSpeedPrefix a = stripPrefix "[Скорость борды: " a
-                         <|> stripPrefix "[Posting speed: " a
-        isInfixOfSpeed a = isInfixOf "Скорость борды" a
-                        || isInfixOf "Posting speed" a
+  where stripSpeedPrefix a = T.stripPrefix "[Скорость борды: " a
+                         <|> T.stripPrefix "[Posting speed: " a
+        isInfixOfSpeed a = T.isInfixOf "Скорость борды" a
+                        || T.isInfixOf "Posting speed" a
         getSpeed mtext =
-                readMay . takeWhile (not . isSpace) =<<
+                readMay . T.unpack . T.stripEnd =<<
                     stripSpeedPrefix =<< mtext
         parseSpeed' tags =
             fromTagText . last <$>
                 getInfixOfP
-                    [\x -> x ~== TagOpen "div" [("class", "speed")]
-                        || x ~== TagComment "<div class=\"speed\">"
+                    [\x -> x ~== tgOpen "div" [("class", "speed")]
+                        || x ~== tgComment "<div class=\"speed\">"
                     ,maybe False isInfixOfSpeed . maybeTagText
                     ]
                     tags
 
-parsePages :: [Tag String] -> (Int, Int)
+parsePages :: [Tag T.Text] -> (Int, Int)
 parsePages =
 -- FIXME seems that sosaka hides pages sometimes
-    dropUntilLP [(~== TagOpen "table" [("border", "1")])
-                 ,(== TagOpen "tbody" [])
-                 ,(== TagOpen "tr" [])
-                 ,(== TagOpen "td" [])
+    dropUntilLP [(~== tgOpen "table" [("border", "1")])
+                 ,(== tgOpen "tbody" [])
+                 ,(== tgOpen "tr" [])
+                 ,(== tgOpen "td" [])
                  ] >>>
-        takeUntil (== TagClose "tbody") >>>
+        takeUntil (== tgClose "tbody") >>>
             mapMaybe maybeTagText >>>
                 \ts -> fromMaybe 0 (findMap aux ts) >$>
-                    \c -> (c, maximum (c : mapMaybe readMay ts))
-  where aux t = if '[' `elem` t
-                    then readMay $ filter (`notElem` "[]") t
+                    \c -> (c, maximum (c : mapMaybe (readMay . T.unpack) ts))
+  where aux t = if "[" `T.isInfixOf` t
+                    then readMay $ T.unpack $ T.filter (`notElem` "[]") t
                     else Nothing
 
-parsePage :: Board -> [Tag String] -> Page
+parsePage :: Board -> [Tag T.Text] -> Page
 parsePage board html =
     let (i, ps) = parsePages html in
     Page {pageId = i
@@ -137,23 +148,23 @@ parsePage board html =
          ,speed = fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate) $
                     parseSpeed html
          ,threads = map parseThreadParameters $
-                        partitions (~== TagOpen "div" [("class", "thread")]) html
+                        partitions (~== tgOpen "div" [("class", "thread")]) html
          }
 
 -- Only valid within one board.
-parseForm :: String -> [Tag String] -> (String, [Field])
+parseForm :: String -> [Tag T.Text] -> (String, [Field])
 parseForm host tags =
-    dropUntil (~== TagOpen "form" [("id", "postform")]) tags >$>
+    dropUntil (~== tgOpen "form" [("id", "postform")]) tags >$>
         \(f:html) -> (getWakabaPl f,
                         map inputToField . filter aux $
-                            takeUntil (~== TagClose "form") html
+                            takeUntil (~== tgClose "form") html
                      )
-  where getWakabaPl f = host <> fromAttrib "action" f
-        aux t | t ~== TagOpen "input" [("type", "radio")]
+  where getWakabaPl f = host <> T.unpack (fromAttrib "action" f)
+        aux t | t ~== tgOpen "input" [("type", "radio")]
                 = fromAttrib "checked" t == "checked"
               | otherwise
-                = t ~== TagOpen "input" [("name", ""){-, ("value", "")-}]
+                = t ~== tgOpen "input" [("name", ""){-, ("value", "")-}]
         inputToField tag =
-            field (UTF8.fromString $ fromAttrib "name" tag)
-                  (UTF8.fromString $ fromAttrib "value" tag)
+            field (ST.encodeUtf8 $ T.toStrict $ fromAttrib "name" tag)
+                  (T.encodeUtf8 $ fromAttrib "value" tag)
 

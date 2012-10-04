@@ -8,6 +8,7 @@ import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
 import System.Environment
 import Network.Socket
+import System.IO.UTF8 (readFile, writeFile, appendFile)
 
 data Config = Config
     {socks :: Bool

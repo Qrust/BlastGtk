@@ -15,6 +15,7 @@ import GtkBlast.Log
 import GtkBlast.Type_PastaSet
 import System.Directory
 import Control.Concurrent.STM
+import System.IO.UTF8 (readFile)
 
 readPasta :: FilePath -> IO [String]
 readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f

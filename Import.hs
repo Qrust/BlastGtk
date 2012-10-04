@@ -34,8 +34,7 @@ module Import
     ,modifyIORefM
     ) where
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
-import System.IO as A hiding (readFile, writeFile)
-import System.IO.UTF8 as A (readFile, writeFile)
+import System.IO as A hiding (readFile, writeFile, appendFile)
 import Data.Monoid as A
 import Data.Maybe as A
 import Data.List as A

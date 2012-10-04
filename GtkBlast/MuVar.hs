@@ -44,10 +44,6 @@ instance MuVar (IORef a) a where
     getIO = readIORef
     setIO = writeIORef
 
-instance MuVar (TVar a) a where
-    getIO = readTVarIO
-    setIO v a = atomically $ writeTVar v a
-
 instance MuVar CheckButton Bool where
     getIO = toggleButtonGetActive
     setIO = toggleButtonSetActive

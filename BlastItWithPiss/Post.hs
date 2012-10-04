@@ -7,8 +7,18 @@ import BlastItWithPiss.Image
 import BlastItWithPiss.Blast
 import Text.HTML.TagSoup
 import qualified Text.Show as S
-import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
+
+
+
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text as ST
+import qualified Data.Text.Encoding as ST
+
+
+
+
 
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)
@@ -56,57 +66,57 @@ successOutcome Success = True
 successOutcome (SuccessLongPost _) = True
 successOutcome _ = False
 
-wordfiltered :: [Tag String] -> Bool
+wordfiltered :: [Tag T.Text] -> Bool
 wordfiltered =
     isPrefixOf [TagOpen "html" [], TagOpen "body" [], TagOpen "h1" [],TagText "Spam detected."]
 
-haveAnError :: [Tag String] -> Maybe String
+haveAnError :: [Tag T.Text] -> Maybe T.Text
 haveAnError tags =
     fromTagText . last <$> getInfixOfP
-        [(~== TagOpen ("center"::String) [])
-        ,(~== TagOpen ("strong"::String) [])
-        ,(~== TagOpen ("font"::String) [("size", "5")])
+        [(~== TagOpen ("center"::T.Text) [])
+        ,(~== TagOpen ("strong"::T.Text) [])
+        ,(~== TagOpen ("font"::T.Text) [("size", "5")])
         ,isTagText
         ] tags
 
-cloudflareCaptcha :: [Tag String] -> Bool
+cloudflareCaptcha :: [Tag T.Text] -> Bool
 cloudflareCaptcha =
     isInfixOf [TagOpen "title" [], TagText "Attention required!"]
 
-cloudflareBan :: [Tag String] -> Bool
+cloudflareBan :: [Tag T.Text] -> Bool
 cloudflareBan =
-    isInfixOfP [(==TagOpen "title" []), maybe False (isPrefixOf "Access Denied") . maybeTagText]
+    isInfixOfP [(==TagOpen "title" []), maybe False (T.isPrefixOf "Access Denied") . maybeTagText]
 
-detectOutcome :: [Tag String] -> Outcome
+detectOutcome :: [Tag T.Text] -> Outcome
 detectOutcome tags
     | wordfiltered tags = Wordfilter
     | Just err <- haveAnError tags =
         case () of
-            _ | Just reason <- stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
-                -> Banned (Err reason)
-              | isInfixOf "Флудить нельзя" err
+            _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
+                -> Banned (Err $ T.unpack reason)
+              | T.isInfixOf "Флудить нельзя" err
                 -> SameMessage
-              | isInfixOf "Этот файл уже был загружен" err
+              | T.isInfixOf "Этот файл уже был загружен" err
                 -> SameImage
-              | isInfixOf "Обнаружен флуд" err
+              | T.isInfixOf "Обнаружен флуд" err
                 -> TooFastPost
-              | isInfixOf "Вы уже создали один тред" err
+              | T.isInfixOf "Вы уже создали один тред" err
                 -> TooFastThread
-              | isInfixOf "забыли ввести капчу" err
+              | T.isInfixOf "забыли ввести капчу" err
                 -> NeedCaptcha
-              | isInfixOf "Неверный код подтверждения" err
+              | T.isInfixOf "Неверный код подтверждения" err
                 -> WrongCaptcha
-              | isInfixOf "заблокирован на сервере ReCaptcha" err
+              | T.isInfixOf "заблокирован на сервере ReCaptcha" err
                 -> RecaptchaBan
-              | isInfixOf "Слишком большое сообщение" err
+              | T.isInfixOf "Слишком большое сообщение" err
                 -> LongPost
-              | isInfixOf "Загружаемый вами тип файла не поддерживается" err
+              | T.isInfixOf "Загружаемый вами тип файла не поддерживается" err
                 -> CorruptedImage
               | otherwise
-                -> OtherError (Err err)
+                -> OtherError (Err $ T.unpack err)
     | otherwise = UnknownError
 
-detectCloudflare :: [Tag String] -> Maybe Outcome
+detectCloudflare :: [Tag T.Text] -> Maybe Outcome
 detectCloudflare tags
     | cloudflareCaptcha tags = Just CloudflareCaptcha
     | cloudflareBan tags = Just CloudflareBan
@@ -122,9 +132,9 @@ doWeNeedCaptcha wakabapl thread = do
 getChallengeKey :: String -> Blast String
 getChallengeKey key = do
 -- TODO use JSON parser(since we'll be using it for config and update manifest anyway)
-    rawjs <- httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
-    return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjs) $
-        mapMaybe getChallenge $ lines rawjs
+    rawjsstr <- T.unpack <$> httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
+    return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjsstr) $
+        mapMaybe getChallenge $ lines rawjsstr
   where getChallenge s =
             takeUntil (=='\'') <$> stripPrefix "challenge : \'" (dropWhile isSpace s)
 
@@ -162,8 +172,8 @@ instance NFData (Request a) where
         queryString r `deepseq` 
         requestHeaders r `deepseq` 
         requestBody r `deepseq` 
-        proxy r `seq` 
-        socksProxy r `seq` 
+        proxy r `deepseq` 
+        socksProxy r `deepseq` 
         rawBody r `deepseq` 
         decompress r `deepseq` 
         redirectCount r `deepseq` 
@@ -192,17 +202,17 @@ prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl oth
                 else return unesctext
     let fields =
             [field "parent" (maybe "" show thread)
-            ,field "kasumi" (UTF8.fromString subject)
-            ,field "shampoo" (UTF8.fromString text)
+            ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
+            ,field "shampoo" (T.encodeUtf8 $ T.pack text)
             ,field "recaptcha_challenge_field" (fromString chKey)
             ] ++
             ([Field
                 [("name", "file")
-                ,("filename", maybe mempty (UTF8.fromString . filename) image)]
+                ,("filename", maybe mempty (ST.encodeUtf8 . ST.pack . filename) image)]
                 [(hContentType, maybe defaultMimeType contentType image)]
                 (maybe mempty bytes image)]
             ) ++
-            ([field "recaptcha_response_field" (UTF8.fromString captcha)
+            ([field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)
                 | not $ null captcha]
             ) ++
             (if sage
@@ -238,14 +248,13 @@ prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl oth
     --liftIO $ print =<< getCurrentTime
     return $!! (req, if null rest then Success else SuccessLongPost rest)
 
-post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe [Tag String])
+post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe [Tag T.Text])
 post (req, success) = do
     catches
-        (do Response st _ heads bod <- httpReq req
-            let tags = toStrTags bod
+        (do Response st _ heads tags <- httpReqStrTags req
             case()of
              _ | (statusCode st >= 300 && statusCode st < 400)
-                 && (maybe False (isInfixOf "res/" . UTF8.toString) $
+                 && (maybe False (ST.isInfixOf "res/" . ST.decodeASCII) $
                         lookup "Location" heads)
                 -> return (success, Nothing)
                | statusCode st == 403

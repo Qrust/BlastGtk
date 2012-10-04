@@ -11,7 +11,10 @@ import GtkBlast.Type_CaptchaMode
 import GtkBlast.Environment
 import GtkBlast.Log
 import "blast-it-with-piss" BlastItWithPiss.Board
+import Data.Version
 import System.FilePath
+import Paths_blast_it_with_piss
+import System.IO.UTF8 (readFile, writeFile)
 
 data Conf = Conf {coActiveBoards :: [Board]
                  ,coPastaSet :: PastaSet
@@ -34,6 +37,7 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coUseNoProxy :: Bool
                  ,coCaptchaMode :: CaptchaMode
                  ,coAntigateKey :: String
+                 ,coLastVersion :: Version
                  }
     deriving (Eq, Show, Read)
 
@@ -65,6 +69,7 @@ instance Default Conf where
          ,coUseNoProxy = True
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
+         ,coLastVersion = version
          }
 
 readConfig :: FilePath -> IO Conf

@@ -7,21 +7,31 @@ import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
-import GtkBlast.Mainloop (mainloop)
+import GtkBlast.Mainloop (setMainLoop)
 import Graphics.UI.Gtk hiding (get)
 import System.Environment.UTF8
 import System.Exit
 import System.FilePath
 import Network (withSocketsDo)
+import Paths_blast_it_with_piss
 #ifdef BINDIST
 import System.Directory (setCurrentDirectory)
 import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
+-- FIXME Sosaka changed captcha (Board.adaptivity)
+-- Release an update immediately upon fix, ВЫКЛЮЧАЙКОМП@НАТУРНИКГО-wiper in /mdk/ might need it.
+
+-- TODO Tagsoup is the source of freezes, it's parseTags allocates a shit ton
+-- and forces program into 90% GC routine. Drop in favor of (html-conduit(cursor)/xml-conduit(?))
+-- FIXME Blast lazyness/strictness. Now that we force everything we run in constant space(?)
+
+-- Also parse API with those
+
+-- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
--- TODO FIXME FIXME readIORef buBanned
 
 -- TODO вайпать постами из треда/страницы choosePost
 -- TODO Move RandomNum/RandomChar generation to worker threads
@@ -49,17 +59,17 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO document
 
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
 -- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit
 -- TODO add API as a fallback if can't parse html
--- TODO i18n
+-- TODO i18n (represent messages by types + typeclass?)
 -- TODO configurable escaping
 -- TODO configurable timeout
 -- TODO config last thread time
 -- TODO Показывать несколько капч одновременно
 -- TODO background mode
--- TODO FIX FREEZES
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
 -- TODO Support 2chnu, alterchan.
 
@@ -109,13 +119,11 @@ main = withSocketsDo $ do
         (env, setConf) <- createWidgetsAndFillEnv builder conf
     
         -- start main loop
-    
-        void $ timeoutAdd
-            (do runE env mainloop
-                return True) 50 --kiloseconds, 20 fps.
+
+        setMainLoop env
     
         void $ onDestroy (window env) $ runE env $ do
-            writeConfig configfile =<< io (setConf def{coFirstLaunch=False})
+            writeConfig configfile =<< io (setConf def{coFirstLaunch=False, coLastVersion=version})
             io $ mainQuit
     
         -- start main gui

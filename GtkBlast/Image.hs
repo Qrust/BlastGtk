@@ -10,6 +10,7 @@ import GtkBlast.Environment
 import "blast-it-with-piss" BlastItWithPiss
 import System.FilePath
 import System.Directory
+import Control.Concurrent.STM
 
 filterImages :: [FilePath] -> [FilePath]
 filterImages = filter ((`elem` [".jpg",".jpeg",".gif",".png"]) . takeExtension)
@@ -25,5 +26,5 @@ regenerateImages = do
     li <- get imagesLast
     when (images /= li) $ do
         writeLog "regen images"
-        set (timages shS) images
-        set imagesLast =<< get (timages shS)
+        io $ atomically $ writeTVar (timages shS) images
+        set imagesLast images

@@ -2,6 +2,7 @@
 module GtkBlast.Mainloop
     (wipebuttonEnvPart
     ,mainloop
+    ,setMainLoop
     ) where
 import Import hiding (on)
 import GtkBlast.IO
@@ -18,7 +19,7 @@ import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get,set)
-import Control.Concurrent(forkOS)
+import Control.Concurrent
 import GHC.Conc
 import Control.Concurrent.STM
 import qualified Data.Map as M
@@ -52,7 +53,8 @@ regenerateExcluding board exc = do
                     mthread <- io $ atomically $ newTVar Nothing
                     mmode <- io $ atomically $ newTVar Nothing
                     threadid <- io $ forkOS $ runBlast $ do
-                        entryPoint board p Log shS MuSettings{..} s tqOut
+                        --entryPoint p board Log shS MuSettings{..} s (putStrLn . show)
+                        entryPoint p board Log shS MuSettings{..} s $ atomically . writeTQueue tqOut
                     Just . WipeUnit p threadid <$> io (newIORef False)
         )
     
@@ -88,9 +90,9 @@ killWipe :: E ()
 killWipe = do
     E{..} <- ask
     writeLog "Stopping wipe..."
-    killAllCaptcha
     set wipeStarted False
     maintainBoardUnits
+    killAllCaptcha
 
 wipebuttonEnvPart :: Builder -> EnvPart
 wipebuttonEnvPart b = EP
@@ -175,7 +177,6 @@ mainloop :: E ()
 mainloop = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
-        io $ progressBarPulse wprogresswipe
         maintainCaptcha
         regeneratePasta
         regenerateImages
@@ -183,3 +184,13 @@ mainloop = do
         maintainBoardUnits
         updWipeMessage
     mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
+
+setMainLoop :: Env -> IO ()
+setMainLoop env = do
+    void $ idleAdd (do
+        whenM (get $ wipeStarted env) $
+            progressBarPulse $ wprogresswipe env
+        True <$ yield) priorityDefaultIdle
+    void $ timeoutAddFull (do
+        runE env mainloop
+        True <$ yield) priorityDefaultIdle 50 --kiloseconds, 20 fps.

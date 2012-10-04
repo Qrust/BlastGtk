@@ -59,7 +59,6 @@ library
                   ,resourcet
                   ,case-insensitive
                   ,tagsoup
-                  ,utf8-string
                   ,deepseq
 
     exposed-modules:

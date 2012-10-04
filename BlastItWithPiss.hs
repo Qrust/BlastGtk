@@ -6,11 +6,9 @@ module BlastItWithPiss
     ,OriginStamp(..)
     ,Message(..)
     ,OutMessage(..)
-    ,LogSettings(..)
     ,LogDetail(..)
     ,ProxySettings(..)
     ,defMuS
-    ,defLogS
     ,defPrS
     ,entryPoint
     ,sortSsachBoardsByPopularity
@@ -28,9 +26,13 @@ import Control.Concurrent.Lifted
 import Control.Concurrent.STM
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State.Strict
 import qualified Text.Show as Show
-import qualified Codec.Binary.UTF8.Generic as UTF8
 import Text.HTML.TagSoup
+
+
+import qualified Data.Text.Lazy as T
+
 
 {-
 import Control.Concurrent (forkIO)
@@ -77,40 +79,27 @@ data Message = OutcomeMessage !Outcome
 
 data OutMessage = OutMessage !OriginStamp !Message
 
--- memory hog (?)
--- TODO Either expose LogS to calling thread or replace it with stateT with mode and thread.
-data LogSettings = LogS
-                {gwakabapl :: TVar String
-                ,gotherfields :: TVar [Field]
-                ,gmode :: TVar Mode
-                ,gthread :: TVar (Maybe Int)
-                ,gimage :: TVar (Maybe Image)
-                ,gpasta :: TVar String
-                ,gchKey :: TVar String
-                ,glthreadtime :: TVar POSIXTime
-                ,glposttime :: TVar POSIXTime
-                }
-
 data LogDetail = Log
                | Don'tLog
     deriving (Eq, Show, Ord, Enum, Bounded)
 
-data ProxySettings = ProxyS {psharedCookies :: TMVar CookieJar
-                            ,pcloudflareCaptchaLock :: TMVar ()
+data ProxySettings = ProxyS {psharedCookies :: !(TMVar CookieJar)
+                            ,pcloudflareCaptchaLock :: !(TMVar ())
                             }
 
 data BlastLogData = BlastLogData
-        {bldProxy :: BlastProxy
-        ,bldBoard :: Board
-        ,bldLogD :: LogDetail
-        ,bldLogS :: LogSettings
-        ,bldShS :: ShSettings
-        ,bldMuS :: MuSettings
-        ,bldPrS :: ProxySettings
-        ,bldOut :: TQueue OutMessage -- ^ sendOut :: OutMessage -> IO () ?
+        {bldProxy :: !BlastProxy
+        ,bldBoard :: !Board
+        ,bldLogD :: !LogDetail
+        ,bldShS :: !ShSettings
+        ,bldMuS :: !MuSettings
+        ,bldPrS :: !ProxySettings
+        ,bldOut :: !(OutMessage -> IO ())
         }
 
-type BlastLog = ReaderT BlastLogData Blast
+data OriginInfo = OriginInfo {gmode :: !Mode, gthread :: !(Maybe Int)}
+
+type BlastLog = ReaderT BlastLogData (StateT OriginInfo Blast)
 
 instance Show OriginStamp where
     show (OriginStamp time proxy board mode thread) =
@@ -127,6 +116,9 @@ instance Show Message where
 
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
+
+instance Default OriginInfo where
+    def = OriginInfo CreateNew Nothing
 
 instance NFData CaptchaType
 
@@ -148,6 +140,12 @@ instance NFData Message where
 instance NFData OutMessage where
     rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
 
+instance MonadRandom m => MonadRandom (StateT s m) where
+    getRandom = lift getRandom
+    getRandoms = lift getRandoms
+    getRandomR = lift . getRandomR
+    getRandomRs = lift . getRandomRs
+
 flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
 flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
 
@@ -157,24 +155,14 @@ defMuS = atomically $ do
     mmode <- newTVar Nothing
     return MuSettings{..}
 
-defLogS :: IO LogSettings
-defLogS = atomically $ do
-    gwakabapl <- newTVar ""
-    gotherfields <- newTVar []
-    gmode <- newTVar CreateNew
-    gthread <- newTVar Nothing
-    gimage <- newTVar Nothing
-    gpasta <- newTVar ""
-    gchKey <- newTVar ""
-    glthreadtime <- newTVar 0
-    glposttime <- newTVar 0
-    return LogS{..}
-
 defPrS :: IO ProxySettings
 defPrS = atomically $ do
     psharedCookies <- newEmptyTMVar
     pcloudflareCaptchaLock <- newTMVar ()
     return ProxyS{..}
+
+runBlastLog :: BlastLogData -> BlastLog a -> Blast a
+runBlastLog d m = evalStateT (runReaderT m d) def
 
 askProxy :: BlastLog BlastProxy
 askProxy = asks bldProxy
@@ -185,42 +173,37 @@ askBoard = asks bldBoard
 askLogD :: BlastLog LogDetail
 askLogD = asks bldLogD
 
-askLogS :: BlastLog LogSettings
-askLogS = asks bldLogS
+askOrI :: BlastLog OriginInfo
+askOrI = lift get
 
 askShS :: BlastLog ShSettings
 askShS = asks bldShS
 
-askBLSM :: BlastLog (Board, LogSettings, ShSettings, MuSettings)
-askBLSM = asks $ \b -> (bldBoard b, bldLogS b, bldShS b, bldMuS b)
+askBSM :: BlastLog (Board, ShSettings, MuSettings)
+askBSM = asks $ \b -> (bldBoard b, bldShS b, bldMuS b)
 
 askProxyS :: BlastLog ProxySettings
 askProxyS = asks bldPrS
 
-askOut :: BlastLog (TQueue OutMessage)
+askOut :: BlastLog (OutMessage -> IO ())
 askOut = asks bldOut
 
-rec :: NFData a => TVar a -> a -> BlastLog a
-rec t a = do
-    d <- askLogD
-    when (d == Log) $
-        a `deepseq` liftIO (atomically $ writeTVar t a)
-    return a 
+recMode :: Mode -> BlastLog ()
+recMode m = lift get >>= \s -> lift $ put s{gmode=m}
 
-recM :: NFData a => TVar a -> BlastLog a -> BlastLog a
-recM t m = rec t =<< m
+recThread :: (Maybe Int) -> BlastLog ()
+recThread t = lift get >>= \s -> lift $ put s{gthread=t}
 
 blastOut :: Message -> BlastLog ()
 blastOut msg = do
     to <- askOut
     proxy <- askProxy
     board <- askBoard
-    LogS{..} <- askLogS
+    OriginInfo{..} <- askOrI
     liftIO $ do
-        (mode, thread) <- (,) <$> readTVarIO gmode <*> readTVarIO gthread
         now <- getPOSIXTime
-        let a = OutMessage (OriginStamp now proxy board mode thread) msg
-        atomically $ a `deepseq` writeTQueue to a
+        let a = OutMessage (OriginStamp now proxy board gmode gthread) msg
+        a `deepseq` to a
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
@@ -229,7 +212,7 @@ blastLog msg = do
         blastOut (LogMessage msg)
 
 blast :: Blast a -> BlastLog a
-blast = lift
+blast = lift . lift
 
 blastImage :: Mode -> BlastLog (Maybe Image)
 blastImage mode = do
@@ -275,12 +258,16 @@ blastCaptcha wakabapl thread = do
                 AbortCaptcha -> return (chKey, Nothing)
 
 -- TODO It's probably buggy as hell.
-blastCloudflare :: BlastLog [Tag String] -> String -> [Tag String] -> BlastLog [Tag String]
-blastCloudflare what url tags
-    | cloudflareBan tags = return []
-    | cloudflareCaptcha tags = cloudflareChallenge
-    | otherwise = return tags
+blastCloudflare :: BlastLog [Tag T.Text] -> String -> (Response [Tag T.Text]) -> BlastLog [Tag T.Text]
+blastCloudflare what url rsp
+    | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) =
+        return [] -- oyoyoyoy
+    | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
+        cloudflareChallenge
+    | otherwise =
+        return $ responseBody rsp
   where cloudflareChallenge = do
+            blastLog "Encountered cloudflare challenge"
             ProxyS{..} <- askProxyS
             (empt, work) <- liftIO $ atomically $ do
                 empt <- isEmptyTMVar psharedCookies
@@ -311,7 +298,7 @@ blastCloudflare what url tags
                         Answer s -> do
                             let rq = urlEncodedBody
                                     [("recaptcha_challenge_key", fromString chKey)
-                                    ,("recaptcha_response_key", UTF8.fromString s)
+                                    ,("recaptcha_response_key", fromString s)
                                     ,("message", "")
                                     ,("act", "captcha")
                                     ] $ (fromJust $ parseUrl url)
@@ -323,7 +310,7 @@ blastCloudflare what url tags
                             if ckl==0
                                 then do blastLog "Couldn't get Cloudflare cookies. Retrying."
                                         liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
-                                        blastCloudflare what url tags
+                                        blastCloudflare what url rsp
                                 else do blastLog $ "Cloudflare cookie count: " ++ show (length $ destroyCookieJar ck)
                                         liftIO $ atomically $ do
                                             putTMVar pcloudflareCaptchaLock ()
@@ -339,7 +326,7 @@ blastCloudflare what url tags
 
 blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
-    (board, LogS{..}, ShSettings{..}, _) <- askBLSM
+    (board, ShSettings{..}, _) <- askBSM
     (chKey, mcap) <- if cap || mode==CreateNew || not ssachAdaptivity
                         then do blastLog "querying captcha"
                                 blastCaptcha wakabapl thread
@@ -347,7 +334,6 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
         Just captcha -> do
-            void $ rec gchKey chKey
             -- TODO post reposts
             p <- blast $ prepare True board thread postdata chKey captcha wakabapl
                                  otherfields ssachLengthLimit
@@ -400,7 +386,7 @@ blastLoop w lthreadtime lposttime = do
                 throwIO a
           ]
     flip catches hands $ do
-        (board, LogS{..}, ShSettings{..}, MuSettings{..}) <- askBLSM
+        (board, ShSettings{..}, MuSettings{..}) <- askBSM
         now <- liftIO $ getPOSIXTime
         canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                             (return $ now - lthreadtime >= ssachThreadTimeout board)
@@ -409,23 +395,19 @@ blastLoop w lthreadtime lposttime = do
         p0 <- getPage 0
         --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
         blastLog $ "page params" ++ show (pageId p0, lastpage p0, speed p0, length $ threads p0)
-        mode <- recM gmode $
-                    flMaybeSTM mmode return $ chooseMode board canmakethread p0
+        mode <- flMaybeSTM mmode return $ chooseMode board canmakethread p0
+        recMode mode
         (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
                         chooseThread mode getPage p0
-        void $ rec gthread thread
+        recThread thread
         blastLog $ "chose mode " ++ show mode
         rimage <- blastImage mode
-        image <- recM gimage $
-                    maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
-        pasta <- recM gpasta $
-                    blastPasta image
+        image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
+        pasta <- blastPasta image
         watermark <- liftIO $ readTVarIO tmakewatermark
         (nthreadtime, nposttime) <-
             blastPost False lthreadtime lposttime w mode thread
                             (PostData "" pasta image (sageMode mode) watermark)
-        void $ rec glthreadtime nthreadtime
-        void $ rec glposttime nposttime
         blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.
@@ -438,24 +420,27 @@ blastLoop w lthreadtime lposttime = do
 -- > if st==ThreadDied || st==ThreadFinished
 -- >    then resurrect
 -- >    else continue
-entryPoint :: Board -> BlastProxy -> LogDetail -> ShSettings -> MuSettings -> ProxySettings -> TQueue OutMessage -> Blast ()
-entryPoint board proxy lgDetail shS muS prS output = do
-    httpSetProxy proxy
-    defl@LogS{..} <- liftIO defLogS
-    flip runReaderT (BlastLogData proxy board lgDetail defl shS muS prS output) $ do
+entryPoint :: BlastProxy -> Board -> LogDetail -> ShSettings -> MuSettings -> ProxySettings -> (OutMessage -> IO ()) -> Blast ()
+entryPoint proxy board lgDetail shS muS prS output = do
+    runBlastLog (BlastLogData proxy board lgDetail shS muS prS output) $ do
+        blastLog "Entry point"
+        blast $ httpSetProxy proxy
         let url = ssachPage board 0
         let chkStatus st@Status{statusCode=c} heads
                 | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads Nothing
                 | otherwise = Nothing
         x <- try $ do
-            tgs <- blast $ withCheckStatus (Just chkStatus) $ httpGetStrTags url
-            parseForm ssach <$> blastCloudflare (blast $ httpGetStrTags url) url tgs
+            blastLog $ "Downloading page form"
+            rsp <- blast $ httpReqStrTags (fromJust $ parseUrl url){checkStatus=chkStatus}
+            blastLog "Parsing what we got..."
+            parseForm ssach <$> blastCloudflare (blast $ httpGetStrTags url) url rsp
         case x of
             Left (a::SomeException) -> do
                 blastLog $ "Couldn't parse page form, got exception " ++ show a
-            Right w@(wakabapl, otherfields) -> do
-                void $ rec gwakabapl wakabapl
-                void $ rec gotherfields otherfields
+            Right w -> do
+                blastLog "Starting loop"
+                --blastLog $ show $ length $ (show w :: String)
+                --forever (return () >> liftIO yield)
                 blastLoop w 0 0
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])

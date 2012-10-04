@@ -10,11 +10,8 @@ module BlastItWithPiss.Blast
     ,maybeNoProxy
     ,userAgent
     ,canonicalizeBrowser
-    ,canonicalizeReq
     ,runBlast
     ,httpSetProxy
-    ,toStr
-    ,toStrTags
     ,httpReq
     ,httpReqStr
     ,httpReqStrTags
@@ -32,8 +29,13 @@ import Network.Socks5
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.Browser
 import qualified Text.Show as Show
-import qualified Codec.Binary.UTF8.Generic as UTF8
 import Control.Monad.Trans.Resource
+
+import qualified Data.ByteString.Char8 as B8
+import BlastItWithPiss.Parsing()
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
+
 
 type Blast = BrowserAction
 
@@ -44,7 +46,7 @@ data BlastProxy = HttpProxy !Proxy
 
 instance Show BlastProxy where
     show (HttpProxy (Proxy h p)) =
-        (UTF8.toString h) ++ ":" ++ show p
+        B8.unpack h ++ ":" ++ show p
     show (SocksProxy (SocksConf h (PortNum p) _)) =
         h ++ ":" ++ show p
     show NoProxy = "@"
@@ -103,9 +105,6 @@ canonicalizeBrowser = do
     --setCookieFilter $ \_ _ -> return False
     --
 
-canonicalizeReq :: Request a -> Request a
-canonicalizeReq = id
-
 runBlast :: Blast a -> IO a
 runBlast f = 
     withManager (`browse` do
@@ -122,28 +121,28 @@ httpSetProxy NoProxy = httpSetProxys Nothing Nothing
 httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
 httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
 
-toStr :: LByteString -> String
-toStr = UTF8.toString
-
-toStrTags :: LByteString -> [Tag String]
-toStrTags = parseTags . toStr
-
 httpReq :: Request (ResourceT IO) -> Blast (Response LByteString)
 httpReq = makeRequestLbs
 
-httpReqStr :: Request (ResourceT IO) -> Blast String
-httpReqStr u = toStr . responseBody <$> httpReq u
+httpReqStr :: Request (ResourceT IO) -> Blast (Response T.Text)
+httpReqStr u = fmap T.decodeUtf8 <$> httpReq u
 
-httpReqStrTags :: Request (ResourceT IO) -> Blast [Tag String]
-httpReqStrTags u = toStrTags . responseBody <$> httpReq u
+httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag T.Text])
+httpReqStrTags u = fmap (parseTags . T.decodeUtf8) <$> httpReq u
 
 httpGet :: String -> Blast LByteString
 httpGet u = do
-    r <- canonicalizeReq <$> parseUrl u
-    responseBody <$> httpReq r
+    r <- parseUrl u
+    responseBody <$> makeRequestLbs r
 
-httpGetStr :: String -> Blast String
-httpGetStr u = UTF8.toString <$> httpGet u
+httpGetStr :: String -> Blast T.Text
+httpGetStr u = do
+    g <- httpGet u
+    let x = g `deepseq` T.decodeUtf8 g
+    x `deepseq` return x
 
-httpGetStrTags :: String -> Blast [Tag String]
-httpGetStrTags u = parseTags <$> httpGetStr u
+httpGetStrTags :: String -> Blast [Tag T.Text]
+httpGetStrTags u = do
+    g <- httpGetStr u
+    let x = g `deepseq` parseTags g
+    x `deepseq` return x
