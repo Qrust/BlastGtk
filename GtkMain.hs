@@ -20,17 +20,13 @@ import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
--- IMMEDIATE ACTION NEEDED
-
--- FIXME Sosaka changed captcha (Board.adaptivity)
--- Release an update immediately upon fix, ВЫКЛЮЧАЙКОМП@НАТУРНИКГО-wiper in /mdk/ might need it.
-
--- TODO Tagsoup is the source of freezes, it's parseTags allocates a shit ton
+-- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
 -- and forces program into 90% GC routine. Drop in favor of (html-conduit(cursor)/tagstream-conduit/xml-conduit(?))
 -- Also parse API with those
 -- FIXME Blast lazyness/strictness. Now that we force everything we run in constant space(?)
 -- FIXME Text constants increase binary size a lot (4.2 mb, before Text — 3.9 mb) — investigate
 
+-- FIXME Compiling under wine is slow as hell, move haskell platform from NTFS to /opt.
 
 
 
