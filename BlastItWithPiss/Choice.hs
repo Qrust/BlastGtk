@@ -201,18 +201,19 @@ chooseThread' _ CreateNew Page{..} = do
 chooseThread' canfail mode Page{..}
     --inb4 >kokoko
     | thrds <- if mode == ShitupSticky
-                then filter unlockedSticky threads
+                then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
                 else filter (not . locked) threads -- we include stickys too
-    , add <- if mode /= ShitupSticky && canfail
-                then ((0, 50) :) -- add the possibility of failure
-                                 -- in that case we advance to the next/previous page
-                else id
-    , inv <- if mode == BumpUnpopular || mode == BumpOld
+    , addfail <- if mode /= ShitupSticky && canfail
+                    then (((-1), 50) :) -- add the possibility of failure
+                                       -- in that case we advance to the next/previous page
+                    else id
+    , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
-                     -- these modes give more weight to unpopular threads
                 else id
-    = justIf (/= 0) <$> fromList (add $
+    = let x = (addfail $
                 map (threadId &&& inv . fromIntegral . postcount) thrds)
+          a = (maximum $ map postcount thrds)
+            in (a, x) `traceShow` (justIf (>= 0) <$> fromList x)
 
 chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
 chooseThread CreateNew _ p0 = return (Nothing, p0)

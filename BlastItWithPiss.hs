@@ -391,16 +391,24 @@ blastLoop w lthreadtime lposttime = do
         canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                             (return $ now - lthreadtime >= ssachThreadTimeout board)
                             (return False)
-        let getPage p = blast $ parsePage board <$> httpGetStrTags (ssachPage board p)
+        let getPage p = do
+                blastLog $ "chooseThread: getPage: going to page " ++ show p
+                blast $ parsePage board <$> httpGetStrTags (ssachPage board p)
         p0 <- getPage 0
         --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
-        blastLog $ "page params" ++ show (pageId p0, lastpage p0, speed p0, length $ threads p0)
+        blastLog $ "page params:\n" ++
+            "page id: " ++ show (pageId p0) ++ "\n" ++
+            "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
+            "speed: " ++ show (speed p0) ++ "\n" ++
+            "threads: " ++ show (length $ threads p0) ++ "\n" ++
+            "max replies: " ++ show (maximum $ map postcount $ threads p0)
         mode <- flMaybeSTM mmode return $ chooseMode board canmakethread p0
         recMode mode
+        blastLog $ "chose mode " ++ show mode
         (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
                         chooseThread mode getPage p0
         recThread thread
-        blastLog $ "chose mode " ++ show mode
+        blastLog $ "chose thread " ++ show thread
         rimage <- blastImage mode
         image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
         pasta <- blastPasta image
@@ -432,7 +440,6 @@ entryPoint proxy board lgDetail shS muS prS output = do
         x <- try $ do
             blastLog $ "Downloading page form"
             rsp <- blast $ httpReqStrTags (fromJust $ parseUrl url){checkStatus=chkStatus}
-            blastLog "Parsing what we got..."
             parseForm ssach <$> blastCloudflare (blast $ httpGetStrTags url) url rsp
         case x of
             Left (a::SomeException) -> do

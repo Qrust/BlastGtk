@@ -95,8 +95,8 @@ parseThreadParameters withOp@(TagOpen "div" (("id", postid):_):thrd)
               ,locked = lck
               }
   where omittedCount (TagText x) =
-                (readMay . T.unpack . T.stripEnd =<< T.stripPrefix "Пропущено " (T.stripStart x))
-            <|> (readMay $ T.unpack $ T.strip x) --int
+                (readMay . takeUntil isSpace . T.unpack =<< T.stripPrefix "Пропущено " (T.stripStart x))
+            <|> (readMay $ takeUntil isSpace $ T.unpack x) --int
         omittedCount _ = Nothing
 parseThreadParameters thrd = error $ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" ++ show thrd
 
@@ -107,21 +107,14 @@ parseThread =
 parseSpeed :: [Tag T.Text] -> Maybe Int
 parseSpeed t = getSpeed (parseSpeed' t)
 -- FIXME seems that sosaka hides speed sometimes
-  where stripSpeedPrefix a = T.stripPrefix "[Скорость борды: " a
-                         <|> T.stripPrefix "[Posting speed: " a
-        isInfixOfSpeed a = T.isInfixOf "Скорость борды" a
-                        || T.isInfixOf "Posting speed" a
+  where stripSpeedPrefix a = T.stripPrefix "[Скорость борды: " (T.stripStart a)
+                         <|> T.stripPrefix "[Posting speed: " (T.stripStart a)
         getSpeed mtext =
-                readMay . T.unpack . T.stripEnd =<<
-                    stripSpeedPrefix =<< mtext
-        parseSpeed' tags =
-            fromTagText . last <$>
-                getInfixOfP
-                    [\x -> x ~== tgOpen "div" [("class", "speed")]
-                        || x ~== tgComment "<div class=\"speed\">"
-                    ,maybe False isInfixOfSpeed . maybeTagText
-                    ]
-                    tags
+            readMay . takeUntil isSpace . T.unpack =<< mtext
+        parseSpeed' =
+            stripSpeedPrefix <=< maybeTagText <=< headMay . tailSafe .
+                dropUntil (\x -> x ~== tgOpen "div" [("class", "speed")]
+                              || x ~== tgComment "<div class=\"speed\">")
 
 parsePages :: [Tag T.Text] -> (Int, Int)
 parsePages =

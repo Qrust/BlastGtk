@@ -123,11 +123,12 @@ detectCloudflare tags
     | otherwise = Nothing
 
 -- | Query adaptive captcha state
-doWeNeedCaptcha :: String -> Maybe Int -> Blast Bool
-doWeNeedCaptcha wakabapl thread = do
-    let td = maybe "" show thread
-    elem (TagOpen "div" [("id", "recaptcha_widget")]) <$> httpGetStrTags
-        (wakabapl ++ "?task=captcha&thread=" ++ td ++ "&dummy=" ++ td)
+doWeNeedCaptcha :: String -> String -> Blast Bool
+doWeNeedCaptcha wakabapl usercode = do
+    cd <- responseBody <$> httpReqStr
+        (fromJust $ parseUrl $ "http://2ch.so/makaba/captcha?code="++usercode)
+            {requestHeaders = [("X-Requested-With", "XMLHttpRequest")]}
+    return $ not (T.isInfixOf "OK" cd || T.isInfixOf "VIP" cd)
 
 getChallengeKey :: String -> Blast String
 getChallengeKey key = do
@@ -148,8 +149,8 @@ getCaptchaImage chKey =
     httpGet $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
 ssachGetCaptcha :: String -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
-ssachGetCaptcha wakabapl thread key chKey =
-    ifM (doWeNeedCaptcha wakabapl thread)
+ssachGetCaptcha wakabapl _ key chKey =
+    ifM (doWeNeedCaptcha wakabapl "")
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
