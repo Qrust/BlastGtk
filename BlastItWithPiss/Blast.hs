@@ -21,7 +21,6 @@ module BlastItWithPiss.Blast
     ) where
 import Import
 import Control.Exception.Lifted
-import Text.HTML.TagSoup
 import Network.Mime
 import Network.HTTP.Types
 import Network.Socket.Internal
@@ -31,10 +30,16 @@ import Network.HTTP.Conduit.Browser
 import qualified Text.Show as Show
 import Control.Monad.Trans.Resource
 
+import Text.HTML.TagSoup (Tag)
+import Text.HTML.TagSoup.Fast
+
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as B8
 import BlastItWithPiss.Parsing()
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.Encoding as T
+
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 
 
 type Blast = BrowserAction
@@ -124,25 +129,28 @@ httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
 httpReq :: Request (ResourceT IO) -> Blast (Response LByteString)
 httpReq = makeRequestLbs
 
-httpReqStr :: Request (ResourceT IO) -> Blast (Response T.Text)
-httpReqStr u = fmap T.decodeUtf8 <$> httpReq u
+httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
+httpReqStr u = fmap (T.decodeUtf8 . S.concat . L.toChunks) <$> httpReq u
 
-httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag T.Text])
-httpReqStrTags u = fmap (parseTags . T.decodeUtf8) <$> httpReq u
+httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
+httpReqStrTags u = fmap (x . g) <$> httpReq u
+    where g = S.concat . L.toChunks
+          x = parseTagsT
 
 httpGet :: String -> Blast LByteString
 httpGet u = do
     r <- parseUrl u
     responseBody <$> makeRequestLbs r
 
-httpGetStr :: String -> Blast T.Text
+httpGetStr :: String -> Blast Text
 httpGetStr u = do
     g <- httpGet u
-    let x = g `deepseq` T.decodeUtf8 g
+    let x = T.decodeUtf8 $ S.concat $ L.toChunks g
     x `deepseq` return x
 
-httpGetStrTags :: String -> Blast [Tag T.Text]
+httpGetStrTags :: String -> Blast [Tag Text]
 httpGetStrTags u = do
-    g <- httpGetStr u
-    let x = g `deepseq` parseTags g
-    x `deepseq` return x
+    z <- httpGet u
+    let g = S.concat $ L.toChunks z
+    let x = parseTagsT g
+    return x

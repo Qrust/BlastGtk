@@ -16,7 +16,7 @@ import GtkBlast.Image
 import GtkBlast.Proxy
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Blast
-import "blast-it-with-piss" BlastItWithPiss.Post
+import "blast-it-with-piss" BlastItWithPiss.Parsing
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get,set)
 import Control.Concurrent

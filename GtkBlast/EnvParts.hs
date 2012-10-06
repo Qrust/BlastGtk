@@ -22,6 +22,7 @@ import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get, set)
+import qualified Graphics.UI.Gtk as G (get, set)
 import GHC.Conc
 import Control.Concurrent.STM
 import Paths_blast_it_with_piss
@@ -119,9 +120,10 @@ envParts b =
         (\_ c -> do
             wvboxboards <- build castToVBox "vbox-boards"
         
-            forM (fst $ unzip $ ssachBoardsSortedByPostRate) $ \board -> do
+            forM ssachBoardsSortedByPostRate $ \(board, sp) -> do
                 wc <- checkButtonNewWithLabel $ renderBoard board
                 when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
+                G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
                 boxPackStart wvboxboards wc PackNatural 0
                 BoardUnit board wc <$> newIORef [])
         (\v c -> do

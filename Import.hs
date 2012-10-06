@@ -44,26 +44,26 @@ import Control.Monad as A
 import Data.String as A
 import Data.Either as A
 import Debug.Trace as A
-import Data.Typeable as A
 import Data.Data as A
+import Data.Typeable as A
 import Control.Arrow as A
 import Data.Function as A
 import Data.Default as A
+import Data.IORef as A
 import Safe as A
-import Data.Text as A (Text)
 import Data.Time as A
 import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
 import Control.DeepSeq as A
+import Control.Monad.Trans.Control as A
+import Control.Exception.Lifted as A
 import Data.ByteString as A (ByteString)
 import qualified Data.ByteString.Lazy as LB (ByteString, toChunks)
+import Data.Text as A (Text)
+import qualified Data.Text.Lazy as LT (Text)
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
-import Control.Exception.Lifted as A
-import Control.Monad.Trans.Control as A
-import qualified Data.Text.Lazy as LT (Text)
 import qualified Text.Show as S
-import Data.IORef as A
 
 type LByteString = LB.ByteString
 

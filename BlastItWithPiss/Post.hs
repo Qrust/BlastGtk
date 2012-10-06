@@ -1,126 +1,35 @@
-module BlastItWithPiss.Post where
+module BlastItWithPiss.Post
+    (PostData(..)
+    ,doWeNeedCaptcha
+    ,getChallengeKey
+    ,reloadCaptcha
+    ,getCaptchaImage
+    ,ssachGetCaptcha
+
+    ,prepare
+    ,post
+    ) where
 import Import
 import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
 import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Image
 import BlastItWithPiss.Blast
-import Text.HTML.TagSoup
-import qualified Text.Show as S
 import Control.Monad.Trans.Resource
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 
 
-
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.Encoding as T
-import qualified Data.Text as ST
-import qualified Data.Text.Encoding as ST
+import BlastItWithPiss.Parsing
 
 
-
-
-
-newtype ErrorMessage = Err {unErrorMessage :: String}
-    deriving (Eq, Ord)
-
-instance Show ErrorMessage where
-    show = unErrorMessage -- show cyrillic as is, instead of escaping it.
-
-newtype ErrorException = ErrorException {unErrorException :: SomeException}
-    deriving (Typeable)
-
-instance Show ErrorException where
-    show = show . unErrorException
-
-instance Eq ErrorException where
-    (==) _ _ = True
-
-instance Ord ErrorException where
-    compare _ _ = EQ
-
-data Outcome = Success
-             | SuccessLongPost {rest :: String}
-             | Wordfilter
-             | Banned {errMessage :: ErrorMessage}
-             | SameMessage
-             | SameImage
-             | TooFastPost
-             | TooFastThread
-             | NeedCaptcha
-             | WrongCaptcha
-             | RecaptchaBan
-             | LongPost
-             | CorruptedImage
-             | CloudflareCaptcha
-             | CloudflareBan
-             | OtherError {errMessage :: ErrorMessage}
-             | InternalError {errException :: ErrorException}
-             | UnknownError
-    deriving (Eq, Show, Ord)
-
-message :: Outcome -> String
-message = unErrorMessage . errMessage
-
-successOutcome :: Outcome -> Bool
-successOutcome Success = True
-successOutcome (SuccessLongPost _) = True
-successOutcome _ = False
-
-wordfiltered :: [Tag T.Text] -> Bool
-wordfiltered =
-    isPrefixOf [TagOpen "html" [], TagOpen "body" [], TagOpen "h1" [],TagText "Spam detected."]
-
-haveAnError :: [Tag T.Text] -> Maybe T.Text
-haveAnError tags =
-    fromTagText . last <$> getInfixOfP
-        [(~== TagOpen ("center"::T.Text) [])
-        ,(~== TagOpen ("strong"::T.Text) [])
-        ,(~== TagOpen ("font"::T.Text) [("size", "5")])
-        ,isTagText
-        ] tags
-
-cloudflareCaptcha :: [Tag T.Text] -> Bool
-cloudflareCaptcha =
-    isInfixOf [TagOpen "title" [], TagText "Attention required!"]
-
-cloudflareBan :: [Tag T.Text] -> Bool
-cloudflareBan =
-    isInfixOfP [(==TagOpen "title" []), maybe False (T.isPrefixOf "Access Denied") . maybeTagText]
-
-detectOutcome :: [Tag T.Text] -> Outcome
-detectOutcome tags
-    | wordfiltered tags = Wordfilter
-    | Just err <- haveAnError tags =
-        case () of
-            _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
-                -> Banned (Err $ T.unpack reason)
-              | T.isInfixOf "Флудить нельзя" err
-                -> SameMessage
-              | T.isInfixOf "Этот файл уже был загружен" err
-                -> SameImage
-              | T.isInfixOf "Обнаружен флуд" err
-                -> TooFastPost
-              | T.isInfixOf "Вы уже создали один тред" err
-                -> TooFastThread
-              | T.isInfixOf "забыли ввести капчу" err
-                -> NeedCaptcha
-              | T.isInfixOf "Неверный код подтверждения" err
-                -> WrongCaptcha
-              | T.isInfixOf "заблокирован на сервере ReCaptcha" err
-                -> RecaptchaBan
-              | T.isInfixOf "Слишком большое сообщение" err
-                -> LongPost
-              | T.isInfixOf "Загружаемый вами тип файла не поддерживается" err
-                -> CorruptedImage
-              | otherwise
-                -> OtherError (Err $ T.unpack err)
-    | otherwise = UnknownError
-
-detectCloudflare :: [Tag T.Text] -> Maybe Outcome
-detectCloudflare tags
-    | cloudflareCaptcha tags = Just CloudflareCaptcha
-    | cloudflareBan tags = Just CloudflareBan
-    | otherwise = Nothing
+data PostData = PostData
+        {subject:: String
+        ,text   :: String
+        ,image  :: !(Maybe Image)
+        ,sage   :: !Bool
+        ,makewatermark :: !Bool
+        }
 
 -- | Query adaptive captcha state
 doWeNeedCaptcha :: String -> String -> Blast Bool
@@ -154,9 +63,6 @@ ssachGetCaptcha wakabapl _ key chKey =
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
---FIXME
---{-
-instance NFData Outcome
 
 instance NFData (RequestBody a) where
     rnf (RequestBodyBS b) = b `deepseq` ()
@@ -182,16 +88,6 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
----}
-
-data PostData = PostData
-        {subject:: String
-        ,text   :: String
-        ,image  :: !(Maybe Image)
-        ,sage   :: !Bool
-        ,makewatermark :: !Bool
-        }
-
 prepare :: Bool -> Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
 prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
@@ -209,7 +105,7 @@ prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl oth
             ] ++
             ([Field
                 [("name", "file")
-                ,("filename", maybe mempty (ST.encodeUtf8 . ST.pack . filename) image)]
+                ,("filename", maybe mempty (T.encodeUtf8 . T.pack . filename) image)]
                 [(hContentType, maybe defaultMimeType contentType image)]
                 (maybe mempty bytes image)]
             ) ++
@@ -247,15 +143,15 @@ prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl oth
                    ,checkStatus = \_ _ -> Nothing
                    }
     --liftIO $ print =<< getCurrentTime
-    return $!! (req, if null rest then Success else SuccessLongPost rest)
+    req `deepseq` return (req, if null rest then Success else SuccessLongPost rest)
 
-post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe [Tag T.Text])
+post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
     catches
         (do Response st _ heads tags <- httpReqStrTags req
             case()of
              _ | (statusCode st >= 300 && statusCode st < 400)
-                 && (maybe False (ST.isInfixOf "res/" . ST.decodeASCII) $
+                 && (maybe False (T.isInfixOf "res/" . T.decodeASCII) $
                         lookup "Location" heads)
                 -> return (success, Nothing)
                | statusCode st == 403

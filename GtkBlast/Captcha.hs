@@ -33,6 +33,7 @@ addCaptcha sp = do
         Gui -> addGuiCaptcha sp
         Antigate -> addAntigateCaptcha sp
 
+-- | 'killAllCaptcha' should only be called when all the threads blocking on captcha are dead
 killAllCaptcha :: E ()
 killAllCaptcha = do
     cm <- get =<< asks captchaMode

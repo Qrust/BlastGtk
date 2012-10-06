@@ -1,6 +1,7 @@
 module Main where
 import Import
 import "blast-it-with-piss" BlastItWithPiss.Post
+import "blast-it-with-piss" BlastItWithPiss.Parsing
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Board
 import "blast-it-with-piss" BlastItWithPiss.MultipartFormData

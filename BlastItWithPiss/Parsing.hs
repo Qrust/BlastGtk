@@ -1,29 +1,119 @@
-module BlastItWithPiss.Parsing where
-import Import hiding (fromString)
+module BlastItWithPiss.Parsing
+    (Html
+
+    ,Post(..)
+    ,Thread(..)
+    ,Page(..)
+    ,parsePosts
+    ,parseThreads
+    ,parseThread
+    ,parseSpeed
+    ,parsePages
+    ,parsePage
+
+    ,ErrorMessage(..)
+    ,ErrorException(..)
+    ,Outcome(..)
+    ,message
+    ,successOutcome
+    ,wordfiltered
+    ,haveAnError
+    ,cloudflareCaptcha
+    ,cloudflareBan
+    ,detectOutcome
+    ,detectCloudflare
+
+    ,parseForm
+    -- ,conduitParseForm
+    ) where
+import Import
 import BlastItWithPiss.Board
 import BlastItWithPiss.MultipartFormData (Field(..), field)
+import qualified Text.Show as S
+
 import Text.HTML.TagSoup
-import Text.StringLike
--- html-conduit(cursor?)?
 
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.Encoding as T
-import qualified Data.Text.Encoding as ST
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 
-tgOpen :: T.Text -> [(T.Text, T.Text)] -> Tag T.Text
+{-
+import qualified Text.HTML.TagStream.Types as G
+import Text.HTML.TagStream.Text hiding (decode)
+import Data.Conduit
+import Data.Conduit.List (consume)
+import Data.Conduit.Text (decode, utf8)
+import Data.XML.Types
+import Text.HTML.DOM
+-}
+
+type Html = [Tag Text]
+
+tgOpen :: Text -> [(Text, Text)] -> Tag Text
 tgOpen = TagOpen
 
-tgClose :: T.Text -> Tag T.Text
+tgClose :: Text -> Tag Text
 tgClose = TagClose
 
-tgComment :: T.Text -> Tag T.Text
-tgComment = TagComment
+newtype ErrorMessage = Err {unErrorMessage :: String}
+    deriving (Eq, Ord)
+
+instance Show ErrorMessage where
+    show = unErrorMessage -- show cyrillic as is, instead of escaping it.
+
+newtype ErrorException = ErrorException {unErrorException :: SomeException}
+    deriving (Typeable)
+
+instance Show ErrorException where
+    show = show . unErrorException
+
+instance Eq ErrorException where
+    (==) _ _ = True
+
+data Outcome = Success
+             | SuccessLongPost {rest :: String}
+             | Wordfilter
+             | Banned {errMessage :: ErrorMessage}
+             | SameMessage
+             | SameImage
+             | TooFastPost
+             | TooFastThread
+             | NeedCaptcha
+             | WrongCaptcha
+             | RecaptchaBan
+             | LongPost
+             | CorruptedImage
+             | CloudflareCaptcha
+             | CloudflareBan
+             | OtherError {errMessage :: ErrorMessage}
+             | InternalError {errException :: ErrorException}
+             | UnknownError
+    deriving (Eq, Show)
+
+instance NFData ErrorMessage where
+    rnf = rnf . unErrorMessage
+
+instance NFData ErrorException
+
+instance NFData Outcome where
+    rnf (SuccessLongPost s) = rnf s
+    rnf (Banned s) = rnf s
+    rnf (OtherError s) = rnf s
+    rnf (InternalError s) = rnf s
+    rnf a = a `seq` ()
+
+message :: Outcome -> String
+message = unErrorMessage . errMessage
+
+successOutcome :: Outcome -> Bool
+successOutcome Success = True
+successOutcome (SuccessLongPost _) = True
+successOutcome _ = False
 
 data Post = Post
-    {postId :: !Int
-    ,postContents :: !String
+    {postId :: Int
+    ,postContents :: String
     }
-    deriving (Show, Eq, Ord)
+    deriving (Eq, Ord)
 
 data Thread = Thread
     {threadId :: !Int
@@ -42,6 +132,9 @@ data Page = Page
     }
     deriving (Show, Eq)
 
+instance Show Post where
+    show (Post postid _) = "Post " ++ show postid
+
 instance Ord Thread where
     compare x y = compare (postcount x) (postcount y)
 
@@ -57,7 +150,7 @@ instance NFData t => NFData (Tag t) where
     rnf (TagPosition x y) = x `deepseq` y `deepseq` ()
 
 instance NFData Post where
-    rnf Post{..} = rnf postId
+    rnf Post{..} = rnf (postId, postContents)
 
 instance NFData Thread where
     rnf Thread{..} = rnf (threadId, pinned, locked, postcount, visibleposts)
@@ -65,87 +158,103 @@ instance NFData Thread where
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
 
-innerTextWithBr :: [Tag T.Text] -> T.Text
+innerTextWithBr :: [Tag Text] -> Text
 innerTextWithBr = T.concat . mapMaybe aux
     where aux (TagOpen x []) | x == "br" = Just "\n"
           aux a = maybeTagText a
 
-parsePosts :: [Tag T.Text] -> [Post]
-parsePosts posts =
-    mapMaybe readPost $ 
-        sections (~== tgOpen "blockquote" [("class", "postMessage")]) posts
-  where readPost :: [Tag T.Text] -> Maybe Post
-        readPost (TagOpen "blockquote" (("id", mpostid):_):rest) =
-            Post <$> (readMay . T.unpack =<< T.stripPrefix "m" mpostid) <*>
-                pure (T.unpack $ innerTextWithBr $ takeUntil (== tgClose "blockquote") rest)
-        readPost _ = Nothing
+parseThread :: Int -> [Tag Text] -> (Post, [Tag Text])
+parseThread i ts =
+    let (postcont, (_:rest)) = break (==TagOpen "span" [("class", "info")]) ts
+    in (Post i $ T.unpack $ innerTextWithBr postcont, rest)
 
-parseThreadParameters :: [Tag T.Text] -> Thread
-parseThreadParameters withOp@(TagOpen "div" (("id", postid):_):thrd)
-    | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
-     ,pin <- any (~== tgOpen "img" [("src", "/sticky.png")]) thrd
-     ,lck <- any (~== tgOpen "img" [("src", "/locked.png")]) thrd
-     ,vposts <- parsePosts withOp
-     ,postn <- fromMaybe 0 (subtract 1 <$> findMap omittedCount thrd)
-             + length vposts
-     = Thread {threadId = tid
-              ,postcount = postn
-              ,visibleposts = vposts
-              ,pinned = pin
-              ,locked = lck
-              }
-  where omittedCount (TagText x) =
-                (readMay . takeUntil isSpace . T.unpack =<< T.stripPrefix "Пропущено " (T.stripStart x))
-            <|> (readMay $ takeUntil isSpace $ T.unpack x) --int
-        omittedCount _ = Nothing
-parseThreadParameters thrd = error $ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" ++ show thrd
+parsePosts :: [Tag Text] -> ([Post], [Tag Text])
+parsePosts = appfst reverse . go []
+  where stripM ('m':a) = Just a
+        stripM _ = Nothing
+        go posts (TagOpen "blockquote" (("id", mpostid):_):ts) =
+            let (postcont, (_:rest)) = break (==TagClose "blockquote") ts
+            in case (`Post` T.unpack (innerTextWithBr postcont)) <$>
+                (readMay =<< stripM (T.unpack mpostid)) of
+                Just a -> go (a:posts) rest
+                Nothing -> go posts rest
+        go posts a@(t:ts)
+            | t == TagOpen "br" [("style", "clear:left;")] = (posts, a)
+            | otherwise = go posts ts
+        go posts [] = (posts, [])
 
-parseThread :: [Tag T.Text] -> Thread
-parseThread =
-    parseThreadParameters . tail . dropUntil (~== tgOpen "div" [("class", "thread")])
+parseOmitted :: [Tag Text] -> (Maybe Int, [Tag Text])
+parseOmitted (TagText x:ts) =
+    let t = dropWhile isSpace $ T.unpack x
+    in case (readMay . takeUntil isSpace =<< stripPrefix "Пропущено " t)
+        <|> (readMay $ takeUntil isSpace t) of
+        Just a -> (Just a, ts)
+        Nothing -> parseOmitted ts
+parseOmitted (TagOpen "script" _:ts) = (Nothing, ts)
+parseOmitted (_:ts) = parseOmitted ts
+parseOmitted [] = (Nothing, [])
 
-parseSpeed :: [Tag T.Text] -> Maybe Int
-parseSpeed t = getSpeed (parseSpeed' t)
--- FIXME seems that sosaka hides speed sometimes
+parseIcons (pin,lck) (TagOpen "img" ats:ts)
+            | Just "/sticky.png" <- lookup "src" ats = parseIcons (True, lck) ts
+            | Just "/locked.png" <- lookup "src" ats = parseIcons (pin, True) ts
+parseIcons (pin,lck) (TagOpen "blockquote" _:ts) = ((pin, lck), ts)
+parseIcons (pin,lck) (_:ts) = parseIcons (pin,lck) ts
+parseIcons (pin,lck) [] = parseIcons (pin,lck) []
+
+parseThreads :: [Tag Text] -> ([Thread], [Tag Text])
+parseThreads = appfst reverse . go []
+  where go tds (TagOpen "div" (("id", postid):_):ts)
+            | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
+             ,((pin,lck),rest1) <- parseIcons (False, False) ts
+             ,(oppost, rest2) <- parseThread tid rest1
+             ,(mpostn, rest3) <- parseOmitted rest2
+             ,(vposts, rest4) <- parsePosts rest3
+             = go (Thread {threadId = tid
+                          ,postcount = fromMaybe 0 mpostn + length vposts
+                          ,visibleposts = oppost : vposts
+                          ,pinned = pin
+                          ,locked = lck
+                          } : tds) rest4
+        go tds (TagOpen "table" [("border","1")]:TagOpen "tbody" []:TagOpen "tr" []:TagOpen "td" []:ts) =
+            (tds, ts)
+        go tds (_:ts) = go tds ts
+        go tds [] = (tds, [])
+
+parseSpeed :: [Tag Text] -> Maybe Int
+parseSpeed t = getSpeed =<< parseSpeed' t
   where stripSpeedPrefix a = T.stripPrefix "[Скорость борды: " (T.stripStart a)
                          <|> T.stripPrefix "[Posting speed: " (T.stripStart a)
-        getSpeed mtext =
-            readMay . takeUntil isSpace . T.unpack =<< mtext
+        getSpeed = readMay . takeUntil isSpace . T.unpack
         parseSpeed' =
-            stripSpeedPrefix <=< maybeTagText <=< headMay . tailSafe .
-                dropUntil (\x -> x ~== tgOpen "div" [("class", "speed")]
-                              || x ~== tgComment "<div class=\"speed\">")
+            stripSpeedPrefix . innerText .
+                dropUntil (== tgOpen "p" [("class", "footer")])
 
-parsePages :: [Tag T.Text] -> (Int, Int)
-parsePages =
--- FIXME seems that sosaka hides pages sometimes
-    dropUntilLP [(~== tgOpen "table" [("border", "1")])
-                 ,(== tgOpen "tbody" [])
-                 ,(== tgOpen "tr" [])
-                 ,(== tgOpen "td" [])
-                 ] >>>
-        takeUntil (== tgClose "tbody") >>>
-            mapMaybe maybeTagText >>>
-                \ts -> fromMaybe 0 (findMap aux ts) >$>
-                    \c -> (c, maximum (c : mapMaybe (readMay . T.unpack) ts))
-  where aux t = if "[" `T.isInfixOf` t
-                    then readMay $ T.unpack $ T.filter (`notElem` "[]") t
-                    else Nothing
+parsePages :: [Tag Text] -> ((Int, Int), [Tag Text])
+parsePages tags =
+    let (work, (_:rest)) = break (== tgClose "tbody") tags
+        extract t = if T.isInfixOf "[" t
+                        then readMay $ takeWhile isNumber $ dropUntil isNumber $ T.unpack t
+                        else Nothing
+        texts = filter (T.any isNumber) $ mapMaybe maybeTagText work
+        first = fromMaybe 0 (findMap extract texts)
+        others = maximum (first : mapMaybe (readMay . T.unpack) texts)
+        in ((first, others), rest)
 
-parsePage :: Board -> [Tag T.Text] -> Page
+parsePage :: Board -> [Tag Text] -> Page
 parsePage board html =
-    let (i, ps) = parsePages html in
+    let (tds, rest1) = parseThreads html
+        ((i, ps), rest2) = parsePages rest1
+    in
     Page {pageId = i
          ,lastpage = ps
          -- if parse fails assume last recorded speed, or 0 if none recorded.
          ,speed = fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate) $
-                    parseSpeed html
-         ,threads = map parseThreadParameters $
-                        partitions (~== tgOpen "div" [("class", "thread")]) html
+                    parseSpeed rest2
+         ,threads = tds
          }
 
 -- Only valid within one board.
-parseForm :: String -> [Tag T.Text] -> (String, [Field])
+parseForm :: String -> [Tag Text] -> (String, [Field])
 parseForm host tags =
     dropUntil (~== tgOpen "form" [("id", "postform")]) tags >$>
         \(f:html) -> (getWakabaPl f,
@@ -156,8 +265,119 @@ parseForm host tags =
         aux t | t ~== tgOpen "input" [("type", "radio")]
                 = fromAttrib "checked" t == "checked"
               | otherwise
-                = t ~== tgOpen "input" [("name", ""){-, ("value", "")-}]
+                = t ~== tgOpen "input" [("name", "")]
         inputToField tag =
-            field (ST.encodeUtf8 $ T.toStrict $ fromAttrib "name" tag)
+            field (T.encodeUtf8 $ fromAttrib "name" tag)
                   (T.encodeUtf8 $ fromAttrib "value" tag)
 
+wordfiltered :: [Tag Text] -> Bool
+wordfiltered =
+    isPrefixOf [TagOpen "html" [], TagOpen "body" [], TagOpen "h1" [],TagText "Spam detected."]
+
+haveAnError :: [Tag Text] -> Maybe Text
+haveAnError tags =
+    fromTagText . last <$> getInfixOfP
+        [(~== tgOpen "center" [])
+        ,(~== tgOpen "strong" [])
+        ,(~== tgOpen "font" [("size", "5")])
+        ,isTagText
+        ] tags
+
+cloudflareCaptcha :: [Tag Text] -> Bool
+cloudflareCaptcha =
+    isInfixOf [tgOpen "title" [], TagText "Attention required!"]
+
+cloudflareBan :: [Tag Text] -> Bool
+cloudflareBan =
+    isInfixOfP [(==tgOpen "title" []), maybe False (T.isPrefixOf "Access Denied") . maybeTagText]
+
+detectOutcome :: [Tag Text] -> Outcome
+detectOutcome tags
+    | wordfiltered tags = Wordfilter
+    | Just err <- haveAnError tags =
+        case () of
+            _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
+                -> Banned (Err $ T.unpack reason)
+              | T.isInfixOf "Флудить нельзя" err
+                -> SameMessage
+              | T.isInfixOf "Этот файл уже был загружен" err
+                -> SameImage
+              | T.isInfixOf "Обнаружен флуд" err
+                -> TooFastPost
+              | T.isInfixOf "Вы уже создали один тред" err
+                -> TooFastThread
+              | T.isInfixOf "забыли ввести капчу" err
+                -> NeedCaptcha
+              | T.isInfixOf "Неверный код подтверждения" err
+                -> WrongCaptcha
+              | T.isInfixOf "заблокирован на сервере ReCaptcha" err
+                -> RecaptchaBan
+              | T.isInfixOf "Слишком большое сообщение" err
+                -> LongPost
+              | T.isInfixOf "Загружаемый вами тип файла не поддерживается" err
+                -> CorruptedImage
+              | otherwise
+                -> OtherError (Err $ T.unpack err)
+    | otherwise = UnknownError
+
+detectCloudflare :: [Tag Text] -> Maybe Outcome
+detectCloudflare tags
+    | cloudflareCaptcha tags = Just CloudflareCaptcha
+    | cloudflareBan tags = Just CloudflareBan
+    | otherwise = Nothing
+{-
+awaitUntil :: Monad m => (i -> Bool) -> GSink i m (Maybe i)
+awaitUntil p = loop
+  where loop = do
+            x <- await
+            case x of
+                Just x -> if p x then return (Just x) else loop
+                a -> return a
+
+{-- # SPECIALIZE (~~==) :: G.Token' Text -> G.Token' Text -> Bool #-}
+{-- # SPECIALIZE (~~==) :: G.Token' ByteString -> G.Token' ByteString -> Bool #-}
+(~~==) :: (Monoid a, Eq a) => G.Token' a -> G.Token' a -> Bool
+(~~==) a b = f a b
+    where
+        strNull x = x == mempty
+        f (G.Text y) (G.Text x) = strNull x || x == y
+        f (G.TagClose y) (G.TagClose x) = strNull x || x == y
+        f (G.TagOpen y ys _) (G.TagOpen x xs _) = (strNull x || x == y) && all g xs
+            where
+                g (name,val) | strNull name = val  `elem` map snd ys
+                             | strNull val  = name `elem` map fst ys
+                g nameval = nameval `elem` ys
+        f _ _ = False
+
+fc :: [Content] -> Text
+fc [ContentText a] = a
+
+conduitParseForm :: (MonadResource m, MonadBaseControl IO m) => String -> ResumableSource m ByteString -> m (String, [Field])
+conduitParseForm host http = 
+    http $$+- eventConduit =$ do
+        awaitForm
+  where awaitForm = do
+            Just (EventBeginElement "form" ats) <- awaitUntil (\x -> case x of (EventBeginElement "form" _ ) -> True; _ -> False)
+            maybe awaitForm (`awaitFields` []) $ do
+                guard =<< (=="postform") . fc <$> lookup "id" ats
+                (host ++) . T.unpack . fc <$> lookup "action" ats
+        awaitFields wakabapl fields = do
+            Just x <- await
+            case x of
+                EventEndElement "form" -> return (wakabapl, fields)
+                (EventBeginElement "input" ats) ->
+                    maybe (awaitFields wakabapl fields)
+                        (awaitFields wakabapl . (fields ++) . (:[])) $ do
+                            case fc <$> lookup "type" ats of
+                                Just "radio" -> do
+                                    guard =<< (=="checked") . fc <$> lookup "checked" ats
+                                    return (inputToField ats)
+                                _ -> do
+                                    guard $ isJust $ lookup "name" ats
+                                    return (inputToField ats)
+                _ -> awaitFields wakabapl fields
+        inputToField :: [(Name, [Content])] -> Field
+        inputToField ats =
+            field (T.encodeUtf8 $ fromMaybe "" $ fc <$> lookup "name" ats)
+                  (T.encodeUtf8 $ fromMaybe "" $ fc <$> lookup "value" ats)
+-}

@@ -1,4 +1,23 @@
-module BlastItWithPiss.Choice where
+module BlastItWithPiss.Choice
+    (Mode(..)
+    ,Strategy
+    ,sageMode
+    ,unlockedSticky
+    ,newThread
+    ,veryPopularThread
+    ,tooFast
+
+    ,strategies
+    ,defaultStrategy
+
+    ,adjustStrategy
+    ,chooseStrategy
+    ,chooseModeStrategy
+    ,chooseThread'
+
+    ,chooseMode
+    ,chooseThread
+    ) where
 import Import
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
@@ -210,10 +229,8 @@ chooseThread' canfail mode Page{..}
     , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
                 else id
-    = let x = (addfail $
+    = justIf (>= 0) <$> fromList (addfail $
                 map (threadId &&& inv . fromIntegral . postcount) thrds)
-          a = (maximum $ map postcount thrds)
-            in (a, x) `traceShow` (justIf (>= 0) <$> fromList x)
 
 chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
 chooseThread CreateNew _ p0 = return (Nothing, p0)

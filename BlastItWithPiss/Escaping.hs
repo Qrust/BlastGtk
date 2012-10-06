@@ -1,8 +1,25 @@
-module BlastItWithPiss.Escaping where
+module BlastItWithPiss.Escaping
+    (
+    -- * High level
+    escape
+
+    -- * Constants
+    ,wordfilter
+    ,invisibleSymbols
+    ,simillars
+    ,findAlternative
+
+    -- * Functions
+    ,randomizeLang
+    ,randomizeInvisible
+    ,randomizeOneCharLang
+    ,escapeOneWord
+    ,escapeWordfilter
+    ) where
 import Import
 import BlastItWithPiss.MonadChoice
 
--- FIXME code here is a mess.
+-- FIXME code here is a goddamn mess.
 
 -- | Words which need escaping
 wordfilter :: [String]
@@ -52,6 +69,7 @@ wordfilter =
 invisibleSymbols :: [Char]
 invisibleSymbols = "\8290\8291\8289\8288\8203\8206"
 
+-- | TODO zalgo
 zalgo :: [Char]
 zalgo = []
 
@@ -86,8 +104,10 @@ simillars =
     ,('X', 'Х')
     ,('϶', 'э')
     ,('ϵ', 'є')
+    ,('ᴙ', 'я')
     ]
 
+-- | Lookup 'simillars'
 findAlternative :: Char -> Maybe Char
 findAlternative c = findMap aux simillars
   where aux (a, b) | c==a = Just b
@@ -157,7 +177,7 @@ escapeWordfilter charsleft wordfilter str =
             (chars, pas, as) <- escapeWord word (charsleft, [], str)
             return (chars, concat (reverse pas) ++ as)
 
--- | Use various methods to mutilate string
+-- | Use various methods to mutilate a string
 escape :: MonadChoice m => Int -> [String] -> String -> m String
 escape charlimit wordfilter str = do
     let max_invs = charlimit - length str

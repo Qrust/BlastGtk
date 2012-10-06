@@ -28,11 +28,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 import qualified Text.Show as Show
-import Text.HTML.TagSoup
-
-
-import qualified Data.Text.Lazy as T
-
+import Text.HTML.TagSoup(Tag)
 
 {-
 import Control.Concurrent (forkIO)
@@ -44,6 +40,7 @@ import qualified Data.ByteString.Lazy as L
 --}
 
 data ShSettings = ShSettings {tpastas :: TVar [String]
+                            --tpastagen :: TVar (Page -> IO Thread -> IO (Bool, String))
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
@@ -258,15 +255,15 @@ blastCaptcha wakabapl thread = do
                 AbortCaptcha -> return (chKey, Nothing)
 
 -- TODO It's probably buggy as hell.
-blastCloudflare :: BlastLog [Tag T.Text] -> String -> (Response [Tag T.Text]) -> BlastLog [Tag T.Text]
-blastCloudflare what url rsp
-    | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) =
-        return [] -- oyoyoyoy
-    | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
-        cloudflareChallenge
-    | otherwise =
-        return $ responseBody rsp
-  where cloudflareChallenge = do
+blastCloudflare :: BlastLog (Response [Tag Text]) -> String -> BlastLog (Response [Tag Text])
+blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
+  where blastCloudflare' rsp
+            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) =
+                return rsp -- oyoyoyoy
+            | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
+                cloudflareChallenge
+            | otherwise = return rsp
+        cloudflareChallenge = do
             blastLog "Encountered cloudflare challenge"
             ProxyS{..} <- askProxyS
             (empt, work) <- liftIO $ atomically $ do
@@ -284,7 +281,7 @@ blastCloudflare what url rsp
                         then cloudflareChallenge
                         else do blastLog "Got cloudflare cookies"
                                 blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
-                                what
+                                whatrsp
                 else handle (\(a::SomeException) -> do
                                 liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
                                 throwIO a) $ do
@@ -310,19 +307,19 @@ blastCloudflare what url rsp
                             if ckl==0
                                 then do blastLog "Couldn't get Cloudflare cookies. Retrying."
                                         liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
-                                        blastCloudflare what url rsp
+                                        blastCloudflare whatrsp url
                                 else do blastLog $ "Cloudflare cookie count: " ++ show (length $ destroyCookieJar ck)
                                         liftIO $ atomically $ do
                                             putTMVar pcloudflareCaptchaLock ()
                                             putTMVar psharedCookies ck
                                         blastLog "finished working on captcha"
-                                        what
+                                        whatrsp
                         ReloadCaptcha -> cloudflareChallenge
                         AbortCaptcha -> do
                             blastLog "Aborting cloudflare captcha. This might have unforeseen consequences."
                             liftIO $ atomically $ do
                                 putTMVar pcloudflareCaptchaLock ()
-                            return []
+                            whatrsp
 
 blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
@@ -392,8 +389,16 @@ blastLoop w lthreadtime lposttime = do
                             (return $ now - lthreadtime >= ssachThreadTimeout board)
                             (return False)
         let getPage p = do
+                let url = ssachPage board p
+                let chkStatus st@Status{statusCode=c} heads
+                        | c /= 200 && c /= 403 =
+                            Just $ toException $ StatusCodeException st heads Nothing
+                        | otherwise =
+                            Nothing
                 blastLog $ "chooseThread: getPage: going to page " ++ show p
-                blast $ parsePage board <$> httpGetStrTags (ssachPage board p)
+                parsePage board . responseBody <$>
+                    blastCloudflare (blast $ httpReqStrTags $
+                        (fromJust $ parseUrl url){checkStatus=chkStatus}) url
         p0 <- getPage 0
         --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
         blastLog $ "page params:\n" ++
@@ -422,7 +427,7 @@ blastLoop w lthreadtime lposttime = do
 --
 -- > thread <- forkIO (entryPoint print sh to Board ms)
 --
--- You might want to resurrect thread if it gets killed.
+-- You might want to resurrect thread if it dies.
 --
 -- > st <- threadStatus thread
 -- > if st==ThreadDied || st==ThreadFinished
@@ -433,14 +438,21 @@ entryPoint proxy board lgDetail shS muS prS output = do
     runBlastLog (BlastLogData proxy board lgDetail shS muS prS output) $ do
         blastLog "Entry point"
         blast $ httpSetProxy proxy
-        let url = ssachPage board 0
+        blastLoop (ssachLastRecordedWakabaplAndFields (ssachBoard board)) 0 0{-
+        let url = ssachBoard board
         let chkStatus st@Status{statusCode=c} heads
                 | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads Nothing
                 | otherwise = Nothing
         x <- try $ do
             blastLog $ "Downloading page form"
+            {-
             rsp <- blast $ httpReqStrTags (fromJust $ parseUrl url){checkStatus=chkStatus}
             parseForm ssach <$> blastCloudflare (blast $ httpGetStrTags url) url rsp
+            -}
+            {-
+            blast $ lift . conduitParseForm ssach . responseBody =<< makeRequest (fromJust $ parseUrl url)
+            -}
+            return $ ssachLastRecordedWakabaplAndFields url
         case x of
             Left (a::SomeException) -> do
                 blastLog $ "Couldn't parse page form, got exception " ++ show a
@@ -448,7 +460,7 @@ entryPoint proxy board lgDetail shS muS prS output = do
                 blastLog "Starting loop"
                 --blastLog $ show $ length $ (show w :: String)
                 --forever (return () >> liftIO yield)
-                blastLoop w 0 0
+                blastLoop w 0 0-}
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
 sortSsachBoardsByPopularity boards = runBlast $ do

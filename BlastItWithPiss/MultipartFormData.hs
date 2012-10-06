@@ -1,4 +1,13 @@
-module BlastItWithPiss.MultipartFormData where
+module BlastItWithPiss.MultipartFormData
+    (Field(..)
+    ,field
+    ,fieldNameIs
+
+    ,renderField
+    ,formatMultipart
+
+    ,randomBoundary
+    ) where
 import Import hiding (concat)
 import BlastItWithPiss.MonadChoice
 import Network.HTTP.Types
@@ -8,7 +17,7 @@ import qualified Data.ByteString.Lazy as L
 --import Codec.Binary.UTF8.Generic (toString, fromString)
 
 toLBS :: ByteString -> LByteString
-toLBS = L.fromChunks . (:[])
+toLBS x = L.fromChunks [x]
 
 data Field = Field {fieldAttrs :: [(ByteString, ByteString)]
                    ,fieldHeaders :: [Header]
@@ -35,8 +44,8 @@ instance NFData a => NFData (CI a) where
 instance NFData Field where
     rnf Field{..} = rnf (fieldAttrs, fieldHeaders, fieldBody)
 
-field :: ByteString -> LByteString -> Field
-field n v = Field [("name", n)] [] v
+field :: ByteString -> ByteString -> Field
+field n v = Field [("name", n)] [] (toLBS v)
 
 fieldNameIs :: ByteString -> Field -> Bool
 fieldNameIs n f = maybe False (==n) $ lookup "name" $ fieldAttrs f

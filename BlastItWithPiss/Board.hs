@@ -1,5 +1,31 @@
-module BlastItWithPiss.Board where
+module BlastItWithPiss.Board
+    (cloudflareRecaptchaKey
+    ,Board(..)
+    ,readBoard
+    ,renderBoard
+
+    -- * Ssach
+    ,ssachAdaptivity
+    ,ssachBoardsSortedByPostRate
+    ,ssachLastRecordedWakabaplAndFields
+    ,allSsachBoards
+    ,ssach
+    ,ssachBoard
+    ,ssachThread
+    ,ssachPage
+    ,ssachRecaptchaKey
+    ,ssachLengthLimit
+    ,ssachThreadTimeout
+    ,ssachPostTimeout
+
+    -- * Hoptoparasha
+    ,hoptoparasha
+    ,hoptoparashaBoard
+    ,hoptoparashaThread
+    ,hoptoparashaPage
+    ) where
 import Import
+import BlastItWithPiss.MultipartFormData
 
 -- | Sosach boards.
 data Board = A
@@ -95,6 +121,7 @@ data Board = A
            | HH
            | DOM
            | FTB
+           | DR
     deriving (Eq, Read, Show, Enum, Bounded, Ord)
 
 instance NFData Board
@@ -153,6 +180,7 @@ ssachBoardsSortedByPostRate =
     ,(MG,5)
     ,(GD,5)
     ,(FUR,5)
+    ,(DR,5)
     ,(FA,5)
     ,(FTB,4)
     ,(W,4)
@@ -238,6 +266,24 @@ ssachAdaptivity :: Bool
 -- TODO update later, when they reintroduce adaptivity
 ssachAdaptivity = False
 
+ssachLastRecordedWakabaplAndFields :: String -> (String, [Field])
+ssachLastRecordedWakabaplAndFields hostAndBoard =
+    (hostAndBoard ++ "wakaba.pl",
+        [field "task" "\209\128\208\190st"
+        ,field "parent" ""
+        ,field "name" ""
+        ,field "link" ""
+        ,field "akane" ""
+        ,field "nabiki" ""
+        ,field "sage" ""
+        ,field "makewatermark" ""
+        ,field "op" ""
+        ,field "kasumi" ""
+        ,field "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
+        ,field "file" ""
+        ,field "video" ""
+        ])
+
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"
 
@@ -251,6 +297,7 @@ hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
 hoptoparashaPage b 0 = hoptoparashaBoard b
 hoptoparashaPage b i = hoptoparashaBoard b <> show i <> ".html"
 
+-- | This should be put somewhere else
 cloudflareRecaptchaKey :: String
 cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
 

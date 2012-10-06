@@ -22,11 +22,6 @@ import GHC.Conc
 import Control.Concurrent.STM
 import Text.Recognition.Antigate
 
-data SendAbort = SendAbort
-    deriving (Show, Typeable)
-
-instance Exception SendAbort
-
 recaptchaCaptchaConf :: CaptchaConf
 recaptchaCaptchaConf =
     def {phrase = True
@@ -48,20 +43,16 @@ antigateThread (OriginStamp{..}, SupplyCaptcha{..}) tq key =
         captchaSend $ Answer str
   where lg = atomically . writeTQueue tq . Right
         err = atomically . writeTQueue tq . Left
-        abrt = do
-            lg $ "Aborting antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
-            captchaSend AbortCaptcha
         hands =
-            [Handler $ \(_::SendAbort) -> abrt
-            ,Handler $ \(e::SolveException) -> do
+            [Handler $ \(e::SolveException) -> do
                 case e of
                     SolveExceptionUpload a ->
                         err $ "Не удалось загрузить капчу на антигейт, ошибка: " ++ show a ++ "\n" ++ "{" ++ show oProxy ++ "}" ++ renderBoard oBoard
                     SolveExceptionCheck i a ->
                         err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ "{" ++ show oProxy ++ "}" ++ renderBoard oBoard
-                abrt
+                lg $ "Aborting antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
+                captchaSend AbortCaptcha
             ]
-            
 
 startAntigateThread :: (OriginStamp, Message) -> E (ThreadId, (OriginStamp, Message))
 startAntigateThread c@(OriginStamp{..},_) = do
@@ -104,7 +95,7 @@ killAntigateCaptcha = do
     E{..} <- ask
     writeLog "Killing antigate captcha"
     oldPac <- get pendingAntigateCaptchas
-    io $ forM_ oldPac $ (`throwTo` SendAbort) . fst
+    io $ forM_ oldPac $ killThread . fst
     set pendingAntigateCaptchas []
     displayLogs
 

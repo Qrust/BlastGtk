@@ -1,4 +1,9 @@
-module BlastItWithPiss.Image where
+module BlastItWithPiss.Image
+    (Image(..)
+    ,appendJunkB
+    ,appendJunk
+    ,readImageWithoutJunk
+    )where
 import Import hiding (insert)
 import BlastItWithPiss.MonadChoice
 import Data.Map (insert)

@@ -25,13 +25,9 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- Also parse API with those
 -- FIXME Blast lazyness/strictness. Now that we force everything we run in constant space(?)
 -- FIXME Text constants increase binary size a lot (4.2 mb, before Text — 3.9 mb) — investigate
+-- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 
 -- FIXME Compiling under wine is slow as hell, move haskell platform from NTFS to /opt.
-
-
-
-
-
 
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
@@ -42,11 +38,11 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO don't escape RandomNum and RandomChar.
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
--- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO switch to JSON for config and manifest
 -- TODO mochepasta resources/mocha, change default boards
 -- TODO Updater
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
+-- TODO Выбор собственной пасты, убрать анальный садизм
 -- TODO helpMessage
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
@@ -55,6 +51,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
+-- TODO Configurable max_bid, sleepwait and sleepcaptcha
 
 -- TODO Replace (OriginStamp, Message) with appropriate type
 -- TODO Switch to immutable state, don't modify state from widgets, send events instead.
