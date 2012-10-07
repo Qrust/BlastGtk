@@ -22,11 +22,9 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
 -- CLARIFICATION dropped in favor of fast-tagsoup
--- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup
+-- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-to-tagsoup-types
 
--- FIXME Compiling under wine is slow as hell, move haskell platform from NTFS to /opt.
-
--- Also parse API with those
+-- TODO add API as a fallback if can't parse html
 
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 
@@ -34,9 +32,6 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
 
--- TODO вайпать постами из треда/страницы choosePost
--- TODO Move RandomNum/RandomChar generation to worker threads
--- TODO don't escape RandomNum and RandomChar.
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
@@ -44,7 +39,6 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO mochepasta resources/mocha, change default boards
 -- TODO Updater
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
--- TODO Выбор собственной пасты, убрать анальный садизм
 -- TODO helpMessage
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
@@ -56,8 +50,9 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 
 -- TODO Replace (OriginStamp, Message) with appropriate type
--- TODO Switch to immutable state, don't modify state from widgets, send events instead.
+-- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
+-- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
 -- TODO cleanup
 -- TODO document
 
@@ -66,14 +61,12 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit
--- TODO add API as a fallback if can't parse html
 -- TODO i18n (represent messages by types + typeclass?)
 -- TODO configurable escaping
 -- TODO configurable timeout
 -- TODO config last thread time
 -- TODO Показывать несколько капч одновременно
 -- TODO background mode
--- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
 -- TODO Support 2chnu, alterchan.
 
 bugMessage :: String
