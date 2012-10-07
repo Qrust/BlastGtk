@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.1.0.600
+version: 0.1.0.601
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -17,7 +17,7 @@ data-files: build-production.sh
            ,resources/blast.glade
            ,resources/2ch.so.png
            ,resources/mocha
-           ,resources/sadism
+           ,resources/analniy-sadism
            ,images/jew-swede.jpg
            ,images/sad-monkey.jpg
            ,images/newscreen.png
