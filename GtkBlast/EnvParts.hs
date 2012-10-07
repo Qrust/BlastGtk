@@ -41,40 +41,53 @@ envParts b =
     ,captchaModeEnvPart b
     ,wipebuttonEnvPart b
     ,EP
-        (\_ Conf{..} -> do
+        (\e c -> do
+            wradiofromthread <- build castToRadioButton "radio-fromthread"
             wradiomocha <- build castToRadioButton "radio-mocha"
-            wradiokakashki <- build castToRadioButton "radio-kakashki"
             wradionum <- build castToRadioButton "radio-num"
             wradiochar <- build castToRadioButton "radio-char"
-            wradiofromthread <- build castToRadioButton "radio-fromthread"
+            wradiopastafile <- build castToRadioButton "radio-pastafile"
         
             let pastaradio =
-                    [(Mocha, wradiomocha)
-                    ,(Kakashki, wradiokakashki)
+                    [(FromThread, wradiofromthread)
+                    ,(Mocha, wradiomocha)
                     ,(Num, wradionum)
                     ,(Char, wradiochar)
-                    ,(FromThread, wradiofromthread)
+                    ,(PastaFile, wradiopastafile)
                     ]
         
             fromMaybe (return ()) $ (`findMap` pastaradio) $ \(p, w) ->
-                if p == coPastaSet
+                if p == coPastaSet c
                     then Just $ toggleButtonSetActive w True
                     else Nothing
 
             pastaMod <- newIORef nullTime
-            pastaSet <- newIORef coPastaSet
+            pastaSet <- newIORef $ coPastaSet c
 
             forM pastaradio $ \(p, w) -> do
                 on w toggled $
                     whenM (toggleButtonGetActive w) $ do
                         writeIORef pastaMod nullTime -- force update
                         writeIORef pastaSet p
+                        runE e $ regeneratePastaGen
 
-            return (pastaSet, pastaMod)
+            wentrypastafile <- (rec coPastaFile $ build castToEntry "entrypastafile") e c
+            wbuttonpastafile <- build castToButton "buttonpastafile"
+
+            onFileChooserEntryButton False wbuttonpastafile wentrypastafile (runE e . writeLog) $ do
+                whenM ((==PastaFile) <$> readIORef pastaSet) $ do
+                    writeIORef pastaMod nullTime -- force update
+                    runE e $ regeneratePastaGen
+
+            return (pastaSet, pastaMod, wentrypastafile)
             )
-        (\(v,_) c -> get v ? \a -> c{coPastaSet=a})
-        (\(ps,pm) e -> e{pastaSet=ps
-                        ,pastaMod=pm})
+        (\(v1,_,v2) c -> do
+            ps <- get v1
+            pf <- get v2
+            return c{coPastaSet=ps, coPastaFile=pf})
+        (\(ps,pm,wepf) e -> e{pastaSet=ps
+                             ,pastaMod=pm
+                             ,wentrypastafile=wepf})
     ,EP
         (rec coSettingsShown $ build castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})
@@ -96,17 +109,19 @@ envParts b =
             wlog <- build castToTextView "log"
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog
-            adjustmentSetValue wad =<< adjustmentGetUpper wad
 
+            previousPageSize <- newIORef =<< adjustmentGetPageSize wad
             previousUpper <- newIORef =<< adjustmentGetUpper wad
 
             onAdjChanged wad $ do
                 v <- adjustmentGetValue wad
-                p <- adjustmentGetPageSize wad
-                pu <- subtract p <$> readIORef previousUpper
+                ps <- readIORef previousPageSize
+                pu <- subtract ps <$> readIORef previousUpper
                 when (v >= pu) $ do
+                    s <- adjustmentGetPageSize wad
                     u <- adjustmentGetUpper wad
-                    adjustmentSetValue wad $ subtract p u
+                    adjustmentSetValue wad $ subtract s u
+                    writeIORef previousPageSize s
                     writeIORef previousUpper u
             
             return (wlabelmessage, wprogressalignment, wprogresswipe, wbuf))
@@ -139,7 +154,7 @@ envParts b =
 
             tqOut <- atomically $ newTQueue
 
-            tpastas <- atomically $ newTVar []
+            tpastagen <- atomically $ newTVar $ \_ _ _ -> return (True, "Генератор не запущен. Осторожно, двери закрываются.")
             timages <- atomically $ newTVar []
             tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
             tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread

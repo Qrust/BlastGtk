@@ -29,6 +29,7 @@ data PostData = PostData
         ,image  :: !(Maybe Image)
         ,sage   :: !Bool
         ,makewatermark :: !Bool
+        ,escapePost :: !Bool
         }
 
 -- | Query adaptive captcha state
@@ -88,13 +89,13 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-prepare :: Bool -> Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
-prepare esc board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
+prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
+prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
                                     (ut, []) -> (ut, [])
                                     (ut, r) -> (ut, r)
-    text <- if esc
+    text <- if escapePost
                 then escape maxlength wordfilter unesctext
                 else return unesctext
     let fields =

@@ -619,15 +619,15 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkRadioButton" id="radio-kakashki">
-                                            <property name="label" translatable="yes">_Анальный садизм</property>
+                                          <object class="GtkRadioButton" id="radio-pastafile">
+                                            <property name="label" translatable="yes">Паста из _файла</property>
                                             <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
-                                            <property name="tooltip_text" translatable="yes">Мама больно какала тебе в рот!
-Ты анальный садизм, я твоя мама какала тебе в рот. Зачем ты измазался, сынок? Кто твоя мама? Я твоя мама какала, ты какашкин! Зачем ты измазался сынок? Это КЕФИРЧИК! Дай я тебя покакаю! Ты анальный кефирчик я мама твоя ласковая мама! А почему из ПОПКИ торчит рука робота? Я гарантирую, твоя мама, ЛАСКОВАЯ мама, а я какашкин, ласковый какашкин, у меня доктор брил усы лобковые усы махал писюлькой больно какал мне в рот. Ты больно плакал, а мама била тебя ремешком по попке и какала тебе в рот!
-Только робот хранит тебя от бед! Он сильный и смешной! Ты смешной какашкин! Даже доктор поможет тебе он не поможет тебе ты говна поешь говна поешь говна поешь, какашкин, ласковый робот, смажь кремом смажь кремом смажь кремом. Тебе уже легче тебе хуже тебе легче тебе жуже тебе желче теле жужу тебе жкол теле жожужу! Мажь кремом мама сказала мажь кремом. А то больно мама какала и стегала ремешком робот плакал угощал я КАКАШКИН!!! СМЕШНОЙ какашкин. Убейте меня КАКАЛА МНЕ в рот КАЛАКА мне в КАКАЛА маКА нет!!! НЕТ!!!! КАКАЛДА МНЕ В РОТ!!! КАКАКЛА мне в рот. МАЩЬ КРЕМОМ!!!!! Маленький сучонок, дай я тебя поцелую.</property>
+                                            <property name="tooltip_text" translatable="yes">Файл с пастой можно указать в подменю "Дополнительно"
+В файле с пастам между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы "resources/mocha", "resources/analniy-sadism".
+Вордфильтр обходится автоматически, если паста плохо говорит о сосаке есть вероятность автобана.</property>
                                             <property name="use_underline">True</property>
                                             <property name="draw_indicator">True</property>
                                             <property name="group">radio-mocha</property>
@@ -771,6 +771,7 @@
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
+                                                    <property name="tooltip_text" translatable="yes">Все картинки отсюда будут поститься вместе с сообщениями как часть вайпа.</property>
                                                     <child>
                                                       <object class="GtkImage" id="image2">
                                                         <property name="visible">True</property>
@@ -1012,6 +1013,89 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
+                          <object class="GtkLabel" id="label16">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="xalign">0</property>
+                            <property name="label" translatable="yes">Файл с пастой</property>
+                            <attributes>
+                              <attribute name="weight" value="bold"/>
+                            </attributes>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkAlignment" id="alignment9">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="left_padding">10</property>
+                            <child>
+                              <object class="GtkHBox" id="hbox2">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <child>
+                                  <object class="GtkEntry" id="entrypastafile">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="editable">False</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="invisible_char_set">True</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="primary_icon_sensitive">True</property>
+                                    <property name="secondary_icon_sensitive">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkButton" id="buttonpastafile">
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">True</property>
+                                    <child>
+                                      <object class="GtkImage" id="image7">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="stock">gtk-open</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkHSeparator" id="hseparator6">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
+                        <child>
                           <object class="GtkLabel" id="label13">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -1024,7 +1108,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">0</property>
+                            <property name="position">3</property>
                           </packing>
                         </child>
                         <child>
@@ -1098,7 +1182,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">1</property>
+                            <property name="position">4</property>
                           </packing>
                         </child>
                         <child>
@@ -1109,7 +1193,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">2</property>
+                            <property name="position">5</property>
                           </packing>
                         </child>
                         <child>
@@ -1125,7 +1209,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">3</property>
+                            <property name="position">6</property>
                           </packing>
                         </child>
                         <child>
@@ -1144,7 +1228,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">4</property>
+                            <property name="position">7</property>
                           </packing>
                         </child>
                       </object>

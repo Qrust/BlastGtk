@@ -5,6 +5,7 @@ module GtkBlast.Directory
     ,configDir
     ,nullTime
     ,timeRightNow
+    ,timeJustAfterNullTime'ie'forceUpdateJustOnce
     ) where
 import Import
 import GtkBlast.IO
@@ -49,4 +50,11 @@ timeRightNow :: MonadIO m => m ModificationTime
 timeRightNow = io getCurrentTime
 #else
 timeRightNow = io getClockTime
+#endif
+
+timeJustAfterNullTime'ie'forceUpdateJustOnce :: ModificationTime
+#if MIN_VERSION_directory(1,2,0)
+timeJustAfterNullTime'ie'forceUpdateJustOnce = UTCTime (ModifiedJulianDay 0) 1
+#else
+timeJustAfterNullTime'ie'forceUpdateJustOnce = TOD 0 1
 #endif

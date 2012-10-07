@@ -38,6 +38,7 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coCaptchaMode :: CaptchaMode
                  ,coAntigateKey :: String
                  ,coLastVersion :: Version
+                 ,coPastaFile :: String
                  }
     deriving (Eq, Show, Read)
 
@@ -70,6 +71,7 @@ instance Default Conf where
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
          ,coLastVersion = version
+         ,coPastaFile = "resources/analniy-sadism"
          }
 
 readConfig :: FilePath -> IO Conf

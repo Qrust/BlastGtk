@@ -4,9 +4,9 @@ module BlastItWithPiss.Parsing
     ,Post(..)
     ,Thread(..)
     ,Page(..)
+    ,parseOpPost
     ,parsePosts
     ,parseThreads
-    ,parseThread
     ,parseSpeed
     ,parsePages
     ,parsePage
@@ -163,10 +163,10 @@ innerTextWithBr = T.concat . mapMaybe aux
     where aux (TagOpen x []) | x == "br" = Just "\n"
           aux a = maybeTagText a
 
-parseThread :: Int -> [Tag Text] -> (Post, [Tag Text])
-parseThread i ts =
-    let (postcont, (_:rest)) = break (==TagOpen "span" [("class", "info")]) ts
-    in (Post i $ T.unpack $ innerTextWithBr postcont, rest)
+parseOpPost :: Int -> [Tag Text] -> (Post, [Tag Text])
+parseOpPost i ts =
+    let (postcont, rest) = break (==TagClose "blockquote") ts
+    in (Post i $ T.unpack $ innerTextWithBr postcont, tailSafe rest)
 
 parsePosts :: [Tag Text] -> ([Post], [Tag Text])
 parsePosts = appfst reverse . go []
@@ -206,7 +206,7 @@ parseThreads = appfst reverse . go []
   where go tds (TagOpen "div" (("id", postid):_):ts)
             | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
              ,((pin,lck),rest1) <- parseIcons (False, False) ts
-             ,(oppost, rest2) <- parseThread tid rest1
+             ,(oppost, rest2) <- parseOpPost tid rest1
              ,(mpostn, rest3) <- parseOmitted rest2
              ,(vposts, rest4) <- parsePosts rest3
              = go (Thread {threadId = tid

@@ -3,7 +3,7 @@ module GtkBlast.Type_PastaSet
     ) where
 
 data PastaSet = Mocha
-              | Kakashki
+              | PastaFile
               | Num
               | Char
               | FromThread

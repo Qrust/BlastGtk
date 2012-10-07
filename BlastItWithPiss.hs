@@ -39,8 +39,7 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data ShSettings = ShSettings {tpastas :: TVar [String]
-                            --tpastagen :: TVar (Page -> IO Thread -> IO (Bool, String))
+data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> Maybe Int -> IO (Bool, String))
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
@@ -161,6 +160,9 @@ defPrS = atomically $ do
 runBlastLog :: BlastLogData -> BlastLog a -> Blast a
 runBlastLog d m = evalStateT (runReaderT m d) def
 
+runBlastLogSt :: BlastLogData -> OriginInfo -> BlastLog a -> Blast a
+runBlastLogSt d o m = evalStateT (runReaderT m d) o
+
 askProxy :: BlastLog BlastProxy
 askProxy = asks bldProxy
 
@@ -219,7 +221,7 @@ blastImage mode = do
         then
             return Nothing
         else do
-            images <- liftIO $ readTVarIO timages
+            images <- liftIO $ if use then readTVarIO timages else return []
             if null images
                 then do
                     blastOut NoImages
@@ -231,11 +233,13 @@ blastImage mode = do
                 else blast $
                         Just <$> (readImageWithoutJunk =<< chooseFromList images)
 
-blastPasta :: Maybe Image -> BlastLog String
-blastPasta image = do
+blastPasta :: (Int -> BlastLog Thread) -> Page -> Maybe Int -> BlastLog (Bool, String)
+blastPasta getThread p0 tid = do
     ShSettings{..} <- askShS
-    pastas <- liftIO $ readTVarIO tpastas
-    mchooseFromList pastas
+    pastagen <- liftIO $ readTVarIO tpastagen
+    r <- ask
+    s <- lift get
+    liftIO $ pastagen (runBlast . runBlastLogSt r s . getThread) p0 tid
 
 blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe String)
 blastCaptcha wakabapl thread = do
@@ -332,7 +336,7 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
         Nothing -> return (lthreadtime, lposttime)
         Just captcha -> do
             -- TODO post reposts
-            p <- blast $ prepare True board thread postdata chKey captcha wakabapl
+            p <- blast $ prepare board thread postdata chKey captcha wakabapl
                                  otherfields ssachLengthLimit
             beforeSleep <- liftIO getPOSIXTime
             let canPost = beforeSleep - lposttime >= ssachPostTimeout board
@@ -356,7 +360,7 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                 SuccessLongPost rest ->
                     if mode /= CreateNew
                         then blastPost cap nthreadtime nposttime w mode thread
-                                (PostData "" rest Nothing (sageMode mode) False)
+                                (PostData "" rest Nothing (sageMode mode) False (escapePost postdata))
                         else ret
                 TooFastPost -> do
                         blastLog "TooFastPost, retrying in 0.5 seconds"
@@ -416,11 +420,15 @@ blastLoop w lthreadtime lposttime = do
         blastLog $ "chose thread " ++ show thread
         rimage <- blastImage mode
         image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
-        pasta <- blastPasta image
+        let getThread i = do
+                blastLog $ "Going into " ++ show i ++ " thread for pasta"
+                blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board i)
+        (esc, pasta) <- blastPasta getThread p thread
+        blastLog $ "chose pasta, escaping " ++ show esc ++ ": \"" ++ pasta ++ "\""
         watermark <- liftIO $ readTVarIO tmakewatermark
         (nthreadtime, nposttime) <-
             blastPost False lthreadtime lposttime w mode thread
-                            (PostData "" pasta image (sageMode mode) watermark)
+                        (PostData "" pasta image (sageMode mode) watermark esc)
         blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.

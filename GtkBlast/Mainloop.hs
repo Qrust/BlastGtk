@@ -178,7 +178,7 @@ mainloop = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
         maintainCaptcha
-        regeneratePasta
+        regeneratePastaGen
         regenerateImages
         regenerateProxies
         maintainBoardUnits
