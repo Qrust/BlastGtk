@@ -242,8 +242,9 @@ ssach = "http://2ch.so"
 ssachBoard :: (Monoid a, IsString a) => Board -> a
 ssachBoard b = ssach <> renderBoard b
 
-ssachThread :: (Monoid a, IsString a) => Board -> Int -> a
-ssachThread b t = ssachBoard b <> "res/" <> show t <> ".html"
+ssachThread :: (Monoid a, IsString a) => Board -> Maybe Int -> a
+ssachThread b Nothing = ssachBoard b
+ssachThread b (Just t) = ssachBoard b <> "res/" <> show t <> ".html"
 
 ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
 ssachPage b 0 = ssachBoard b
@@ -270,17 +271,11 @@ ssachLastRecordedWakabaplAndFields :: String -> (String, [Field])
 ssachLastRecordedWakabaplAndFields hostAndBoard =
     (hostAndBoard ++ "wakaba.pl",
         [field "task" "\209\128\208\190st"
-        ,field "parent" ""
         ,field "name" ""
         ,field "link" ""
         ,field "akane" ""
-        ,field "nabiki" ""
         ,field "sage" ""
-        ,field "makewatermark" ""
-        ,field "op" ""
-        ,field "kasumi" ""
         ,field "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
-        ,field "file" ""
         ,field "video" ""
         ])
 
@@ -290,8 +285,9 @@ hoptoparasha = "http://hoptach.uni.me"
 hoptoparashaBoard :: (Monoid a, IsString a) => Board -> a
 hoptoparashaBoard b = hoptoparasha <> renderBoard b
 
-hoptoparashaThread :: (Monoid a, IsString a) => Board -> Int -> a
-hoptoparashaThread b t = hoptoparashaBoard b <> "res/" <> show t <> ".html"
+hoptoparashaThread :: (Monoid a, IsString a) => Board -> Maybe Int -> a
+hoptoparashaThread b Nothing = hoptoparashaBoard b
+hoptoparashaThread b (Just t) = hoptoparashaBoard b <> "res/" <> show t <> ".html"
 
 hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
 hoptoparashaPage b 0 = hoptoparashaBoard b

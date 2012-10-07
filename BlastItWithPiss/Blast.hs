@@ -106,6 +106,8 @@ canonicalizeBrowser = do
     setUserAgent $ Just userAgent
     setMaxRedirects Nothing
     setTimeout $ Just $ 10 * 1000000
+    setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
+                       ,(hConnection, "keep-alive")]
     --
     --setCookieFilter $ \_ _ -> return False
     --

@@ -36,8 +36,11 @@ wordfilter =
     ,"Колчан"
     ,"нульча"
     ,"Нульча"
-    ,"1chan.ru"
     ,"0chan.ru"
+    ,"1chan.ru"
+    ,"2ch"
+    ,"2-ch"
+    ,"2--ch"
     ,"моч"
     ,"Моч"
     ,"моча"
@@ -56,12 +59,15 @@ wordfilter =
     ,"Абу"
     ,"фишки"
     ,"яплакал"
-    ,"@conference.jabber"
+    ,"conference.jabber"
     ,"Blast"
     ,"blast"
     ,"Piss"
     ,"piss"
     ,"github"
+    ,"mdk"
+    ,"MDK"
+    ,"мдк"
     ]
 -- FIXME "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
 
@@ -150,7 +156,7 @@ randomizeOneCharLang :: MonadChoice m => String -> m String
 randomizeOneCharLang str = do
     let ixs = findIndices (isJust . findAlternative) str
     if null ixs
-        then return $ error $ "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
+        then return str -- FIXME $ error $ "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
         else do (f, (v:s)) <- (`splitAt` str) <$> chooseFromList ixs
                 return $ f ++ [fromJust (findAlternative v)] ++ s
 

@@ -101,7 +101,7 @@ instance Show OriginStamp where
     show (OriginStamp time proxy board mode thread) =
         show time ++ " " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
         " " ++ show mode ++ " [| " ++
-        maybe (ssachBoard board) (ssachThread board) thread ++ " |]"
+        ssachThread board thread ++ " |]"
 
 instance Show Message where
     show (OutcomeMessage o) = show o
@@ -243,8 +243,9 @@ blastPasta getThread p0 tid = do
 
 blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe String)
 blastCaptcha wakabapl thread = do
+    board <- askBoard
     chKey <- blast $ getChallengeKey ssachRecaptchaKey
-    mbbytes <- blast $ ssachGetCaptcha wakabapl thread ssachRecaptchaKey chKey
+    mbbytes <- blast $ ssachGetCaptcha board thread ssachRecaptchaKey chKey
     case mbbytes of
         Nothing -> return (chKey, Just "")
         Just bytes -> do
@@ -422,7 +423,7 @@ blastLoop w lthreadtime lposttime = do
         image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
         let getThread i = do
                 blastLog $ "Going into " ++ show i ++ " thread for pasta"
-                blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board i)
+                blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
         (esc, pasta) <- blastPasta getThread p thread
         blastLog $ "chose pasta, escaping " ++ show esc ++ ": \"" ++ pasta ++ "\""
         watermark <- liftIO $ readTVarIO tmakewatermark

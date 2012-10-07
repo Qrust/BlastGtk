@@ -33,11 +33,13 @@ data PostData = PostData
         }
 
 -- | Query adaptive captcha state
-doWeNeedCaptcha :: String -> String -> Blast Bool
-doWeNeedCaptcha wakabapl usercode = do
+doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
+doWeNeedCaptcha board thread usercode = do
     cd <- responseBody <$> httpReqStr
         (fromJust $ parseUrl $ "http://2ch.so/makaba/captcha?code="++usercode)
-            {requestHeaders = [("X-Requested-With", "XMLHttpRequest")]}
+            {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
+                              ,("x-requested-with", "XMLHttpRequest")
+                              ,(hReferer, ssachThread board thread)]}
     return $ not (T.isInfixOf "OK" cd || T.isInfixOf "VIP" cd)
 
 getChallengeKey :: String -> Blast String
@@ -58,9 +60,9 @@ getCaptchaImage :: String -> Blast LByteString
 getCaptchaImage chKey =
     httpGet $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
-ssachGetCaptcha :: String -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
-ssachGetCaptcha wakabapl _ key chKey =
-    ifM (doWeNeedCaptcha wakabapl "")
+ssachGetCaptcha :: Board -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
+ssachGetCaptcha board thread key chKey =
+    ifM (doWeNeedCaptcha board thread "")
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
@@ -98,11 +100,10 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
     text <- if escapePost
                 then escape maxlength wordfilter unesctext
                 else return unesctext
-    let fields =
+    let fields = (
             [field "parent" (maybe "" show thread)
             ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
             ,field "shampoo" (T.encodeUtf8 $ T.pack text)
-            ,field "recaptcha_challenge_field" (fromString chKey)
             ] ++
             ([Field
                 [("name", "file")
@@ -110,8 +111,12 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                 [(hContentType, maybe defaultMimeType contentType image)]
                 (maybe mempty bytes image)]
             ) ++
-            ([field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)
-                | not $ null captcha]
+            (if not $ null captcha
+                then
+                    [field "recaptcha_challenge_field" (fromString chKey)
+                    ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)
+                    ]
+                else []
             ) ++
             (if sage
                 then [field "nabiki" "sage"
@@ -119,7 +124,7 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                 else [field "nabiki" mempty]
             ) ++
             ([field "makewatermark" "on" | makewatermark]
-            )
+            ))
             `union`
             (otherfields)
     boundary <- randomBoundary
@@ -133,7 +138,7 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                     method = methodPost
                    ,requestHeaders =
                         [(hContentType, "multipart/form-data; boundary=" <> boundary)
-                        ,(hReferer, ssachBoard board)
+                        ,(hReferer, ssachThread board thread)
                         ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                         ,(hAcceptLanguage, "ru,en;q=0.5")
                         ]

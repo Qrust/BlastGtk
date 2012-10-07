@@ -298,6 +298,8 @@ detectOutcome tags
         case () of
             _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
                 -> Banned (Err $ T.unpack reason)
+              | T.isInfixOf "String refused" err
+                -> Wordfilter
               | T.isInfixOf "Флудить нельзя" err
                 -> SameMessage
               | T.isInfixOf "Этот файл уже был загружен" err

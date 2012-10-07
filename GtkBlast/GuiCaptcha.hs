@@ -30,7 +30,7 @@ formatCaptchaMessage CaptchaPosting (OriginStamp _ proxy board _ thread) =
     "Введите капчу для " ++
         (case thread of
             Nothing -> "создания нового треда в " ++ renderBoard board
-            Just t -> "Поста в тред " ++ ssachThread board t) ++
+            t -> "Поста в тред " ++ ssachThread board t) ++
                 maybeNoProxy "" (\p -> "с прокси {" ++ show p ++ "}") proxy
 formatCaptchaMessage CaptchaCloudflare (OriginStamp _ proxy _ _ _) =
     "Введите капчу Cloudflare для " ++ show proxy

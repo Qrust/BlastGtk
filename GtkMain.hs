@@ -20,6 +20,20 @@ import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
+
+
+
+
+
+-- CONFIGURE ESCAPING
+
+
+
+
+
+
+
+
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
 -- CLARIFICATION dropped in favor of fast-tagsoup
 -- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-to-tagsoup-types
