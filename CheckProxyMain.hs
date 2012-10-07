@@ -10,6 +10,7 @@ import Control.Concurrent
 import System.Environment
 import Network.Socket
 import System.IO.UTF8 (readFile, writeFile, appendFile)
+import System.IO (print, putStrLn)
 
 data Config = Config
     {socks :: Bool
@@ -55,6 +56,8 @@ impureAnnotatedCmdargsConfig =
 
 main :: IO ()
 main = withSocketsDo $ do
+    putStrLn "Testing russian output..."
+    putStrLn "Русский текст, например"
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
     ifM (null <$> getArgs)
         (print md)
