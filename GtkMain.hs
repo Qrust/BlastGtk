@@ -21,13 +21,14 @@ import System.Environment.Executable (splitExecutablePath)
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
--- and forces program into 90% GC routine. Drop in favor of (html-conduit(cursor)/tagstream-conduit/xml-conduit(?))
--- Also parse API with those
--- FIXME Blast lazyness/strictness. Now that we force everything we run in constant space(?)
--- FIXME Text constants increase binary size a lot (4.2 mb, before Text — 3.9 mb) — investigate
--- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
+-- CLARIFICATION dropped in favor of fast-tagsoup
+-- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup
 
 -- FIXME Compiling under wine is slow as hell, move haskell platform from NTFS to /opt.
+
+-- Also parse API with those
+
+-- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
@@ -36,6 +37,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO вайпать постами из треда/страницы choosePost
 -- TODO Move RandomNum/RandomChar generation to worker threads
 -- TODO don't escape RandomNum and RandomChar.
+-- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO switch to JSON for config and manifest
