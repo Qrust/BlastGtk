@@ -33,24 +33,26 @@ generateRandomStrings lengthBounds strLengthBounds strCharBounds = do
     strcount <- getRandomR lengthBounds
     replicateM strcount $ generateRandomString strLengthBounds strCharBounds
 
-pastaChooser :: [String] -> ((Int -> IO Thread) -> Page -> Maybe Int -> IO (Bool, String))
-pastaChooser pastas = \_ _ _ -> (,) True <$> mchooseFromList pastas
+pastaChooser :: [String] -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
+pastaChooser pastas = do
+    E{..} <- ask
+    e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
+    return $ \_ _ _ -> (,) e <$> mchooseFromList pastas
 
-generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO (Bool, String))
-generatePastaGen Mocha = pastaChooser <$> (appFile [] readPasta =<<
+generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
+generatePastaGen Mocha = pastaChooser =<< appFile [] readPasta =<<
 #ifdef TEST
                                             return "./testkokoko"
 #else
                                             getResourceFile "mocha"
 #endif
-                                          )
 generatePastaGen PastaFile =
-    pastaChooser <$> (appFile [] readPasta =<< get =<< asks wentrypastafile)
-generatePastaGen Char = return $ \_ _ _ -> (,) False <$>
+    pastaChooser =<< appFile [] readPasta =<< get =<< asks wentrypastafile
+generatePastaGen Char = return $ \_ _ _ -> (,) (False, False) <$>
                             generateRandomString (100, 5000) ('a','z')
-generatePastaGen Num = return $ \_ _ _ -> (,) False <$>
+generatePastaGen Num = return $ \_ _ _ -> (,) (False , False)<$>
                             generateRandomString (100, 5000) ('0', '9')
-generatePastaGen FromThread = return $ \a b c -> (,) False <$> choosePostToRepost a b c
+generatePastaGen FromThread = return $ \a b c -> (,) (False, False) <$> choosePostToRepost a b c
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate Mocha = appFile nullTime getModificationTime =<< getResourceFile "mocha"

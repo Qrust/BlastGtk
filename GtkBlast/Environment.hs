@@ -80,6 +80,8 @@ data Env = E
     ,wchecknoproxy :: CheckButton
     ,wentryantigatekey :: Entry
     ,wentrypastafile :: Entry
+    ,wcheckescapeinv :: CheckButton
+    ,wcheckescapewrd :: CheckButton
     }
 
 type E = ReaderT Env IO
@@ -131,6 +133,8 @@ instance NFData Env where
         `seq` wchecknoproxy
         `seq` wentryantigatekey
         `seq` wentrypastafile
+        `seq` wcheckescapeinv
+        `seq` wcheckescapewrd
         `seq` ()
 
 runE :: Env -> E a -> IO a

@@ -67,8 +67,8 @@ envParts b =
             forM pastaradio $ \(p, w) -> do
                 on w toggled $
                     whenM (toggleButtonGetActive w) $ do
-                        writeIORef pastaMod nullTime -- force update
                         writeIORef pastaSet p
+                        writeIORef pastaMod nullTime -- force update
                         runE e $ regeneratePastaGen
 
             wentrypastafile <- (rec coPastaFile $ build castToEntry "entrypastafile") e c
@@ -79,15 +79,31 @@ envParts b =
                     writeIORef pastaMod nullTime -- force update
                     runE e $ regeneratePastaGen
 
-            return (pastaSet, pastaMod, wentrypastafile)
+            wcheckescapeinv <- (rec coEscapeInv $ build castToCheckButton "checkescapeinv") e c
+            wcheckescapewrd <- (rec coEscapeWrd $ build castToCheckButton "checkescapewrd") e c
+
+            on wcheckescapeinv buttonActivated $ do
+                writeIORef pastaMod nullTime -- force update
+                runE e $ regeneratePastaGen
+
+            on wcheckescapewrd buttonActivated $ do
+                writeIORef pastaMod nullTime -- force update
+                runE e $ regeneratePastaGen
+
+            return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd)
             )
-        (\(v1,_,v2) c -> do
+        (\(v1,_,v2,v3,v4) c -> do
             ps <- get v1
             pf <- get v2
-            return c{coPastaSet=ps, coPastaFile=pf})
-        (\(ps,pm,wepf) e -> e{pastaSet=ps
-                             ,pastaMod=pm
-                             ,wentrypastafile=wepf})
+            ei <- get v3
+            ew <- get v4
+            return c{coPastaSet=ps, coPastaFile=pf, coEscapeInv=ei, coEscapeWrd=ew})
+        (\(ps,pm,wepf,wcei,wcew) e -> e{pastaSet=ps
+                                       ,pastaMod=pm
+                                       ,wentrypastafile=wepf
+                                       ,wcheckescapeinv=wcei
+                                       ,wcheckescapewrd=wcew
+                                       })
     ,EP
         (rec coSettingsShown $ build castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})
@@ -154,7 +170,7 @@ envParts b =
 
             tqOut <- atomically $ newTQueue
 
-            tpastagen <- atomically $ newTVar $ \_ _ _ -> return (True, "Генератор не запущен. Осторожно, двери закрываются.")
+            tpastagen <- atomically $ newTVar $ \_ _ _ -> return ((True, True), "Генератор не запущен. Осторожно, двери закрываются.")
             timages <- atomically $ newTVar []
             tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
             tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread

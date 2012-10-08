@@ -10,11 +10,12 @@ module BlastItWithPiss.Escaping
     ,findAlternative
 
     -- * Functions
+    ,escapeWordfilter
+    ,escapeExceptWordfilter
+    ,escapeOneWord
+    ,randomizeOneCharLang
     ,randomizeLang
     ,randomizeInvisible
-    ,randomizeOneCharLang
-    ,escapeOneWord
-    ,escapeWordfilter
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
@@ -170,6 +171,14 @@ escapeOneWord charsleft str = do
                     ((,) charsused <$> randomizeOneCharLang cut_str)
                     (return (charsused, cut_str))
 
+escapeExceptWordfilter :: MonadChoice m => Int -> String -> m String
+escapeExceptWordfilter charlimit str = do
+    let max_invs = charlimit - length str
+    garbled_str <- randomizeLang str
+    if max_invs > 0
+        then randomizeInvisible max_invs garbled_str
+        else return garbled_str
+
 escapeWordfilter :: MonadChoice m => Int -> [String] -> String -> m String
 escapeWordfilter charsleft wordfilter str =
     snd <$> foldM escapeWords (charsleft, str) wordfilter
@@ -186,10 +195,6 @@ escapeWordfilter charsleft wordfilter str =
 -- | Use various methods to mutilate a string
 escape :: MonadChoice m => Int -> [String] -> String -> m String
 escape charlimit wordfilter str = do
-    let max_invs = charlimit - length str
-    garbled_str <- randomizeLang str
-    cut_str <- if max_invs > 0
-                then randomizeInvisible max_invs garbled_str
-                else return garbled_str
+    cut_str <- escapeExceptWordfilter charlimit str
     mutilated_str <- escapeWordfilter (charlimit - length cut_str) wordfilter cut_str
     return mutilated_str

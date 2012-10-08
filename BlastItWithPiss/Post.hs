@@ -29,7 +29,8 @@ data PostData = PostData
         ,image  :: !(Maybe Image)
         ,sage   :: !Bool
         ,makewatermark :: !Bool
-        ,escapePost :: !Bool
+        ,escapeInv :: !Bool
+        ,escapeWrd :: !Bool
         }
 
 -- | Query adaptive captcha state
@@ -97,9 +98,11 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
     let (unesctext, rest) = case splitAt maxlength unesctext' of
                                     (ut, []) -> (ut, [])
                                     (ut, r) -> (ut, r)
-    text <- if escapePost
-                then escape maxlength wordfilter unesctext
-                else return unesctext
+    let escapingFunction True True = escape maxlength wordfilter
+        escapingFunction True False = escapeExceptWordfilter maxlength
+        escapingFunction False True = escapeWordfilter maxlength wordfilter
+        escapingFunction False False = return
+    text <- escapingFunction escapeInv escapeWrd unesctext
     let fields = (
             [field "parent" (maybe "" show thread)
             ,field "kasumi" (T.encodeUtf8 $ T.pack subject)

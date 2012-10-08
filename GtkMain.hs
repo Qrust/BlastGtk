@@ -25,7 +25,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 
 
--- CONFIGURE ESCAPING AND WORDFILTER SEPARATELY
+-- TODO switch to JSON for config and manifest
 
 
 
@@ -36,10 +36,8 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
 -- CLARIFICATION dropped in favor of fast-tagsoup
--- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-to-tagsoup-types
-
+-- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
 -- TODO add API as a fallback if can't parse html
-
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 
 -- TODO FIXME FIXME readIORef buBanned
@@ -49,7 +47,6 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
--- TODO switch to JSON for config and manifest
 -- TODO mochepasta resources/mocha, change default boards
 -- TODO Updater
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
@@ -62,6 +59,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
+-- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 
 -- TODO Replace (OriginStamp, Message) with appropriate type
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
@@ -70,8 +68,8 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO cleanup
 -- TODO document
 
--- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
+-- TODO get a hackage account and release antigate ¿ should i release BlastItWithPiss? Would it be considered malware, and if it would, does hackage prohibit it?
 -- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit

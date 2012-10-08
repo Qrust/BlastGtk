@@ -39,7 +39,7 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> Maybe Int -> IO (Bool, String))
+data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
                              ,tappendjunkimages :: TVar Bool
@@ -239,7 +239,7 @@ blastImage mode = do
                     blastLog $ "chose image \"" ++ file ++ "\""
                     Just <$> readImageWithoutJunk file
 
-blastPasta :: (Int -> BlastLog Thread) -> Page -> Maybe Int -> BlastLog (Bool, String)
+blastPasta :: (Int -> BlastLog Thread) -> Page -> Maybe Int -> BlastLog ((Bool, Bool), String)
 blastPasta getThread p0 tid = do
     ShSettings{..} <- askShS
     pastagen <- liftIO $ readTVarIO tpastagen
@@ -367,7 +367,7 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                 SuccessLongPost rest ->
                     if mode /= CreateNew
                         then blastPost cap nthreadtime nposttime w mode thread
-                                (PostData "" rest Nothing (sageMode mode) False (escapePost postdata))
+                                (PostData "" rest Nothing (sageMode mode) False (escapeInv postdata) (escapeWrd postdata))
                         else ret
                 TooFastPost -> do
                         blastLog "TooFastPost, retrying in 0.5 seconds"
@@ -434,12 +434,13 @@ blastLoop w lthreadtime lposttime = do
         let getThread i = do
                 blastLog $ "Going into " ++ show i ++ " thread for pasta"
                 blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
-        (esc, pasta) <- blastPasta getThread p thread
-        blastLog $ "chose pasta, escaping " ++ show esc ++ ": \"" ++ pasta ++ "\""
+        ((escinv, escwrd), pasta) <- blastPasta getThread p thread
+        blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
+            ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
         watermark <- liftIO $ readTVarIO tmakewatermark
         (nthreadtime, nposttime) <-
             blastPost False lthreadtime lposttime w mode thread
-                        (PostData "" pasta junkImage (sageMode mode) watermark esc)
+                (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
         blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.

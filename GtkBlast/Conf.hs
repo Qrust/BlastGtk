@@ -39,6 +39,8 @@ data Conf = Conf {coActiveBoards :: [Board]
                  ,coAntigateKey :: String
                  ,coLastVersion :: Version
                  ,coPastaFile :: String
+                 ,coEscapeInv :: Bool
+                 ,coEscapeWrd :: Bool
                  }
     deriving (Eq, Show, Read)
 
@@ -72,6 +74,8 @@ instance Default Conf where
          ,coAntigateKey = []
          ,coLastVersion = version
          ,coPastaFile = "resources/analniy-sadism"
+         ,coEscapeInv = True
+         ,coEscapeWrd = True
          }
 
 readConfig :: FilePath -> IO Conf
