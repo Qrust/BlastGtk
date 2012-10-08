@@ -260,12 +260,12 @@ ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach coun
 ssachThreadTimeout :: Num a => Board -> a
 ssachThreadTimeout _ = 30 * 60
 ssachPostTimeout :: Num a => Board -> a
--- TODO update later, when they reintroduce adaptivity
+-- TODO update later, when they disable adaptivity
 ssachPostTimeout _ = if ssachAdaptivity then 10 else 0
 
 ssachAdaptivity :: Bool
--- TODO update later, when they reintroduce adaptivity
-ssachAdaptivity = False
+-- TODO update later, when they disable adaptivity
+ssachAdaptivity = True
 
 ssachLastRecordedWakabaplAndFields :: String -> (String, [Field])
 ssachLastRecordedWakabaplAndFields hostAndBoard =

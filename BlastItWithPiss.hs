@@ -42,6 +42,7 @@ import qualified Data.ByteString.Lazy as L
 data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> Maybe Int -> IO (Bool, String))
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
+                             ,tappendjunkimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
                              ,tmakewatermark :: TVar Bool
                              }
@@ -145,6 +146,9 @@ instance MonadRandom m => MonadRandom (StateT s m) where
 flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
 flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
 
+flBoolModSTM :: MonadIO m => TVar Bool -> (a -> m a) -> a -> m a
+flBoolModSTM t f v = ifM (liftIO $ readTVarIO t) (f v) (return v)
+
 defMuS :: IO MuSettings
 defMuS = atomically $ do
     mthread <- newTVar Nothing
@@ -227,11 +231,13 @@ blastImage mode = do
                     blastOut NoImages
                     blastLog "threw NoImages"
                     -- use recaptcha as a fallback
-                    blast $ Just . Image "haruhi.jpg" "image/jpeg" <$>
+                    Just . Image "haruhi.jpg" "image/jpeg" <$> blast
                             (getCaptchaImage =<<
                                     getChallengeKey ssachRecaptchaKey)
-                else blast $
-                        Just <$> (readImageWithoutJunk =<< chooseFromList images)
+                else do
+                    file <- chooseFromList images
+                    blastLog $ "chose image \"" ++ file ++ "\""
+                    Just <$> readImageWithoutJunk file
 
 blastPasta :: (Int -> BlastLog Thread) -> Page -> Maybe Int -> BlastLog (Bool, String)
 blastPasta getThread p0 tid = do
@@ -346,15 +352,15 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                 blastLog $ "sleeping " ++ show slptime ++ " seconds before post. FIXME using threadDelay for sleeping, instead of a more precise timer"
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
-            -- FIXME beforePost <- liftIO $ getPOSIXTime
+            beforePost <- liftIO $ getPOSIXTime
             (out, _) <- blast $ post p
-            afterPost <- liftIO $ getPOSIXTime
+            -- FIXME afterPost <- liftIO $ getPOSIXTime
             blastOut (OutcomeMessage out)
             when (successOutcome out) $ blastLog "post succeded"
             let (nthreadtime, nposttime) =
                     if mode == CreateNew
-                        then (afterPost, lposttime)
-                        else (lthreadtime, afterPost)
+                        then (beforePost, lposttime)
+                        else (lthreadtime, beforePost)
                 ret = return (nthreadtime, nposttime)
             case out of
                 Success -> ret
@@ -365,10 +371,10 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                         else ret
                 TooFastPost -> do
                         blastLog "TooFastPost, retrying in 0.5 seconds"
-                        return (lthreadtime, afterPost - (ssachPostTimeout board - 0.5))
+                        return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
                 TooFastThread -> do
                         blastLog "TooFastThread, retrying in 15 minutes"
-                        return (afterPost - (ssachThreadTimeout board / 2), lposttime)
+                        return (beforePost - (ssachThreadTimeout board / 2), lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                         blastLog $ show o ++ ", requerying"
                         blastPost True lthreadtime lposttime w mode thread postdata
@@ -419,8 +425,12 @@ blastLoop w lthreadtime lposttime = do
                         chooseThread mode getPage p0
         recThread thread
         blastLog $ "chose thread " ++ show thread
-        rimage <- blastImage mode
-        image <- maybe (return Nothing) (\i -> Just <$> appendJunk i) rimage
+        cleanImage <- blastImage mode
+        junkImage <- case cleanImage of
+            Nothing -> return Nothing
+            Just i -> Just <$> flBoolModSTM tappendjunkimages
+                (\im -> do blastLog "appending junk to image"
+                           appendJunk im) i
         let getThread i = do
                 blastLog $ "Going into " ++ show i ++ " thread for pasta"
                 blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
@@ -429,7 +439,7 @@ blastLoop w lthreadtime lposttime = do
         watermark <- liftIO $ readTVarIO tmakewatermark
         (nthreadtime, nposttime) <-
             blastPost False lthreadtime lposttime w mode thread
-                        (PostData "" pasta image (sageMode mode) watermark esc)
+                        (PostData "" pasta junkImage (sageMode mode) watermark esc)
         blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.

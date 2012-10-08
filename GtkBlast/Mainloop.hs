@@ -187,10 +187,10 @@ mainloop = do
 
 setMainLoop :: Env -> IO ()
 setMainLoop env = do
-    void $ idleAdd (do
+    void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $
             progressBarPulse $ wprogresswipe env
-        True <$ yield) priorityDefaultIdle
+        True <$ yield) priorityDefaultIdle 10
     void $ timeoutAddFull (do
         runE env mainloop
         True <$ yield) priorityDefaultIdle 50 --kiloseconds, 20 fps.

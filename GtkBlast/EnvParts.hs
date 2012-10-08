@@ -159,6 +159,7 @@ envParts b =
             tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
             tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
             tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
+            tappendjunkimages <- atomically $ newTVar True
 
             on wcheckimages toggled $
                 atomically . writeTVar tuseimages =<< toggleButtonGetActive wcheckimages
