@@ -164,12 +164,12 @@ post (req, success) = do
                         lookup "Location" heads)
                 -> return (success, Nothing)
                | statusCode st == 403
-                -> maybe (throwIO $ StatusCodeException st heads Nothing)
+                -> maybe (throwIO $ StatusCodeException st heads)
                     (return . flip (,) (Just tags)) $ detectCloudflare tags
                | statusCode st >= 200 && statusCode st <= 300
                 -> return (detectOutcome tags, Just tags)
                | otherwise
-                -> throwIO (StatusCodeException st heads Nothing)
+                -> throwIO (StatusCodeException st heads)
             )
         [Handler $ \(async :: AsyncException) ->
             throwIO async

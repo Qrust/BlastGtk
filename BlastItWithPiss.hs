@@ -403,7 +403,7 @@ blastLoop w lthreadtime lposttime = do
                 let url = ssachPage board p
                 let chkStatus st@Status{statusCode=c} heads
                         | c /= 200 && c /= 403 =
-                            Just $ toException $ StatusCodeException st heads Nothing
+                            Just $ toException $ StatusCodeException st heads
                         | otherwise =
                             Nothing
                 blastLog $ "chooseThread: getPage: going to page " ++ show p

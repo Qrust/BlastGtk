@@ -94,7 +94,7 @@ mainloop board Config{..} ips mvs = do
                 case a of
                     InternalError e ->
                         case fromException $ unErrorException e of
-                            Just (StatusCodeException st _ _)
+                            Just (StatusCodeException st _)
                                 | statusCode st == 404
                                 -> ape four'o'four ip
                             _ -> ape bad $ ip ++ "| failed, exception was: " ++ show e
