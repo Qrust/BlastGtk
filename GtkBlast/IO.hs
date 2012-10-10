@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.IO
     (MonadIO(..)
     ,io

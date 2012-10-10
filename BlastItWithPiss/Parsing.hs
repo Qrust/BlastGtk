@@ -194,6 +194,7 @@ parseOmitted (TagOpen "script" _:ts) = (Nothing, ts)
 parseOmitted (_:ts) = parseOmitted ts
 parseOmitted [] = (Nothing, [])
 
+parseIcons :: (Bool, Bool) -> [Tag Text] -> ((Bool, Bool), [Tag Text])
 parseIcons (pin,lck) (TagOpen "img" ats:ts)
             | Just "/sticky.png" <- lookup "src" ats = parseIcons (True, lck) ts
             | Just "/locked.png" <- lookup "src" ats = parseIcons (pin, True) ts
@@ -236,9 +237,9 @@ parsePages tags =
                         then readMay $ takeWhile isNumber $ dropUntil isNumber $ T.unpack t
                         else Nothing
         texts = filter (T.any isNumber) $ mapMaybe maybeTagText work
-        first = fromMaybe 0 (findMap extract texts)
-        others = maximum (first : mapMaybe (readMay . T.unpack) texts)
-        in ((first, others), rest)
+        current = fromMaybe 0 (findMap extract texts)
+        others = maximum (current : mapMaybe (readMay . T.unpack) texts)
+        in ((current, others), rest)
 
 parsePage :: Board -> [Tag Text] -> Page
 parsePage board html =

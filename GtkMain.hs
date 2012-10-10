@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module Main where
 import Import hiding (on, mod)
 import GtkBlast.IO
@@ -34,7 +33,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 
 
--- TODO Tagsoup is the source of freezes, parseTags allocates a shit ton
+-- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
 -- CLARIFICATION dropped in favor of fast-tagsoup
 -- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
 -- TODO add API as a fallback if can't parse html
@@ -45,8 +44,6 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO don't regenerate threads until asked to.
 
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
--- TODO отображать состояние антигейта в updWipeMessage (add hook)
---      например количество капч решаемых в данный момент или stat.php
 -- TODO mochepasta resources/mocha, change default boards
 -- TODO Updater
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
@@ -61,13 +58,16 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 
--- TODO Replace (OriginStamp, Message) with appropriate type
+-- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type
+-- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
 -- TODO cleanup
 -- TODO document
 
+-- TODO отображать состояние антигейта в updWipeMessage (add hook)
+--      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
 -- TODO get a hackage account and release antigate ¿ should i release BlastItWithPiss? Would it be considered malware, and if it would, does hackage prohibit it?
 -- TODO GTK keyboard completion in board list
@@ -106,7 +106,7 @@ main = withSocketsDo $ do
   
     rawPutLog =<< ("Starting blastgtk. Current POSIX time is " ++) . show <$> getPOSIXTime
   
-    configfile <- (</> "config") <$> configDir
+    configfile <- (</> "config.json") <$> configDir
   
     conf <- readConfig configfile
   

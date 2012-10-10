@@ -1,11 +1,9 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module GtkBlast.EnvParts
     (envParts
     ,createWidgetsAndFillEnv
     ) where
 import Import hiding (on, mod)
-import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Directory
 import GtkBlast.Environment
@@ -22,7 +20,7 @@ import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get, set)
-import qualified Graphics.UI.Gtk as G (get, set)
+import qualified Graphics.UI.Gtk as G (set)
 import GHC.Conc
 import Control.Concurrent.STM
 import Paths_blast_it_with_piss

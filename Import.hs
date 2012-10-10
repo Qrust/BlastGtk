@@ -1,6 +1,7 @@
 module Import
     (module A
     ,LByteString
+    ,toLBS
     ,LText
     ,show
     ,(>$>)
@@ -58,12 +59,13 @@ import Control.DeepSeq as A
 import Control.Monad.Trans.Control as A
 import Control.Exception.Lifted as A
 import Data.ByteString as A (ByteString)
-import qualified Data.ByteString.Lazy as LB (ByteString, toChunks)
+import qualified Data.ByteString.Lazy as LB
 import Data.Text as A (Text)
-import qualified Data.Text.Lazy as LT (Text)
+import qualified Data.Text.Lazy as LT
+import qualified Text.Show as S
+
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
-import qualified Text.Show as S
 
 type LByteString = LB.ByteString
 
@@ -75,6 +77,9 @@ instance NFData ByteString
 instance NFData LB.ByteString where
     rnf r = LB.toChunks r `deepseq` ()
 #endif
+
+toLBS :: ByteString -> LByteString
+toLBS x = LB.fromChunks [x]
 
 {-# INLINE show #-}
 show :: (Show a, IsString b) => a -> b

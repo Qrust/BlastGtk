@@ -1,6 +1,7 @@
 module GtkBlast.Type_CaptchaMode
     (CaptchaMode(..)
     ) where
+import Prelude
 
 data CaptchaMode = Gui
                  | Antigate

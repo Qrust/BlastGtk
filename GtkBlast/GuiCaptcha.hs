@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.GuiCaptcha
     (addGuiCaptchas
     ,addGuiCaptcha

@@ -1,5 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 module GtkBlast.AntigateCaptcha
     (addAntigateCaptchas
     ,addAntigateCaptcha

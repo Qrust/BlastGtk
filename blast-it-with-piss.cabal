@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.1.0.605
+version: 0.1.0.607
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -11,7 +11,7 @@ maintainer: xmpp:kudah@jabber.ru, skype:kudahkukarek, https://github.com/exbb2
 category: Network
 stability: experimental
 build-type: Simple
-cabal-version: >= 1.8
+cabal-version: >= 1.15
 tested-with: GHC == 7.4.1
 data-files: build-production.sh
            ,resources/blast.glade
@@ -83,16 +83,13 @@ library
         cpp-options: -DTEST
 
     ghc-options: -Wall -threaded 
-    
-    extensions: NoImplicitPrelude
+
+    default-language: Haskell2010
+
+    default-extensions:
+                NoImplicitPrelude
                ,CPP
-               ,PatternGuards
                ,OverloadedStrings
-               ,PatternGuards
-               ,RecordWildCards
-               ,ScopedTypeVariables
-               ,OverloadedStrings
-               ,PatternGuards
                ,RecordWildCards
                ,ScopedTypeVariables
                ,FlexibleContexts
@@ -147,6 +144,9 @@ executable blastgtk
                   ,network
                   ,deepseq
                   ,data-default
+                  ,aeson
+                  ,aeson-pretty
+                  ,ghc-prim
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -159,17 +159,23 @@ executable blastgtk
     if flag(test)
         cpp-options: -DTEST
 
-    ghc-options: -Wall -threaded 
+    ghc-options: -Wall -threaded
 
-    extensions: CPP
-               ,PatternGuards
+    default-language: Haskell2010
+
+    default-extensions:
+                NoImplicitPrelude
+               ,CPP
                ,OverloadedStrings
-               ,PatternGuards
                ,RecordWildCards
                ,ScopedTypeVariables
                ,FlexibleContexts
                ,DeriveDataTypeable
                ,PackageImports
+
+    other-extensions:
+                UndecidableInstances
+               ,FlexibleInstances
 
 executable proxychecker
     main-is: CheckProxyMain.hs
@@ -202,16 +208,24 @@ executable proxychecker
 
     ghc-options: -Wall -threaded 
 
-    extensions: NoImplicitPrelude
+    default-language: Haskell2010
+
+    default-extensions:
+                NoImplicitPrelude
                ,CPP
-               ,PatternGuards
                ,OverloadedStrings
-               ,PatternGuards
                ,RecordWildCards
                ,ScopedTypeVariables
                ,FlexibleContexts
                ,DeriveDataTypeable
                ,PackageImports
+
+    other-extensions:
+                ExistentialQuantification
+               ,MultiParamTypeClasses
+               ,FunctionalDependencies
+               ,FlexibleInstances
+               ,TypeSynonymInstances
 
 --~executable blastcli
 --~    main-is: CliMain.hs
@@ -228,11 +242,16 @@ executable proxychecker
 --~
 --~    ghc-options: -Wall -threaded 
 --~
---~    extensions: NoImplicitPrelude, CPP, PatternGuards
---~               ,OverloadedStrings
+--~    default-language: Haskell2010
+--~
+--~    default-extensions:
+--~                NoImplicitPrelude
+--~               ,CPP
 --~               ,PatternGuards
+--~               ,OverloadedStrings
 --~               ,RecordWildCards
 --~               ,ScopedTypeVariables
+--~               ,PackageImports
 
 --~--~ updater app. Checks and installs updates, then runs blastgtk
 --~executable BlastItWithPiss
@@ -257,8 +276,11 @@ executable proxychecker
 --~
 --~    ghc-options: -Wall -threaded 
 --~
---~    extensions: NoImplicitPrelude, CPP, PatternGuards
+--~    default-language: Haskell2010
+--~
+--~    default-extensions:
+--~                NoImplicitPrelude
+--~               ,CPP
 --~               ,OverloadedStrings
---~               ,PatternGuards
 --~               ,RecordWildCards
 --~               ,ScopedTypeVariables

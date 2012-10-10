@@ -36,9 +36,7 @@ import Text.HTML.TagSoup.Fast
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as B8
-import BlastItWithPiss.Parsing()
 
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
 

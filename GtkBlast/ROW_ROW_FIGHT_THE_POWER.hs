@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyDataDecls #-}
 {-# OPTIONS_GHC -w #-}
 module GtkBlast.ROW_ROW_FIGHT_THE_POWER
     (
@@ -58,6 +57,7 @@ module GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
     ,you, lost, The(..), Game(..), (!)
     ) where
+import Prelude
 import Graphics.UI.Gtk
 
 data {-ROW-}ROW__FIGHT_THE_POWER =

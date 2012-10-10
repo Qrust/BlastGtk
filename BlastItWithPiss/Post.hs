@@ -37,7 +37,7 @@ data PostData = PostData
 doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
 doWeNeedCaptcha board thread usercode = do
     cd <- responseBody <$> httpReqStr
-        (fromJust $ parseUrl $ "http://2ch.so/makaba/captcha?code="++usercode)
+        (fromJust $ parseUrl $ ssach ++ "/makaba/captcha?code=" ++ usercode)
             {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
                               ,("x-requested-with", "XMLHttpRequest")
                               ,(hReferer, ssachThread board thread)]}

@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.Pasta
     (PastaSet(..)
     ,generatePastaGen
@@ -27,11 +26,6 @@ generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String
 generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
     take len <$> getRandomRs charBounds
-
-generateRandomStrings :: MonadChoice m => (Int, Int) -> (Int, Int) -> (Char, Char) -> m [String]
-generateRandomStrings lengthBounds strLengthBounds strCharBounds = do
-    strcount <- getRandomR lengthBounds
-    replicateM strcount $ generateRandomString strLengthBounds strCharBounds
 
 pastaChooser :: [String] -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
 pastaChooser pastas = do

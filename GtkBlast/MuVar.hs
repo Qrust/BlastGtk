@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, TypeSynonymInstances #-}
 module GtkBlast.MuVar
     (MuVar(..)
@@ -13,7 +12,7 @@ module GtkBlast.MuVar
 import Import hiding (mod)
 import GtkBlast.IO
 import Graphics.UI.Gtk hiding (get, set)
-import Control.Concurrent.STM
+--import Control.Concurrent.STM -- don't make instances for stm
 
 class MuVar v a | v -> a where
     getIO :: v -> IO a

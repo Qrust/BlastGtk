@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.Captcha
     (CaptchaMode(..)
     ,addCaptcha

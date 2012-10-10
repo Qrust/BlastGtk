@@ -1,6 +1,7 @@
 module GtkBlast.Type_PastaSet
     (PastaSet(..)
     ) where
+import Prelude
 
 data PastaSet = Mocha
               | PastaFile

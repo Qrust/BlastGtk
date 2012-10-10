@@ -16,9 +16,6 @@ import Data.CaseInsensitive (CI, foldedCase, original)
 import qualified Data.ByteString.Lazy as L
 --import Codec.Binary.UTF8.Generic (toString, fromString)
 
-toLBS :: ByteString -> LByteString
-toLBS x = L.fromChunks [x]
-
 data Field = Field {fieldAttrs :: [(ByteString, ByteString)]
                    ,fieldHeaders :: [Header]
                    ,fieldBody :: !LByteString

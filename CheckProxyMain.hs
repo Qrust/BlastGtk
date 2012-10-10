@@ -124,7 +124,7 @@ mainloop board Config{..} ips mvs = do
                 post =<<
                     prepare board (Just thread)
                         (PostData "САЖА" txt Nothing True False False False) "03AHJ_VutW6y0VOt928pITpHtSRO6mM4Vk-iou_VVxKkC5MCxKKU-rSCdQT-yqaGxHg0y-YZNKDD_n_-bUNFSVDB-G_db5J4RbLIvI-ysf8fd2dXj4Xt6bwG0CRLRgmDrc-NmKQBn89GXVTpEZa2iTJF3Hny3F8e5aNw" "reading speed"
-                        ("http://2ch.so" ++ renderBoard board ++ "wakaba.pl")
+                        (ssachBoard board ++ "wakaba.pl")
                         [field "akane" ""] ssachLengthLimit
         return (ip, m)
     unless quiet $ putStrLn $ "Передышка: " ++ show timeout ++ " секунд..., Ещё не запущено: " ++ show (length ni) ++ " проксей."

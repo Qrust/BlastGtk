@@ -260,9 +260,10 @@ choosePostToRepostFromThread trd = do
 
 -- | Randomly choose a post to repost from page or from thread
 choosePostToRepost :: MonadChoice m => (Int -> m Thread) -> Page -> Maybe Int -> m String
-choosePostToRepost getThread p0 Nothing = choosePostToRepostFromPage p0
+choosePostToRepost _ p0 Nothing =
+    choosePostToRepostFromPage p0
 choosePostToRepost getThread p0 (Just tid) = do
-    fromThread <- fromList $ [(False, 10), (True, 90)]
+    fromThread <- fromList [(False, 10), (True, 90)]
     if fromThread
         then do
             trd <- getThread tid

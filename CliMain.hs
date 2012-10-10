@@ -1,4 +1,3 @@
-{-# LANGUAGE PackageImports #-}
 module Main (main) where
 import Prelude
 import Control.Monad

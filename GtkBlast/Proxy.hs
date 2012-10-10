@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module GtkBlast.Proxy
     (regenerateProxies
     ) where
@@ -19,21 +18,21 @@ regenerateProxies :: E ()
 regenerateProxies = do
     let getProxyMap :: Bool -> CheckButton -> Entry -> IORef ModificationTime -> IORef [BlastProxy] -> E [BlastProxy]
         getProxyMap isSocks wcheckproxy wentryproxyfile proxymod proxylast = do
-        ifM (get wcheckproxy)
-            (do pf <- get wentryproxyfile
-                d <- get proxymod
-                nd <- appFile nullTime getModificationTime pf
-                if (nd > d)
-                    then do
-                        writeLog $ "regen " ++ if isSocks then "socks" else "http" ++ " proxy"
-                        set proxymod nd
-                        nps <- catMaybes . map (readBlastProxy isSocks) . lines <$>
-                                appFile [] readFile pf
-                        set proxylast nps
-                        return nps
-                    else get proxylast)
-            (do set proxylast []
-                return [])
+            ifM (get wcheckproxy)
+                (do pf <- get wentryproxyfile
+                    d <- get proxymod
+                    nd <- appFile nullTime getModificationTime pf
+                    if (nd > d)
+                        then do
+                            writeLog $ "regen " ++ if isSocks then "socks" else "http" ++ " proxy"
+                            set proxymod nd
+                            nps <- catMaybes . map (readBlastProxy isSocks) . lines <$>
+                                    appFile [] readFile pf
+                            set proxylast nps
+                            return nps
+                        else get proxylast)
+                (do set proxylast []
+                    return [])
     let robustEnterpriseQualityBestPracticesSolution x a = do
             y <- M.fromList <$> forM a (\p -> (,) p <$> io defPrS)
             return $ M.intersection x y `M.union` y
