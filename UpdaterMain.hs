@@ -1,76 +1,45 @@
 module Main where
-import Prelude
-import Data.Version
+import Import
+import Updater.Manifest
+import Updater.UnpackZip
 import System.Directory
 import System.FilePath
+import Data.Aeson
 import System.Environment.Executable
 import Network.HTTP.Conduit
-import Graphics.UI.Gtk
-
-type URL = String
-
-type MD5Sum = String
-
-data Platform = Linux | Windows | Mac
+import Graphics.UI.Gtk hiding (Entry)
+import Codec.Archive.Zip
+import qualified Data.ByteString.Lazy as L
+import qualified Paths_blast_it_with_piss as Paths
 
 {-
-data UpdateManifest = UpdateManifest
-    {root :: URL
-    ,version :: Version
-    ,files :: [(String, MD5Sum)]
-    ,binaries :: [(String, MD5Sum, Platform)]
-    ,popupMessage :: Maybe String
-    ,configCompatible :: Version -- ^ если наша версия — копируем конфиг из .old.
-    }
+data UpdaterConf = UpdaterConf
+        {updateWithoutAsking :: Bool
+        ,manifestUrl :: String
+        }
+-}
 
-- скачиваем манифест с файла, в манифесте версия, список файлов и чексумм.
-- создаем папку blast.old, если уже есть то инкрементируем цифры типа blast.old2, blast.old999
-  пока не найдем незанятое имя.
-- _перемещаем_(не переименовываем) файлы которые нужно заменить в папку
-- скачиваем файлы, сверяем чексуммы, если что-то не совпадает отменяем всё нахуй и перемещаем файлы обратно из blast.old
-- blast.old не удаляем даже при успешном апдейте(пока)
+{-
+- скачиваем манифест с файла, в манифесте версия, список архивов и чексумм
+- скачиваем архивы, сверяем чексуммы, если что-то не совпадает выдаем диалог типа "Retry-Abort-Cancel"
+- создаем папку blast.old.$СТАРАЯ-ВЕРСИЯ, если уже есть то добавляем цифры
+    -- переименовываем файлы и директории для которых есть версия из архива в бэкап-папку.
+    -- ^ как часть распаковки уже
+- распаковываем.
 -}
 
 errorNoBuildAvailable :: Platform -> String
 errorNoBuildAvailable Linux = "Случилось абсолютно невозможное, не обнаружено версии вайпалки для единственной операционной системы!"
 errorNoBuildAvailable Windows = "Не обнаружено версии вайпалки для утятницы \"Пекач\"\nРешение:\n1. Соснуть хуйцов\n2.Сделать бочку."
-errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(через news-конфу колчана, по скайпу kudahkukarek, или через открытие баг-репорта в Issues репозитория вайпалки)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
+errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(через тред, жаббер kudah@jabber.ru, скайп kudahkukarek или через гитхаб)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
 
-noSpace :: String -> String
-noSpace = dropWhile isSpace . reverse . dropWhile isSpace
+needUpdate :: UpdateManifest -> Bool
+needUpdate um = version um > Paths.version
 
--- how about DwarfFortress-like syntax? [key:value]
--- or we could just parse yaml/json/xml(since we already depend on tagsoup)
--- and stop bothering with own parsers.
-keyValuesToManifest :: [(String, String)] -> Either String UpdateManifest
-keyValuesToManifest = undefined
-
-data UpdaterConf = UpdaterCond
-    {updateWithoutAsking :: Bool
-    }
-
-data UpdateManifest = UpdateManifest
-    {version :: Version
-    ,binaryAndResourcesZipArchives :: [(URL, MD5Sum)]
-    ,imagePackZipArchives :: [(URL, MD5Sum)]
-    ,changelog :: String
-    ,configCompatible :: Version -- ^ Если наша версия или ниже, то оставляем конфиг, в противном случае бэкапим.
-    }
-{-
-- скачиваем манифест с файла, в манифесте версия, список архивов и чексумм
-- скачиваем архивы, сверяем чексуммы, если что-то не совпадает выдаем диалог типа "Retry-Abort-Cancel"
-- создаем папку blast.old, если уже есть то инкрементируем цифры типа blast.old2, blast.old999
-  пока не найдем незанятое имя.
-- переименовываем файлы и директории для которых есть версия из архива в бэкап-папку.
-- распаковываем.
--}
-
-data Outcome = Success
-             | ChecksumMismatch
-             | ServersUnreachable
-             | NoBuildAvailable Platform
-             | UnparseableManifest
-             | HttpExc HttpException
+downloadManifest :: IO (Either SomeException UpdateManifest)
+downloadManifest = try $ do
+    fromMaybe (error "Couldn't parse update manifest as valid json") . decode' <$>
+        simpleHttp "https://raw.github.com/exbb2/BlastItWithPiss/master/UPDATE_MANIFEST"
 
 main :: IO ()
 main = undefined

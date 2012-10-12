@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.1.0.607
+version: 0.1.0.608
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -262,6 +262,8 @@ executable proxychecker
 --~                  ,filepath
 --~                  ,executable-path
 --~                  ,http-conduit
+--~                  ,aeson
+--~                  ,cryptohash
 --~
 --~    if flag(bindist)
 --~        cpp-options: -DBINDIST
@@ -284,3 +286,6 @@ executable proxychecker
 --~               ,OverloadedStrings
 --~               ,RecordWildCards
 --~               ,ScopedTypeVariables
+--~
+--~    other-extensions:
+--~                DeriveGeneric

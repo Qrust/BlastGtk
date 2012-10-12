@@ -54,61 +54,6 @@ tgOpen = TagOpen
 tgClose :: Text -> Tag Text
 tgClose = TagClose
 
-newtype ErrorMessage = Err {unErrorMessage :: String}
-    deriving (Eq, Ord)
-
-instance Show ErrorMessage where
-    show = unErrorMessage -- show cyrillic as is, instead of escaping it.
-
-newtype ErrorException = ErrorException {unErrorException :: SomeException}
-    deriving (Typeable)
-
-instance Show ErrorException where
-    show = show . unErrorException
-
-instance Eq ErrorException where
-    (==) _ _ = True
-
-data Outcome = Success
-             | SuccessLongPost {rest :: String}
-             | Wordfilter
-             | Banned {errMessage :: ErrorMessage}
-             | SameMessage
-             | SameImage
-             | TooFastPost
-             | TooFastThread
-             | NeedCaptcha
-             | WrongCaptcha
-             | RecaptchaBan
-             | LongPost
-             | CorruptedImage
-             | CloudflareCaptcha
-             | CloudflareBan
-             | OtherError {errMessage :: ErrorMessage}
-             | InternalError {errException :: ErrorException}
-             | UnknownError
-    deriving (Eq, Show)
-
-instance NFData ErrorMessage where
-    rnf = rnf . unErrorMessage
-
-instance NFData ErrorException
-
-instance NFData Outcome where
-    rnf (SuccessLongPost s) = rnf s
-    rnf (Banned s) = rnf s
-    rnf (OtherError s) = rnf s
-    rnf (InternalError s) = rnf s
-    rnf a = a `seq` ()
-
-message :: Outcome -> String
-message = unErrorMessage . errMessage
-
-successOutcome :: Outcome -> Bool
-successOutcome Success = True
-successOutcome (SuccessLongPost _) = True
-successOutcome _ = False
-
 data Post = Post
     {postId :: Int
     ,postContents :: String
@@ -160,7 +105,7 @@ instance NFData Page where
 
 innerTextWithBr :: [Tag Text] -> Text
 innerTextWithBr = T.concat . mapMaybe aux
-    where aux (TagOpen x []) | x == "br" = Just "\n"
+    where aux (TagOpen "br" []) = Just "\n"
           aux a = maybeTagText a
 
 parseOpPost :: Int -> [Tag Text] -> (Post, [Tag Text])
@@ -270,6 +215,61 @@ parseForm host tags =
         inputToField tag =
             field (T.encodeUtf8 $ fromAttrib "name" tag)
                   (T.encodeUtf8 $ fromAttrib "value" tag)
+
+newtype ErrorMessage = Err {unErrorMessage :: String}
+    deriving (Eq, Ord)
+
+instance Show ErrorMessage where
+    show = unErrorMessage -- show cyrillic as is, instead of escaping it.
+
+newtype ErrorException = ErrorException {unErrorException :: SomeException}
+    deriving (Typeable)
+
+instance Show ErrorException where
+    show = show . unErrorException
+
+instance Eq ErrorException where
+    (==) _ _ = True
+
+data Outcome = Success
+             | SuccessLongPost {rest :: String}
+             | Wordfilter
+             | Banned {errMessage :: ErrorMessage}
+             | SameMessage
+             | SameImage
+             | TooFastPost
+             | TooFastThread
+             | NeedCaptcha
+             | WrongCaptcha
+             | RecaptchaBan
+             | LongPost
+             | CorruptedImage
+             | CloudflareCaptcha
+             | CloudflareBan
+             | OtherError {errMessage :: ErrorMessage}
+             | InternalError {errException :: ErrorException}
+             | UnknownError
+    deriving (Eq, Show)
+
+instance NFData ErrorMessage where
+    rnf = rnf . unErrorMessage
+
+instance NFData ErrorException
+
+instance NFData Outcome where
+    rnf (SuccessLongPost s) = rnf s
+    rnf (Banned s) = rnf s
+    rnf (OtherError s) = rnf s
+    rnf (InternalError s) = rnf s
+    rnf a = a `seq` ()
+
+message :: Outcome -> String
+message = unErrorMessage . errMessage
+
+successOutcome :: Outcome -> Bool
+successOutcome Success = True
+successOutcome (SuccessLongPost _) = True
+successOutcome _ = False
 
 wordfiltered :: [Tag Text] -> Bool
 wordfiltered =

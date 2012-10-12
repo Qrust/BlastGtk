@@ -25,7 +25,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 
 -- TODO switch to JSON for config and manifest
-
+-- TODO обращать внимание на бамплимит в вайпе
 
 
 
@@ -42,20 +42,25 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
+-- TODO better exceptions for 404 ban
 
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
--- TODO mochepasta resources/mocha, change default boards
+-- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README
+-- TODO Sane defaults.
 -- TODO Updater
 -- TODO proxy checker is now useless, bundle it, but don't advertise.
 -- TODO helpMessage
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
+--      + реклама картинкой
 -- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
 --      , даже "я посрал" — приветствуется.
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
+-- TODO Фотожабы на тему ссания в жопу, из Kuso Miso Technique.
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
+-- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type
@@ -63,13 +68,16 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
+-- FIXME Кажется за каждый reverse мне светит по ебалу
 -- TODO cleanup
 -- TODO document
 
+-- TODO zip file permissions
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
--- TODO get a hackage account and release antigate ¿ should i release BlastItWithPiss? Would it be considered malware, and if it would, does hackage prohibit it?
+-- TODO get a hackage account and release antigate
+-- TODO make updater a standalone library and release on hackage?
 -- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit

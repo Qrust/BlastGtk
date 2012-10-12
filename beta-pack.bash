@@ -28,6 +28,7 @@ rm -fv BlastItWithPiss-BETA-*-x86-*.zip
 # TODO is there a github api for downloads?
 # http://developer.github.com/v3/repos/downloads/ here it is
 # TODO automate uploading of new versions and manifest generation
+# CLARIFICATION Manifest should be generated AFTER upload
 git commit -a && git push
 echo "Done packaging, now upload those."
 firefox "https://github.com/exbb2/BlastItWithPiss/downloads"&

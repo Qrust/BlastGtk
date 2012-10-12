@@ -52,45 +52,45 @@ strategies =
         always = 100000000
     in M.fromList $
         [VG /    -- everyone sits in generals, nobody cares about the front page
-            [SagePopular    / 50
-            ,BumpUnpopular  / 5
-            ,ShitupSticky   / 20
-            ,BumpOld        / 5
-            ,CreateNew      / 20]
+            [SagePopular    / 70
+            ,BumpUnpopular  / 10
+            ,ShitupSticky   / 50
+            ,BumpOld        / 20
+            ,CreateNew      / 70]
         ,B /
-            [SagePopular / 60
-            ,BumpUnpopular / 40
-            ,ShitupSticky / 100
-            ,BumpOld / 0
-            ,CreateNew / 150]
+            [SagePopular / 70
+            ,BumpUnpopular / 20
+            ,ShitupSticky / 50
+            ,BumpOld / 10
+            ,CreateNew / 200]
         ,CG /
             [SagePopular / 40
             ,BumpUnpopular / 20
-            ,ShitupSticky / 100
+            ,ShitupSticky / 50
             ,BumpOld / 60
             ,CreateNew / always]
         ,D /
-            [SagePopular / 20
+            [SagePopular / 50
             ,BumpUnpopular / 0
-            ,ShitupSticky / 70
-            ,BumpOld / 10
+            ,ShitupSticky / 50
+            ,BumpOld / 30
             ,CreateNew / always]
         ,MLP /
             [SagePopular / 60
-            ,BumpUnpopular / 20
+            ,BumpUnpopular / 10
             ,ShitupSticky / 100
-            ,BumpOld / 20
+            ,BumpOld / 30
             ,CreateNew / always]
         ,BB /
             [SagePopular / 20
             ,BumpUnpopular / 40
-            ,ShitupSticky / 10
+            ,ShitupSticky / 60
             ,BumpOld / 30
             ,CreateNew / always]
         ,DEV /
             [SagePopular / 15
             ,BumpUnpopular / 15
-            ,ShitupSticky / 20
+            ,ShitupSticky / 60
             ,BumpOld / 50
             ,CreateNew / always]
         ,S /
@@ -106,9 +106,9 @@ strategies =
             ,BumpOld / 10
             ,CreateNew / always]
         ,A /
-            [SagePopular / 50
+            [SagePopular / 70
             ,BumpUnpopular / 20
-            ,ShitupSticky / 20
+            ,ShitupSticky / 40
             ,BumpOld / 10
             ,CreateNew / always]
         ,PO /
@@ -126,13 +126,13 @@ strategies =
         ,SEX /
             [SagePopular / 35
             ,BumpUnpopular / 45
-            ,ShitupSticky / 100
+            ,ShitupSticky / 50
             ,BumpOld / 20
             ,CreateNew / always]
         ,TV /
             [SagePopular / 40
             ,BumpUnpopular / 20
-            ,ShitupSticky / 20
+            ,ShitupSticky / 60
             ,BumpOld / 20
             ,CreateNew / always]
         ,FA /
@@ -144,7 +144,7 @@ strategies =
         ,RF /
             [SagePopular / 33
             ,BumpUnpopular / 33
-            ,ShitupSticky / 100
+            ,ShitupSticky / 60
             ,BumpOld / 34
             ,CreateNew / always]
         ,D /
@@ -154,10 +154,10 @@ strategies =
             ,BumpOld / 40
             ,CreateNew / always]
         ,ABU /
-            [SagePopular / 0
+            [SagePopular / 100
             ,BumpUnpopular / 0
             ,ShitupSticky / 100
-            ,BumpOld / 50
+            ,BumpOld / 100
             ,CreateNew / 0]
         ]
 
@@ -225,7 +225,8 @@ chooseThread' canfail mode Page{..}
     --inb4 >kokoko
     | thrds <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
-                else filter (not . locked) threads -- we include stickys too
+                else let nost = filter (not . pinned) threads -- we don't include stickies
+                     in if null nost then threads else nost -- what can we do if there are only stickies left?
     , addfail <- if mode /= ShitupSticky && canfail
                     then (((-1), 50) :) -- add the possibility of failure
                                        -- in that case we advance to the next/previous page
