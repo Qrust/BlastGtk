@@ -44,7 +44,9 @@ rawPutLog s = do
     rawPutStdout s -- duplicate log to stdout for convinience
 
 writeLogIO :: TextBuffer -> String -> IO ()
-writeLogIO wbuf s = do
+writeLogIO wbuf raws = do
+    st <- show <$> getPOSIXTime
+    let s = ("[" ++ st ++ "]:\n  " ++ raws) 
     rawPutLog s
     e <- textBufferGetEndIter wbuf
     textBufferInsert wbuf e (s++"\n")

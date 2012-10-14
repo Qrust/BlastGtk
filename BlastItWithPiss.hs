@@ -4,6 +4,7 @@ module BlastItWithPiss
     ,CaptchaType(..)
     ,CaptchaAnswer(..)
     ,OriginStamp(..)
+    ,renderCompactStamp
     ,Message(..)
     ,OutMessage(..)
     ,LogDetail(..)
@@ -100,9 +101,13 @@ type BlastLog = ReaderT BlastLogData (StateT OriginInfo Blast)
 
 instance Show OriginStamp where
     show (OriginStamp time proxy board mode thread) =
-        show time ++ " " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
+        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
         " " ++ show mode ++ " [| " ++
         ssachThread board thread ++ " |]"
+
+renderCompactStamp :: OriginStamp -> String
+renderCompactStamp (OriginStamp _ proxy board _ _) =
+    renderBoard board ++ " {" ++ show proxy ++ "}"
 
 instance Show Message where
     show (OutcomeMessage o) = show o

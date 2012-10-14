@@ -24,11 +24,14 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
 -- TODO add API as a fallback if can't parse html
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
+-- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
+-- So it'll lag anyway, unless we move work to different process.
 
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
 -- TODO убирать капчу от дохлых тредов
+-- TODO Show currently active vs. banned vs. dead threads.
 -- TODO better exceptions for 404 ban
 
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
