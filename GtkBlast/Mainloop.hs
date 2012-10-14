@@ -88,7 +88,6 @@ startWipe = do
     E{..} <- ask
     writeLog "Starting wipe..."
     set wipeStarted True
-    maintainBoardUnits
 
 killWipe :: E ()
 killWipe = do
@@ -194,10 +193,10 @@ setMainLoop env configfile setConf = do
     void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $
             progressBarPulse $ wprogresswipe env
-        True <$ yield) priorityDefaultIdle 10
+        return True) priorityDefaultIdle 10
     void $ timeoutAddFull (do
         runE env mainloop
-        True <$ yield) priorityDefaultIdle 50 --kiloseconds, 20 fps.
+        return True) priorityDefaultIdle 50 --kiloseconds, 20 fps.
     void $ onDestroy (window env) $ do
         runE env . writeConfig configfile =<< setConf def{coFirstLaunch=False, coLastVersion=version}
         mainQuit
