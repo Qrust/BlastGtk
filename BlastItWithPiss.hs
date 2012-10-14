@@ -385,13 +385,13 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
     let hands =
-          [Handler $ \(a::HttpException) -> do
+          [Handler $ \(a::AsyncException) -> throwIO a
+          ,Handler $ \(a::HttpException) -> do
                 blastLog $ "Got http exception, restarting. Exception was: " ++ show a
                 blastLoop w lthreadtime lposttime -- Dunno what to do except restart.
           ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException $ a
-          ,Handler $ \(a::AsyncException) -> throwIO a
           ]
     flip catches hands $ do
         (board, ShSettings{..}, MuSettings{..}) <- askBSM

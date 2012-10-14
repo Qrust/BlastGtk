@@ -227,7 +227,7 @@ main = withSocketsDo $ do
                 void $ on wbuttonerror buttonActivated $ goodEnd executablePath
                 void $ onDestroy errorwindow $ goodEnd executablePath
                 return False
-            GoodEnd mmarkup -> do
+            GoodEnd mmarkup ->
                 case mmarkup of
                     Nothing -> False <$ goodEnd executablePath
                     Just markup -> do

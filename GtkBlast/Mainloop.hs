@@ -53,7 +53,7 @@ regenerateExcluding board exc = do
             else do writeLog $ "Spawning new thread for " ++ renderBoard board
                     mthread <- io $ atomically $ newTVar Nothing
                     mmode <- io $ atomically $ newTVar Nothing
-                    threadid <- io $ forkOS $ runBlast $ do
+                    threadid <- io $ forkIO $ runBlast $ do
                         --entryPoint p board Log shS MuSettings{..} s (putStrLn . show)
                         entryPoint p board Log shS MuSettings{..} s $ atomically . writeTQueue tqOut
                     Just . WipeUnit p threadid <$> io (newIORef False)

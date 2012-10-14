@@ -28,12 +28,12 @@ type MD5Sum = String
 type Changelog = [(Version, String)]
 
 data Platform = Linux | Windows | Mac
-    deriving (Eq, Show, Ord, Enum, Bounded, Generic)
+    deriving (Eq, Show, Read, Ord, Enum, Bounded)
 
 data UpdateManifest = UpdateManifest
         {version :: !Version
         ,binaryAndResourcesZipArchives :: ![(Platform, (URL, MD5Sum))]
-        ,imagePackZipArchives :: ![(URL, MD5Sum)]
+        ,imagePackZipArchives :: ![(String, (URL, MD5Sum))]
         ,changelog :: !Changelog
         }
     deriving (Eq, Show, Generic)
@@ -48,8 +48,12 @@ instance ToJSON Version where
     toJSON = String . T.pack . showVersion
 -- /HACK
 
-instance FromJSON Platform
-instance ToJSON Platform
+instance FromJSON Platform where
+    parseJSON (String s) = maybe mzero return $ readMay $ T.unpack s
+    parseJSON _ = mzero
+
+instance ToJSON Platform where
+    toJSON = String . T.pack . show
 
 instance FromJSON UpdateManifest where
     parseJSON (Object o) = do
