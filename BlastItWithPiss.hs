@@ -388,10 +388,10 @@ blastLoop w lthreadtime lposttime = do
           [Handler $ \(a::HttpException) -> do
                 blastLog $ "Got http exception, restarting. Exception was: " ++ show a
                 blastLoop w lthreadtime lposttime -- Dunno what to do except restart.
-          ,Handler $ \(a::AsyncException) -> throwIO a
           ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
-                throwIO a
+                blastOut $ OutcomeMessage $ InternalError $ ErrorException $ a
+          ,Handler $ \(a::AsyncException) -> throwIO a
           ]
     flip catches hands $ do
         (board, ShSettings{..}, MuSettings{..}) <- askBSM

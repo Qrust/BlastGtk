@@ -1,8 +1,11 @@
 module Updater.UnpackZip
     (unpackBlastItWithPissUpdateZip
+    ,unpackBlastItWithPissUpdateZipFromLBS
+    ,unpackBlastItWithPissUpdateZipFromFile
     ,blastEntry
     ,writeWithBackup
     ,stripBlastItWithPiss
+    ,restoreFromBackup
     ) where
 import Import
 import System.Directory
@@ -10,13 +13,10 @@ import System.FilePath
 import Codec.Archive.Zip
 import qualified Data.ByteString.Lazy as L
 
-stripBlastItWithPiss :: Entry -> Maybe Entry
-stripBlastItWithPiss x
-    | Just a <- stripPrefix "BlastItWithPiss/" (eRelativePath x)
-    , not $ null a = Just x{eRelativePath = a}
-    | otherwise = Nothing
-
--- FIXME HACK
+-- HORRIBLE HACK both zip-archive and zip-conduit don't preserve file permissions
+-- so instead we'll simply set executable bit for our executables based on filename.
+-- Of course I could always switch to tar or LibZip, or add proper permission
+-- handling to zip-archive, but I'm too lazy for that.
 ourExecutables :: [String]
 ourExecutables =
     ["BlastItWithPiss"
@@ -25,10 +25,6 @@ ourExecutables =
     ,"blastcli"
     ]
 
--- HORRIBLE HACK both zip-archive and zip-conduit don't preserve file permissions
--- so instead we'll simply set executable bit for those files we know are executables.
--- Of course we could always switch to tar or LibZip, or
--- add proper permission handling to zip-archive, but I'm too lazy for that.
 setExecutableBitForOurBinaries :: FilePath -> IO ()
 setExecutableBitForOurBinaries filepath
     | f <- takeBaseName filepath
@@ -37,6 +33,12 @@ setExecutableBitForOurBinaries filepath
         setPermissions filepath p{executable=True}
     | otherwise = return ()
 -- /HORRIBLE HACK
+
+stripBlastItWithPiss :: Entry -> Maybe Entry
+stripBlastItWithPiss x
+    | Just a <- stripPrefix "BlastItWithPiss/" (eRelativePath x)
+    , not $ null a = Just x{eRelativePath = a}
+    | otherwise = Nothing
 
 writeWithBackup :: FilePath -> FilePath -> LByteString -> IO ()
 writeWithBackup backupdir filepath content = do
@@ -60,10 +62,30 @@ blastEntry backupdir e@Entry{..}
             createDirectoryIfMissing True dir
         writeWithBackup backupdir eRelativePath (fromEntry e)
 
-unpackBlastItWithPissUpdateZip :: FilePath -> FilePath -> IO ()
-unpackBlastItWithPissUpdateZip backupdir zipfile = do
-    rawarc <- toArchive <$> L.readFile "BlastItWithPiss-BETA-linux-x86-0.1.0.607.zip"
+unpackBlastItWithPissUpdateZip :: FilePath -> Archive -> IO ()
+unpackBlastItWithPissUpdateZip backupdir rawarc = do
     mapM_ (blastEntry backupdir) $ mapMaybe stripBlastItWithPiss $ zEntries rawarc
+
+unpackBlastItWithPissUpdateZipFromLBS :: FilePath -> LByteString -> IO ()
+unpackBlastItWithPissUpdateZipFromLBS backupdir zipbytes = do
+    unpackBlastItWithPissUpdateZip backupdir $ toArchive zipbytes
+
+unpackBlastItWithPissUpdateZipFromFile :: FilePath -> FilePath -> IO ()
+unpackBlastItWithPissUpdateZipFromFile backupdir zipfile = do
+    unpackBlastItWithPissUpdateZipFromLBS backupdir =<< L.readFile zipfile
+
+--seriously?
+restoreFromBackup :: FilePath -> FilePath -> IO ()
+restoreFromBackup backupdir destinationdir = do
+    createDirectoryIfMissing True destinationdir
+    backupfiles <- filter (\x -> x /= "." && x /= "..") <$> getDirectoryContents backupdir
+    forM_ backupfiles $ \relative_f -> do
+        let backf = backupdir </> relative_f
+            destf = destinationdir </> relative_f
+        ifM (doesDirectoryExist backf) -- is it a directory?
+            (restoreFromBackup backf destf) -- recurse
+            (renameFile backf destf)
+    removeDirectory backupdir
 
 {-
 showBits :: Word32 -> String

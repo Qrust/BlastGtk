@@ -5,7 +5,7 @@ module Updater.Manifest
     ,Platform(..)
     ,Changelog
     ,UpdateManifest(..)
-    ,Outcome(..)
+    ,renderMD5
     ) where
 import Prelude
 import Safe
@@ -13,10 +13,13 @@ import Control.Applicative
 import Control.Monad
 import Text.ParserCombinators.ReadP
 import Data.Version
-import Control.Exception
 import GHC.Generics
 import Data.Aeson
 import qualified Data.Text as T
+import Crypto.Hash.MD5 (MD5)
+import qualified Data.Serialize as S
+import qualified Data.ByteString as B
+import Numeric
 
 type URL = String
 
@@ -29,19 +32,11 @@ data Platform = Linux | Windows | Mac
 
 data UpdateManifest = UpdateManifest
         {version :: !Version
-        ,binaryAndResourcesZipArchives :: ![(URL, MD5Sum)]
+        ,binaryAndResourcesZipArchives :: ![(Platform, (URL, MD5Sum))]
         ,imagePackZipArchives :: ![(URL, MD5Sum)]
         ,changelog :: !Changelog
         }
     deriving (Eq, Show, Generic)
-
-data Outcome = Success
-             | ChecksumMismatch
-             | ServersUnreachable
-             | NoBuildAvailable Platform
-             | UnparseableManifest
-             | ConnException SomeException
-    deriving (Show)
 
 -- HACK Those are quite dangerous orphans
 instance FromJSON Version where
@@ -66,3 +61,10 @@ instance FromJSON UpdateManifest where
     parseJSON _ = mzero
 
 instance ToJSON UpdateManifest
+
+--seriously?
+renderMD5 :: MD5 -> MD5Sum
+renderMD5 md5 = concatMap shWord8 $ B.unpack $ S.encode md5
+  where add0 (x:[]) = '0':x:[]
+        add0 x = x
+        shWord8 x = add0 $ showHex x ""

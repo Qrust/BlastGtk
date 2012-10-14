@@ -33,6 +33,7 @@ module Import
     ,untilNothing
     ,fromTrySome
     ,modifyIORefM
+    ,anyM
     ) where
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
 import System.IO as A hiding (readFile, writeFile, appendFile)
@@ -227,3 +228,7 @@ fromTrySome e m = do
 modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
 modifyIORefM r m =
     writeIORef r =<< m =<< readIORef r
+
+anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
+anyM m [] = return False
+anyM m (x:xs) = ifM (m x) (return True) (anyM m xs)

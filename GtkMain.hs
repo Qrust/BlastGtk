@@ -1,8 +1,6 @@
-module Main where
+module Main (main) where
 import Import hiding (on, mod)
-import GtkBlast.IO
 import GtkBlast.Directory
-import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
@@ -12,26 +10,13 @@ import System.Environment.UTF8
 import System.Exit
 import System.FilePath
 import Network (withSocketsDo)
-import Paths_blast_it_with_piss
 #ifdef BINDIST
 import System.Directory (setCurrentDirectory)
 import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
-
-
-
-
-
--- TODO switch to JSON for config and manifest
 -- TODO обращать внимание на бамплимит в вайпе
-
-
-
-
-
-
 
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
 -- CLARIFICATION dropped in favor of fast-tagsoup
@@ -42,6 +27,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
+-- TODO убирать капчу от дохлых тредов
 -- TODO better exceptions for 404 ban
 
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
@@ -72,12 +58,13 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO cleanup
 -- TODO document
 
+-- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
+-- TODO add blastcli
 -- TODO zip file permissions
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
 -- TODO get a hackage account and release antigate
--- TODO make updater a standalone library and release on hackage?
 -- TODO GTK keyboard completion in board list
 -- TODO update description when snoyman releases http-conduit-1.7.0
 -- TODO add multipart/form-data to http-conduit
@@ -104,67 +91,63 @@ main = withSocketsDo $ do
     when (any (`elem` args) ["--help", "-h", "-?"]) $ do
        putStrLn helpMessage
        exitSuccess
-    
+
      -- change workdir
 #ifdef BINDIST
     (path, _) <- splitExecutablePath
     setCurrentDirectory path
 #endif
     -- read configuration
-  
+
     rawPutLog =<< ("Starting blastgtk. Current POSIX time is " ++) . show <$> getPOSIXTime
-  
+
     configfile <- (</> "config.json") <$> configDir
-  
+
     conf <- readConfig configfile
-  
+
     rawPutLog $ "Loaded config: " ++ show conf
-  
+
     -- start
-  
+
     handle (\(a::SomeException) -> do
               rawPutLog $ "Uncaught exception terminated program, sorry: " ++ show a
               exitFailure) $ do
- 
+
         -- init
-    
+
         void $ initGUI
         builder <- builderNew
         builderAddFromFile builder =<< getResourceFile "blast.glade"
-    
+
         (env, setConf) <- createWidgetsAndFillEnv builder conf
-    
+
         -- start main loop
 
-        setMainLoop env
-    
-        void $ onDestroy (window env) $ runE env $ do
-            writeConfig configfile =<< io (setConf def{coFirstLaunch=False, coLastVersion=version})
-            io $ mainQuit
-    
+        setMainLoop env configfile setConf
+
         -- start main gui
-    
+
         i am playing the game
         the one that'll take me to my end
         i am waiting for the rain
         to wash up who i am
-    
+
         libera me from $osach:
             DO THE IMPOSSIBLE!
             SEE THE INVISIBLE!
             ROW! ROW!
             FIGHT THE POWER!
-            
+
             TOUCH THE UNTOUCHABLE!
             BREAK THE UNBREAKABLE!
             ROW! ROW!
             FIGHT THE POWER!
-            
+
             ROW! ROW!
             FIGHT THE POWER!                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             [you lost The Game]
-  
+
         -- say good bye
- 
+
         rawPutLog =<< ("Finished wipe session, current POSIX time is " ++) . show <$> getPOSIXTime
 
 mochanNames :: [String]

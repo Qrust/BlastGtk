@@ -7,6 +7,7 @@ import Import hiding (on)
 import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
+import GtkBlast.Conf
 import GtkBlast.Log
 import GtkBlast.EnvPart
 import GtkBlast.Captcha
@@ -23,6 +24,7 @@ import GHC.Conc
 import Control.Concurrent.STM
 import qualified Data.Map as M
 import Control.Monad.Trans.Maybe
+import Paths_blast_it_with_piss
 
 maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe WipeUnit)
 maintainWipeUnit BoardUnit{..} isActive isWiping w@WipeUnit{..} = do
@@ -184,8 +186,8 @@ mainloop = do
         updWipeMessage
     mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
 
-setMainLoop :: Env -> IO ()
-setMainLoop env = do
+setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
+setMainLoop env configfile setConf = do
     void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $
             progressBarPulse $ wprogresswipe env
@@ -193,3 +195,6 @@ setMainLoop env = do
     void $ timeoutAddFull (do
         runE env mainloop
         True <$ yield) priorityDefaultIdle 50 --kiloseconds, 20 fps.
+    void $ onDestroy (window env) $ do
+        runE env . writeConfig configfile =<< setConf def{coFirstLaunch=False, coLastVersion=version}
+        mainQuit

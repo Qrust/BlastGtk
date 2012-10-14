@@ -33,7 +33,7 @@ data Config = Config
 impureAnnotatedCmdargsConfig :: Config
 impureAnnotatedCmdargsConfig =
     Config
-        {socks = False &= help "Файл с проксями содержит Socks5 прокси?(По моим тестам socks не работают, но я не уверен точно. Если у вас чекер работает с проксями или фейлится, но они работают в бровзере — пишите в тред)"
+        {socks = False &= help "Файл с проксями содержит Socks5 прокси?(По моим тестам socks не работают, но я не уверен точно. Если у вас чекер работает с проксями или фейлится, но они работают в бровзере - пишите в тред)"
         ,append = False &= help "Если уже есть файлы с таким именем не перезаписывать их, а добавлять к ним"
         ,quiet = False &= help "Не писать лог в консоль"
         ,atatime = 30 &= name "e" &= help "Сколько проксей тестить за подход, по дефолту 30"
@@ -52,12 +52,10 @@ impureAnnotatedCmdargsConfig =
         &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
         &= versionArg [ignore]
         &= summary "Проксичекер для ссача"
-        &= help "Формат файла прокси — по прокси на строку, обязательно указывать порт. Файлы banned и bad включают причины бана и эксепшоны http соответственно"
+        &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт. Файлы banned и bad включают причины бана и эксепшоны http соответственно"
 
 main :: IO ()
 main = withSocketsDo $ do
-    putStrLn "Testing russian output..."
-    putStrLn "Русский текст, например"
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
     ifM (null <$> getArgs)
         (print md)

@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.1.0.607
+version: 0.1.0.608
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -15,6 +15,7 @@ cabal-version: >= 1.15
 tested-with: GHC == 7.4.1
 data-files: build-production.sh
            ,resources/blast.glade
+           ,resources/updater.glade
            ,resources/2ch.so.png
            ,resources/mocha
            ,resources/analniy-sadism
@@ -253,45 +254,62 @@ executable proxychecker
 --~               ,ScopedTypeVariables
 --~               ,PackageImports
 
---~--~ updater app. Checks and installs updates, then runs blastgtk
---~executable BlastItWithPiss
---~    main-is: UpdaterMain.hs
---~
---~    other-modules: Import
---~
---~                  ,Updater.Manifest
---~                  ,Updater.UnpackZip
---~
---~    build-depends: base
---~                  ,process
---~                  ,directory
---~                  ,filepath
---~                  ,executable-path
---~                  ,http-conduit
---~                  ,aeson
---~                  ,cryptohash
---~
---~    if flag(bindist)
---~        cpp-options: -DBINDIST
---~        build-depends: executable-path
---~        if os(windows)
---~            ghc-options: -optl-mwindows
---~        else
---~            ghc-options: -optl-Wl,-rpath,$ORIGIN
---~
---~    if flag(test)
---~        cpp-options: -DTEST
---~
---~    ghc-options: -Wall -threaded 
---~
---~    default-language: Haskell2010
---~
---~    default-extensions:
---~                NoImplicitPrelude
---~               ,CPP
---~               ,OverloadedStrings
---~               ,RecordWildCards
---~               ,ScopedTypeVariables
---~
---~    other-extensions:
---~                DeriveGeneric
+--~ updater app. Checks and installs updates, then runs blastgtk
+executable BlastItWithPiss
+    main-is: UpdaterMain.hs
+
+    other-modules: Import
+
+                  ,Updater.Manifest
+                  ,Updater.UnpackZip
+                  ,Updater.Repair
+                  ,Updater.DownloadWithMD5
+                  ,Updater.GuiXML
+
+    build-depends: ghc-prim
+                  ,base
+                  ,lifted-base
+                  ,safe
+                  ,process
+                  ,gtk
+                  ,directory
+                  ,filepath
+                  ,deepseq
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,transformers
+                  ,monad-control
+                  ,data-default
+                  ,executable-path
+                  ,network
+                  ,http-conduit >= 1.7
+                  ,zip-archive
+                  ,aeson
+                  ,cryptohash
+                  ,crypto-api
+                  ,cereal
+
+    if flag(bindist)
+        cpp-options: -DBINDIST
+        build-depends: executable-path
+        if os(windows)
+            ghc-options: -optl-mwindows
+        else
+            ghc-options: -optl-Wl,-rpath,$ORIGIN
+
+    if flag(test)
+        cpp-options: -DTEST
+
+    ghc-options: -Wall -threaded 
+
+    default-language: Haskell2010
+
+    default-extensions:
+                NoImplicitPrelude
+               ,CPP
+               ,OverloadedStrings
+               ,RecordWildCards
+               ,ScopedTypeVariables
+               ,FlexibleContexts
+               ,DeriveDataTypeable
