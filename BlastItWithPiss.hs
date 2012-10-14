@@ -389,64 +389,53 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
 
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
-    let hands =
-          [Handler $ \(a::AsyncException) -> throwIO a
-          ,Handler $ \(a::HttpException) -> do
-                blastLog $ "Got http exception, restarting. Exception was: " ++ show a
-                blastLoop w lthreadtime lposttime -- Dunno what to do except restart.
-          ,Handler $ \(a::SomeException) -> do
-                blastLog $ "Terminated by exception " ++ show a
-                blastOut $ OutcomeMessage $ InternalError $ ErrorException $ a
-          ]
-    flip catches hands $ do
-        (board, ShSettings{..}, MuSettings{..}) <- askBSM
-        now <- liftIO $ getPOSIXTime
-        canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
-                            (return $ now - lthreadtime >= ssachThreadTimeout board)
-                            (return False)
-        let getPage p = do
-                let url = ssachPage board p
-                let chkStatus st@Status{statusCode=c} heads
-                        | c /= 200 && c /= 403 =
-                            Just $ toException $ StatusCodeException st heads
-                        | otherwise =
-                            Nothing
-                blastLog $ "chooseThread: getPage: going to page " ++ show p
-                parsePage board . responseBody <$>
-                    blastCloudflare (blast $ httpReqStrTags $
-                        (fromJust $ parseUrl url){checkStatus=chkStatus}) url
-        p0 <- getPage 0
-        --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
-        blastLog $ "page params:\n" ++
-            "page id: " ++ show (pageId p0) ++ "\n" ++
-            "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
-            "speed: " ++ show (speed p0) ++ "\n" ++
-            "threads: " ++ show (length $ threads p0) ++ "\n" ++
-            "max replies: " ++ show (maximum $ map postcount $ threads p0)
-        mode <- flMaybeSTM mmode return $ chooseMode board canmakethread p0
-        recMode mode
-        blastLog $ "chose mode " ++ show mode
-        (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
-                        chooseThread mode getPage p0
-        recThread thread
-        blastLog $ "chose thread " ++ show thread
-        cleanImage <- blastImage mode
-        junkImage <- case cleanImage of
-            Nothing -> return Nothing
-            Just i -> Just <$> flBoolModSTM tappendjunkimages
-                (\im -> do blastLog "appending junk to image"
-                           appendJunk im) i
-        let getThread i = do
-                blastLog $ "Going into " ++ show i ++ " thread for pasta"
-                blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
-        ((escinv, escwrd), pasta) <- blastPasta getThread p thread
-        blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
-            ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
-        watermark <- liftIO $ readTVarIO tmakewatermark
-        (nthreadtime, nposttime) <-
-            blastPost False lthreadtime lposttime w mode thread
-                (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
-        blastLoop w nthreadtime nposttime
+    (board, ShSettings{..}, MuSettings{..}) <- askBSM
+    now <- liftIO $ getPOSIXTime
+    canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
+                        (return $ now - lthreadtime >= ssachThreadTimeout board)
+                        (return False)
+    let getPage p = do
+            let url = ssachPage board p
+            let chkStatus st@Status{statusCode=c} heads
+                    | c /= 200 && c /= 403 =
+                        Just $ toException $ StatusCodeException st heads
+                    | otherwise =
+                        Nothing
+            blastLog $ "chooseThread: getPage: going to page " ++ show p
+            parsePage board . responseBody <$>
+                blastCloudflare (blast $ httpReqStrTags $
+                    (fromJust $ parseUrl url){checkStatus=chkStatus}) url
+    p0 <- getPage 0
+    --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
+    blastLog $ "page params:\n" ++
+        "page id: " ++ show (pageId p0) ++ "\n" ++
+        "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
+        "speed: " ++ show (speed p0) ++ "\n" ++
+        "threads: " ++ show (length $ threads p0) ++ "\n" ++
+        "max replies: " ++ show (maximum $ map postcount $ threads p0)
+    mode <- flMaybeSTM mmode return $ chooseMode board canmakethread p0
+    recMode mode
+    blastLog $ "chose mode " ++ show mode
+    (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
+                    chooseThread mode getPage p0
+    recThread thread
+    blastLog $ "chose thread " ++ show thread
+    cleanImage <- blastImage mode
+    junkImage <- case cleanImage of
+        Nothing -> return Nothing
+        Just i -> Just <$> flBoolModSTM tappendjunkimages
+            (\im -> do blastLog "appending junk to image"
+                       appendJunk im) i
+    let getThread i = do
+            blastLog $ "Going into " ++ show i ++ " thread for pasta"
+            blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
+    ((escinv, escwrd), pasta) <- blastPasta getThread p thread
+    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
+        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
+    watermark <- liftIO $ readTVarIO tmakewatermark
+    (nthreadtime, nposttime) <- blastPost False lthreadtime lposttime w mode thread
+            (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
+    blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.
 --
@@ -463,7 +452,18 @@ entryPoint proxy board lgDetail shS muS prS output = do
     runBlastLog (BlastLogData proxy board lgDetail shS muS prS output) $ do
         blastLog "Entry point"
         blast $ httpSetProxy proxy
-        blastLoop (ssachLastRecordedWakabaplAndFields (ssachBoard board)) 0 0{-
+        let hands =
+              [Handler $ \(a::AsyncException) -> throwIO a
+              ,Handler $ \(a::HttpException) -> do
+                blastLog $ "Got http exception, restarting. Exception was: " ++ show a
+                start -- Dunno what to do except restart.
+              ,Handler $ \(a::SomeException) -> do
+                blastLog $ "Terminated by exception " ++ show a
+                blastOut $ OutcomeMessage $ InternalError $ ErrorException $ a
+              ]
+            start = flip catches hands $
+                blastLoop (ssachLastRecordedWakabaplAndFields (ssachBoard board)) 0 0
+        start{-
         let url = ssachBoard board
         let chkStatus st@Status{statusCode=c} heads
                 | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads Nothing

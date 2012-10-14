@@ -47,7 +47,7 @@ regenerateExcluding :: Board -> [WipeUnit] -> E [WipeUnit]
 regenerateExcluding board exc = do
     E{..} <- ask
     prx <- M.assocs <$> get proxies
-    writeLog $ "Regenerating " ++ renderBoard board ++ ", got proxies: " ++ show (length prx)
+    when (null prx) $ tempError 2 "Нет проксей"
     catMaybes <$> forM prx (\(p, s) ->
         if any ((==p) . wuProxy) exc
             then return Nothing
