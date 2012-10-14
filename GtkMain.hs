@@ -17,6 +17,7 @@ import System.Environment.Executable (splitExecutablePath)
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 -- TODO обращать внимание на бамплимит в вайпе
+-- TODO avoid parsing page if mthread is set
 
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
 -- CLARIFICATION dropped in favor of fast-tagsoup

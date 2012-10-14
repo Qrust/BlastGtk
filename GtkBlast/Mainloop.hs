@@ -84,6 +84,7 @@ maintainBoardUnits = do
 startWipe :: E ()    
 startWipe = do
     E{..} <- ask
+    writeLog "Starting wipe..."
     set wipeStarted True
     maintainBoardUnits
 
