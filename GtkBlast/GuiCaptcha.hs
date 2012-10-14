@@ -100,6 +100,7 @@ removeCurrentCaptcha a = do
         writeLog $ "Sending " ++ show a ++ " to " ++ "{" ++ show oProxy ++ "} " ++ renderBoard oBoard
         io $ captchaSend c a
 
+-- | Should only be called when you're sure no one blocks on captcha
 killGuiCaptcha :: E ()
 killGuiCaptcha = do
     E{..} <- ask
@@ -107,6 +108,7 @@ killGuiCaptcha = do
     whenM (not . null <$> get pendingGuiCaptchas) $
         removeCaptchaWidget
     set pendingGuiCaptchas []
+    set messageLocks 0
 
 deactivateGuiCaptcha :: E [(OriginStamp, Message)]
 deactivateGuiCaptcha = do
