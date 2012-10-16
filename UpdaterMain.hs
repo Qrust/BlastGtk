@@ -124,7 +124,7 @@ updateWorker mv UpdateManifest{..} = do
     putMVar mv $ ChangeMessage $ "Скачиваем архив... " ++ show (url, md5)
     lbs <- maybe (throwIO $ ChecksumMismatch url md5) return =<< downloadWithMD5 url md5
     putMVar mv $ ChangeMessage $ "Распаковываем..."
-    backupdir <- uniqueDirectoryName $ ".bak-BlastItWithPiss-" ++ showVersion Paths.version
+    backupdir <- uniqueDirectoryName $ ".BlastItWithPiss-update-backup"
     e <- try $ unpackBlastItWithPissUpdateZipFromLBS backupdir lbs
     case e of
         Left (x::SomeException) -> do
