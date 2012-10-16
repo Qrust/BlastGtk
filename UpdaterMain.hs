@@ -124,6 +124,7 @@ updateWorker mv UpdateManifest{..} = do
     putMVar mv $ ChangeMessage $ "Скачиваем архив... " ++ show (url, md5)
     lbs <- maybe (throwIO $ ChecksumMismatch url md5) return =<< downloadWithMD5 url md5
     putMVar mv $ ChangeMessage $ "Распаковываем..."
+    -- FIXME dangerous, we can get mixed versions if we restore from backup when unpacking fails and we updated before.
     backupdir <- uniqueDirectoryName $ ".BlastItWithPiss-update-backup"
     e <- try $ unpackBlastItWithPissUpdateZipFromLBS backupdir lbs
     case e of

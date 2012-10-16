@@ -63,7 +63,8 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
     id <- o .: "id"
     return $ (rurl
         {method = methodPost
-        ,requestHeaders = [(hContentType, "multipart/form-data; boundary=" <> boundary)]
+        ,requestHeaders = [(hContentType, "multipart/form-data; boundary=" <> boundary)
+                          ,(hUserAgent, "http-conduit")]
         ,requestBody = formatMultipart boundary fields
         ,checkStatus = only201
         }
@@ -71,7 +72,8 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
 
 uploadZip :: Int -> Text -> String -> ByteString -> Text -> IO ()
 uploadZip t pass arcfilename arcbytes desc = do
-    let req = applyBasicAuth "exbb2" (encodeUtf8 pass) $ (fromJust $ parseUrl "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads")
+    let req = applyBasicAuth "exbb2" (encodeUtf8 pass) $
+                (fromJust $ parseUrl "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads")
                 {method=methodPost
                 ,requestBody = RequestBodyLBS $ encode $ object
                     ["name" .= T.pack arcfilename
@@ -96,7 +98,10 @@ uploadZip t pass arcfilename arcbytes desc = do
             putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
             if t < 5
                 then do
-                    void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass) (fromJust $ parseUrl $ "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id){method=methodDelete}
+                    void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass)
+                        (fromJust $ parseUrl $
+                            "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id)
+                                {method=methodDelete}
                     uploadZip (t+1) pass arcfilename arcbytes desc
                 else throwIO a
         Right _ -> do

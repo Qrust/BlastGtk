@@ -41,6 +41,13 @@ instance NFData a => NFData (CI a) where
 instance NFData Field where
     rnf Field{..} = rnf (fieldAttrs, fieldHeaders, fieldBody)
 
+randomBoundary :: MonadChoice m => m ByteString
+randomBoundary = do
+    dashcount <- getRandomR (9, 50)
+    charcount <- getRandomR (30, 50)
+    fromString . (replicate dashcount '-' <>)
+               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains about < and > in boundary, it works however.
+
 field :: ByteString -> ByteString -> Field
 field n v = Field [("name", n)] [] (toLBS v)
 
@@ -57,13 +64,6 @@ renderField boundary (Field params headers body) =
         renderHeader (header, val) = original header <> ": " <> val
         renderHeaders [] = mempty
         renderHeaders heads = L.concat (map (toLBS . renderHeader) heads) <> "\r\n"
-
-randomBoundary :: MonadChoice m => m ByteString
-randomBoundary = do
-    dashcount <- getRandomR (9, 50)
-    charcount <- getRandomR (30, 50)
-    fromString . (replicate dashcount '-' <>)
-               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains about < and > in boundary, it works however.
 
 formatMultipart :: ByteString -> [Field] -> RequestBody a
 formatMultipart boundary fields =
