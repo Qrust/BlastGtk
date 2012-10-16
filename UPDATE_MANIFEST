@@ -1,0 +1,26 @@
+{
+    "binaryAndResourcesZipArchives": [
+        [
+            "Linux",
+            [
+                "BlastItWithPiss-BETA-linux-x86-0.1.0.706.zip",
+                "c6d41280f108f7a32aa4381a8679ba26"
+            ]
+        ],
+        [
+            "Windows",
+            [
+                "BlastItWithPiss-BETA-windows-x86-0.1.0.706.zip",
+                "835c6ad72d9c5bfcf482f955d0185ed0"
+            ]
+        ]
+    ],
+    "imagePackZipArchives": [],
+    "changelog": [
+        [
+            "0.1.0.706",
+            "Я в Апдейтере и это мой6 первый ченжлог!"
+        ]
+    ],
+    "version": "0.1.0.706"
+}
