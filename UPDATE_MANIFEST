@@ -3,22 +3,26 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.1.0.710.zip",
-                "d504e8af66a1b3611755b971e55adc59"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.1.0.712.zip",
+                "6726fbdfeb22565f2218f4f2b0eba8d3"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.1.0.710.zip",
-                "94e5f21bf8b6066001c7e6946f9f997e"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.1.0.712.zip",
+                "c522ea722ef2a121f8f1533a1e331e19"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
         [
-            "0.1.710",
+            "0.1.0.712",
+            "Nyan"
+        ],
+        [
+            "0.1.0.710",
             "aaaaaaaaaaaaaaaaaa"
         ],
         [
@@ -98,5 +102,5 @@
             "Я в Апдейтере и это мой6 первый ченжлог!"
         ]
     ],
-    "version": "0.1.710"
+    "version": "0.1.0.712"
 }

@@ -84,7 +84,7 @@ uploadZip pass arcfilename arcbytes desc = do
     putStrLn "Part1"
     lbs <- responseBody <$> withManager (httpLbs req)
     putStrLn "Part2"
-    boundary <- randomBoundary
+    boundary <- ("--------BlastItWithPissDownloadsUpdaterGuaranteedUniqueOLOLOLOLO" <>) <$> randomBoundary -- perhaps there's boundary in the data?
     let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
     e <- try $ withManager $ http req
     case e of

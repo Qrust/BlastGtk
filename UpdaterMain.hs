@@ -234,8 +234,8 @@ main = withSocketsDo $ do
                         widgetHide updaterwindow
                         widgetShow changelogwindow
                         labelSetMarkup wlabelchangelog markup
-                        void $ on wbuttonchangelog buttonActivated mainQuit
-                        void $ onDestroy changelogwindow mainQuit
+                        void $ on wbuttonchangelog buttonActivated $ goodEnd executablePath
+                        void $ onDestroy changelogwindow $ goodEnd executablePath
                         return False
         ) priorityDefaultIdle 20
 
