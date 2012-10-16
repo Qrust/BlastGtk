@@ -51,7 +51,7 @@ regenerateExcluding board exc = do
     catMaybes <$> forM prx (\(p, s) ->
         if any ((==p) . wuProxy) exc
             then return Nothing
-            else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ "{" ++ show p ++ "}"
+            else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
                     mthread <- io $ atomically $ newTVar Nothing
                     mmode <- io $ atomically $ newTVar Nothing
                     threadid <- io $ forkIO $ runBlast $ do

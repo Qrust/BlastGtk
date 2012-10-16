@@ -459,7 +459,7 @@ entryPoint proxy board lgDetail shS muS prS output = do
                 start -- Dunno what to do except restart.
               ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
-                blastOut $ OutcomeMessage $ InternalError $ ErrorException $ a
+                blastOut $ OutcomeMessage $ InternalError $ ErrorException a
               ]
             start = flip catches hands $
                 blastLoop (ssachLastRecordedWakabaplAndFields (ssachBoard board)) 0 0

@@ -26,6 +26,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
 -- So it'll lag anyway, unless we move work to different process.
+-- FIXME We need a threadscope profile before we can decide on anything
 
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
