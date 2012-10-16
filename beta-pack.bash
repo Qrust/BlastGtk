@@ -25,10 +25,6 @@ echo "DOS archive will be \"$windowszip\""
  (echo "Packaging DOS";
  wine sh build-production.sh &&\
  cd dos-dist && zip -r ../$windowszip BlastItWithPiss/)
-# TODO is there a github api for downloads?
-# http://developer.github.com/v3/repos/downloads/ here it is
-# TODO automate uploading of new versions and manifest generation
-# CLARIFICATION Manifest should be generated AFTER upload
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then
         echo "Updating manifest and uploading archives..."
