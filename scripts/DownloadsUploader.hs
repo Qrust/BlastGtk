@@ -90,6 +90,9 @@ uploadZip t pass arcfilename arcbytes desc = do
     case e of
         Left (a::SomeException) -> do
             -- Oh well, if that's the only way...
+            -- Randomly fails with
+            -- hPutBuf: resource vanished (Broken pipe)
+            -- or hPutBuf: resource vanished (Connection reset by peer)
             putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
             if t < 5
                 then do
