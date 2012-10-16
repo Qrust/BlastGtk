@@ -2,10 +2,22 @@
 case `uname` in
     MINGW*)
         lbdir="dos"
-        foldr="dos-dist";;
+        foldr="dos-dist"
+        cbl="cabal"
+        cr=`pwd`;;
     *)
-        lbdir="linux"
-        foldr="linux-dist";;
+        case $2 in
+            wine*)
+                lbdir="dos"
+                foldr="dos-dist"
+                cbl="wine cabal"
+                cr=`winepath -w \`pwd\``;;
+            *)
+                lbdir="linux"
+                foldr="linux-dist"
+                cbl="cabal"
+                cr=`pwd`;;
+        esac;;
 esac
 case $1 in
     fast*)
@@ -13,27 +25,29 @@ case $1 in
     *)
         case `uname` in
             MINGW*) optimi="--ghc-options=-O2 --enable-optimization=2";;
-            *) optimi="--ghc-options=-fllvm --ghc-options=-O2 --enable-optimization=2";;
+            *) case $2 in
+                wine*) optimi="--ghc-options=-O2 --enable-optimization=2";;
+                *) optimi="--ghc-options=-O2 -fllvm --enable-optimization=2";;
+               esac;;
         esac;;
 esac
 echo $lbdir
-echo "\n"
 echo $foldr
-echo "\n"
+echo $cbl
 echo $optimi
-echo "\n"
+echo $cr
 rm -rfv $foldr
 mkdir $foldr
 mkdir $foldr/tempprefixdir
-cabal configure --builddir=builddir/$foldr -f bindist --verbose\
+$cbl configure --builddir=builddir/$foldr -f bindist --verbose\
  --enable-executable-stripping --disable-split-objs\
  --disable-library-profiling\
  --disable-executable-profiling\
  $optimi\
- --prefix=`pwd`/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss &&\
- if cabal build --builddir=builddir/$foldr --verbose
+ --prefix=$cr/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss &&\
+ if $cbl build --builddir=builddir/$foldr --verbose
  then
-  cabal copy --builddir=builddir/$foldr --verbose
+  $cbl copy --builddir=builddir/$foldr --verbose
   echo "Removing ${foldr}/tempprefixdir"
   rm -rfv $foldr/tempprefixdir
   echo "Copying images"
@@ -44,7 +58,7 @@ cabal configure --builddir=builddir/$foldr -f bindist --verbose\
   cp -rv libs/$lbdir/. $foldr/BlastItWithPiss
   echo "Copying license, source dist and music recommendations"
   cp -v LICENSE $foldr/BlastItWithPiss
-  cabal sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
+  $cbl sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
   cp -v music $foldr/BlastItWithPiss
   echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
   echo "\n"

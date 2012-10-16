@@ -22,6 +22,10 @@ import Text.ParserCombinators.ReadP
 import Crypto.Classes hiding (encode)
 import Data.Version
 
+githubDownloadsUrl :: String -> URL
+githubDownloadsUrl filename =
+    "https://github.com/downloads/exbb2/BlastItWithPiss/" ++ filename
+
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
     {version = Paths.version
@@ -87,6 +91,8 @@ main = do
     [rv,la,wa,dogit] <- getArgs
     putStrLn "Updating manifest..."
     let v = fst $ last $ readP_to_S parseVersion $ rv
+    let lafilename = takeFileName la
+    let wafilename = takeFileName wa
     manifest' <- either
         (\(_::SomeException) -> emptyUpdate)
         (fromMaybe emptyUpdate . decode . toLBS) <$>
@@ -101,8 +107,8 @@ main = do
     putStrLn "Updating manifest"
     let manifest = manifest'{version = v
                             ,binaryAndResourcesZipArchives =
-                                 [(Linux, (la, lasum))
-                                 ,(Windows, (wa, wasum))]
+                                 [(Linux, (githubDownloadsUrl lafilename, lasum))
+                                 ,(Windows, (githubDownloadsUrl wafilename, wasum))]
                             ,changelog = (v, chlog) : changelog manifest'
                             }
     L.writeFile "UPDATE_MANIFEST" $ encodePretty manifest
@@ -110,9 +116,9 @@ main = do
     hSetEcho stdin False
     password <- maybe (error "Пароль обязателен") T.pack <$> readline "Пароль гитхаба:\n"
     putStrLn "Прыщи..."
-    uploadZip password (takeFileName la) labytes "Прыщи"
+    uploadZip password lafilename labytes "Прыщи"
     putStrLn "Сперма..."
-    uploadZip password (takeFileName wa) wabytes "Сперма"
+    uploadZip password wafilename wabytes "Сперма"
     putStrLn "Загрузилось отлично, например."
     when (read dogit) $ do
         putStrLn "git commit"
