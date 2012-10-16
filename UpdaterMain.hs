@@ -86,7 +86,7 @@ data Message = ChangeMessage String
 filterAndReverseSortChangelog :: [(Version, String)] -> [(Version, String)]
 filterAndReverseSortChangelog =
     reverse . sortBy (\(v1, _) (v2, _) -> compare v1 v2) .
-        filter (\(v, _) -> v >= Paths.version)
+        filter (\(v, _) -> v > Paths.version)
 
 renderChangelog :: [(Version, String)] -> String
 renderChangelog = unlines . map renderChange . filterAndReverseSortChangelog
