@@ -69,8 +69,8 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
         }
         , id)
 
-uploadZip :: Text -> String -> ByteString -> Text -> IO ()
-uploadZip pass arcfilename arcbytes desc = do
+uploadZip :: Int -> Text -> String -> ByteString -> Text -> IO ()
+uploadZip t pass arcfilename arcbytes desc = do
     let req = applyBasicAuth "exbb2" (encodeUtf8 pass) $ (fromJust $ parseUrl "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads")
                 {method=methodPost
                 ,requestBody = RequestBodyLBS $ encode $ object
@@ -89,12 +89,13 @@ uploadZip pass arcfilename arcbytes desc = do
     e <- try $ withManager $ http req
     case e of
         Left (a::SomeException) -> do
-            putStrLn $ "Got exception: " ++ show a
-            hSetEcho stdin True
-            ifM (notElem 'n' . map toLower . fromMaybe "y" <$> readline "Retry? ")
-                (do void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass) (fromJust $ parseUrl $ "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id){method=methodDelete}
-                    uploadZip pass arcfilename arcbytes desc)
-                (throwIO a)
+            -- Oh well, if that's the only way...
+            putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
+            if t < 5
+                then do
+                    void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass) (fromJust $ parseUrl $ "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id){method=methodDelete}
+                    uploadZip (t+1) pass arcfilename arcbytes desc
+                else throwIO a
         Right _ -> do
             putStrLn "Success."
 
@@ -129,9 +130,9 @@ main = do
     hSetEcho stdin False
     password <- maybe (error "Пароль обязателен") T.pack <$> readline "Пароль гитхаба:\n"
     putStrLn "Прыщи..."
-    uploadZip password lafilename labytes "Прыщи"
+    uploadZip 0 password lafilename labytes "Прыщи"
     putStrLn "Сперма..."
-    uploadZip password wafilename wabytes "Сперма"
+    uploadZip 0 password wafilename wabytes "Сперма"
     putStrLn "Загрузилось наконец."
     when (read dogit) $ do
         putStrLn "git commit"

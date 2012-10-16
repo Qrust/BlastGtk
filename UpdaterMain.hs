@@ -157,11 +157,6 @@ mainWorker mv = finalizeWork $ do
                 Left ex -> putMVar mv $ CrashWith ex
                 Right end -> putMVar mv $ GoodEnd end
 
--- TODO work offline, don't crash
--- TODO remove backups, call "BlastItWithPiss --clean" ?
--- (Is this really needed? We might want to have a backup)
--- (I don't think we really need more than one backup at a time)
-
 helpMessage :: String
 helpMessage =
     "Version: " ++ showVersion Paths.version ++ ", " ++ "Platform: " ++ show currentPlatform ++ "\n" ++
