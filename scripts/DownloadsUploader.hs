@@ -132,7 +132,7 @@ main = do
     uploadZip password lafilename labytes "Прыщи"
     putStrLn "Сперма..."
     uploadZip password wafilename wabytes "Сперма"
-    putStrLn "Загрузилось отлично, например."
+    putStrLn "Загрузилось наконец."
     when (read dogit) $ do
         putStrLn "git commit"
         print =<< rawSystem "git" ["commit", "-am", chlog]
