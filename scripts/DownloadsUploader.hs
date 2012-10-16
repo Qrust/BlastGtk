@@ -40,7 +40,7 @@ only201 s e =
         then Just $ toException $ StatusCodeException s e
         else Nothing
 
-parseGithubDownloadsPart1Response :: LByteString -> ByteString -> FilePath -> LByteString -> Request a
+parseGithubDownloadsPart1Response :: LByteString -> ByteString -> FilePath -> LByteString -> (Request a, Int)
 parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
     either (\e -> error $ "Couldn't parse lbs: \"" ++ e ++ "\"\nLBS was {\n" ++ toString lbs ++ "\n}")
     id $ flip parseEither (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) $ \o -> do
@@ -60,12 +60,14 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
                arcbytes
         ]
     rurl <- fromJust . parseUrl <$> o .: "s3_url"
-    return $ rurl
+    id <- o .: "id"
+    return $ (rurl
         {method = methodPost
         ,requestHeaders = [(hContentType, "multipart/form-data; boundary=" <> boundary)]
         ,requestBody = formatMultipart boundary fields
         ,checkStatus = only201
         }
+        , id)
 
 uploadZip :: Text -> String -> ByteString -> Text -> IO ()
 uploadZip pass arcfilename arcbytes desc = do
@@ -83,8 +85,18 @@ uploadZip pass arcfilename arcbytes desc = do
     lbs <- responseBody <$> withManager (httpLbs req)
     putStrLn "Part2"
     boundary <- randomBoundary
-    _ <- withManager $ httpLbs $ parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
-    return ()
+    let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
+    e <- try $ withManager $ http req
+    case e of
+        Left (a::SomeException) -> do
+            putStrLn $ "Got exception: " ++ show a
+            hSetEcho stdin True
+            ifM (notElem 'n' . map toLower . fromMaybe "y" <$> readline "Retry? ")
+                (do void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass) (fromJust $ parseUrl $ "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id){method=methodDelete}
+                    uploadZip pass arcfilename arcbytes desc)
+                (throwIO a)
+        Right _ -> do
+            putStrLn "Success."
 
 main :: IO ()
 main = do
@@ -97,6 +109,7 @@ main = do
         (\(_::SomeException) -> emptyUpdate)
         (fromMaybe emptyUpdate . decode . toLBS) <$>
             try (B.readFile "UPDATE_MANIFEST")
+    hSetEcho stdin True
     chlog <- fromMaybe (error "Please write changelog") <$> readline "Changes in this version:\n"
     putStrLn "Computing linux archive hash"
     labytes <- B.readFile la

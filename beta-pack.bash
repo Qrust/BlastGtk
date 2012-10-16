@@ -19,15 +19,14 @@ echo "Linux archive will be \"$linuxzip\""
 echo "DOS archive will be \"$windowszip\""
 # FIXME Update when no longer is BETA
 (echo "Packaging Linux";
- #~sh build-production.sh &&\
+ sh build-production.sh &&\
  cd linux-dist && zip -r ../$linuxzip BlastItWithPiss/) &&\
  # FIXME Update when no longer is BETA
  (echo "Packaging DOS";
  # Running any msys binary does strange things to my linux shell,
  # input doesn't get echoed and 'echo' output is printed without a newline.
- # Plus I can't run my updater after that due to broken pipe error.
  # So instead, we'll use following workaround.
- #~sh build-production.sh _ wine &&\
+ sh build-production.sh _ wine &&\
  cd dos-dist && zip -r ../$windowszip BlastItWithPiss/)
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then

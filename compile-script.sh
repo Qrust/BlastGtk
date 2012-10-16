@@ -4,7 +4,7 @@ if [ ! -x ./${1} ]
         echo "compiling ${1}"
         ghc -outputdir=/tmp/${1}GHCTEMP --make scripts/${1}.hs -o ${1} \
         -XCPP -XScopedTypeVariables -XFlexibleContexts -XNoImplicitPrelude \
-        -XOverloadedStrings -XRecordWildCards \
+        -XOverloadedStrings -XRecordWildCards -O2 -threaded -Wall \
         -idist/build/autogen -optP-include -optPdist/build/autogen/cabal_macros.h \
         && echo "removing temp dir..." && rm -rfv /tmp/${1}GHCTEMP
     else
