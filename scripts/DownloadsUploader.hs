@@ -77,7 +77,7 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
         , id)
 
 uploadZip :: Int -> Text -> String -> ByteString -> Text -> IO ()
-uploadZip t pass arcfilename arcbytes desc = do
+uploadZip t pass arcfilename arcbytes desc = withManager $ \m -> do
     let req = applyBasicAuth username (encodeUtf8 pass) $
                 (fromJust $ parseUrl $
                     "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads")
@@ -90,29 +90,29 @@ uploadZip t pass arcfilename arcbytes desc = do
                     ]
                 ,checkStatus = only201
                 }
-    putStrLn "Part1"
-    lbs <- responseBody <$> withManager (httpLbs req)
-    putStrLn "Part2"
-    boundary <- randomBoundary
+    liftIO $ putStrLn "Part1"
+    lbs <- responseBody <$> httpLbs req m
+    liftIO $ putStrLn "Part2"
+    boundary <- liftIO $ randomBoundary
     let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
-    e <- try $ withManager $ http req
+    e <- try $ http req m
     case e of
         Left (a::SomeException) -> do
             -- Oh well, if that's the only way...
             -- Randomly fails with
             -- hPutBuf: resource vanished (Broken pipe)
             -- or hPutBuf: resource vanished (Connection reset by peer)
-            putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
-            if t < 5
+            liftIO $ putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
+            if t < 10
                 then do
-                    void $ withManager $ http $ applyBasicAuth username (encodeUtf8 pass)
+                    void $ flip http m $ applyBasicAuth username (encodeUtf8 pass)
                         (fromJust $ parseUrl $
                             "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads/" ++ show id)
                                 {method=methodDelete}
-                    uploadZip (t+1) pass arcfilename arcbytes desc
+                    liftIO $ uploadZip (t+1) pass arcfilename arcbytes desc
                 else throwIO a
         Right _ -> do
-            putStrLn "Success."
+            liftIO $ putStrLn "Success."
 
 main :: IO ()
 main = do
