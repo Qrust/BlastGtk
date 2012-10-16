@@ -22,9 +22,15 @@ import Text.ParserCombinators.ReadP
 import Crypto.Classes hiding (encode)
 import Data.Version
 
+username :: IsString a => a
+username = "exbb2"
+
+reponame :: IsString a => a
+reponame = "BlastItWithPiss"
+
 githubDownloadsUrl :: String -> URL
 githubDownloadsUrl filename =
-    "https://github.com/downloads/exbb2/BlastItWithPiss/" ++ filename
+    "https://github.com/downloads/" ++ username ++ "/" ++ reponame ++ "/" ++ filename
 
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
@@ -72,8 +78,9 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
 
 uploadZip :: Int -> Text -> String -> ByteString -> Text -> IO ()
 uploadZip t pass arcfilename arcbytes desc = do
-    let req = applyBasicAuth "exbb2" (encodeUtf8 pass) $
-                (fromJust $ parseUrl "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads")
+    let req = applyBasicAuth username (encodeUtf8 pass) $
+                (fromJust $ parseUrl $
+                    "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads")
                 {method=methodPost
                 ,requestBody = RequestBodyLBS $ encode $ object
                     ["name" .= T.pack arcfilename
@@ -98,9 +105,9 @@ uploadZip t pass arcfilename arcbytes desc = do
             putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
             if t < 5
                 then do
-                    void $ withManager $ http $ applyBasicAuth "exbb2" (encodeUtf8 pass)
+                    void $ withManager $ http $ applyBasicAuth username (encodeUtf8 pass)
                         (fromJust $ parseUrl $
-                            "https://api.github.com/repos/exbb2/BlastItWithPiss/downloads/" ++ show id)
+                            "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads/" ++ show id)
                                 {method=methodDelete}
                     uploadZip (t+1) pass arcfilename arcbytes desc
                 else throwIO a

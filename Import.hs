@@ -35,6 +35,7 @@ module Import
     ,modifyIORefM
     ,anyM
     ) where
+import Debug.Trace as A
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
 import System.IO as A hiding (readFile, writeFile, appendFile)
 import Data.Monoid as A
@@ -45,7 +46,6 @@ import Control.Applicative as A hiding (empty)
 import Control.Monad as A
 import Data.String as A
 import Data.Either as A
-import Debug.Trace as A
 import Data.Data as A
 import Data.Typeable as A
 import Control.Arrow as A
