@@ -260,10 +260,13 @@ choosePostToRepostFromThread trd = do
     mchooseFromList $ filter (not . null) $ map postContents $ visibleposts trd
 
 -- | Randomly choose a post to repost from page or from thread
-choosePostToRepost :: MonadChoice m => (Int -> m Thread) -> Page -> Maybe Int -> m String
-choosePostToRepost _ p0 Nothing =
+choosePostToRepost :: MonadChoice m => (Int -> m Thread) -> Maybe Page -> Maybe Int -> m String
+choosePostToRepost _ Nothing Nothing = error "choosePostToRepost Nothing Nothing"
+choosePostToRepost _ (Just p0) Nothing =
     choosePostToRepostFromPage p0
-choosePostToRepost getThread p0 (Just tid) = do
+choosePostToRepost getThread Nothing (Just tid) =
+    choosePostToRepostFromThread =<< getThread tid
+choosePostToRepost getThread (Just p0) (Just tid) = do
     fromThread <- fromList [(False, 10), (True, 90)]
     if fromThread
         then do

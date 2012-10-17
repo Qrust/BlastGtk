@@ -28,18 +28,18 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO add API as a fallback if can't parse html
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
--- So it'll lag anyway, unless we move work to different process.
+-- So it'll lag anyway, unless we move workers to different process.
 -- FIXME We need a threadscope profile before we can decide on anything
+-- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
 
 -- == 1.0 RELEASE ==
--- TODO обращать внимание на бамплимит в вайпе
--- TODO avoid parsing page if mthread is set
 -- TODO FIXME FIXME readIORef buBanned
--- TODO don't regenerate banned threads
+-- TODO don't regenerate banned threads ((don't) kill banned threads)
 -- TODO don't regenerate threads until asked to.
 -- TODO убирать капчу от дохлых тредов
 -- TODO Show currently active vs. banned vs. dead threads.
--- TODO better exceptions for 404 ban
+-- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
+-- TODO обращать внимание на бамплимит в вайпе
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 -- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README
 -- TODO Sane defaults.
@@ -55,6 +55,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
+-- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO GTK keyboard completion in board list (list view? table? ad-hoc?)

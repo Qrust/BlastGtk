@@ -36,7 +36,7 @@ maintainWipeUnit BoardUnit{..} isActive isWiping w@WipeUnit{..} = do
             then do
                 writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
                 return Nothing
-            else if not isActive || not isWiping || isBanned || notElem wuProxy pxs
+            else if not isActive || not isWiping || notElem wuProxy pxs
                     then do
                         writeLog $ "blasgtk: Killing thread for " ++ renderBoard buBoard
                         io $ killThread wuThreadId

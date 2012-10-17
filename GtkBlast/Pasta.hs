@@ -27,13 +27,13 @@ generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
     take len <$> getRandomRs charBounds
 
-pastaChooser :: [String] -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
+pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
 pastaChooser pastas = do
     E{..} <- ask
     e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
     return $ \_ _ _ -> (,) e <$> mchooseFromList pastas
 
-generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
+generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
 generatePastaGen Mocha = pastaChooser =<< appFile [] readPasta =<<
 #ifdef TEST
                                             return "./testkokoko"

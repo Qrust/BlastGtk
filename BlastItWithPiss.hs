@@ -40,7 +40,7 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> Maybe Int -> IO ((Bool, Bool), String))
+data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
                              ,timages :: TVar [FilePath]
                              ,tuseimages :: TVar Bool
                              ,tappendjunkimages :: TVar Bool
@@ -48,7 +48,7 @@ data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Page -> M
                              ,tmakewatermark :: TVar Bool
                              }
 
-data MuSettings = MuSettings {mthread :: TVar (Maybe (Maybe Int))
+data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
                              ,mmode :: TVar (Maybe Mode)
                              }
 
@@ -244,7 +244,7 @@ blastImage mode = do
                     blastLog $ "chose image \"" ++ file ++ "\""
                     Just <$> readImageWithoutJunk file
 
-blastPasta :: (Int -> BlastLog Thread) -> Page -> Maybe Int -> BlastLog ((Bool, Bool), String)
+blastPasta :: (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog ((Bool, Bool), String)
 blastPasta getThread p0 tid = do
     ShSettings{..} <- askShS
     pastagen <- liftIO $ readTVarIO tpastagen
@@ -390,10 +390,6 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
-    now <- liftIO $ getPOSIXTime
-    canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
-                        (return $ now - lthreadtime >= ssachThreadTimeout board)
-                        (return False)
     let getPage p = do
             let url = ssachPage board p
             let chkStatus st@Status{statusCode=c} heads
@@ -405,33 +401,42 @@ blastLoop w lthreadtime lposttime = do
             parsePage board . responseBody <$>
                 blastCloudflare (blast $ httpReqStrTags $
                     (fromJust $ parseUrl url){checkStatus=chkStatus}) url
-    p0 <- getPage 0
-    --p0 <- return $ Page 0 0 90000 [Thread 19947 True False 9000 []]
-    blastLog $ "page params:\n" ++
-        "page id: " ++ show (pageId p0) ++ "\n" ++
-        "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
-        "speed: " ++ show (speed p0) ++ "\n" ++
-        "threads: " ++ show (length $ threads p0) ++ "\n" ++
-        "max replies: " ++ show (maximum $ map postcount $ threads p0)
-    mode <- flMaybeSTM mmode return $ chooseMode board canmakethread p0
+    let getThread i = do
+            blastLog $ "Going into " ++ show i ++ " thread for pasta"
+            blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
+    now <- liftIO $ getPOSIXTime
+    canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
+                        (return $ now - lthreadtime >= ssachThreadTimeout board)
+                        (return False)
+    mp0 <- flMaybeSTM mthread (const $ return Nothing) $ Just <$> getPage 0
+    flip (maybe $ blastLog "Thread chosen, ommitting page parsing") mp0 $ \p0 ->
+        blastLog $ "page params:\n" ++
+                   "page id: " ++ show (pageId p0) ++ "\n" ++
+                   "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
+                   "speed: " ++ show (speed p0) ++ "\n" ++
+                   "threads: " ++ show (length $ threads p0) ++ "\n" ++
+                   "max replies: " ++ show (maximum $ map postcount $ threads p0)
+    mode <- flMaybeSTM mmode return $
+        maybe (do blastLog "No page, choosing from SagePopular/BumpUnpopular"
+                  chooseFromList [SagePopular, BumpUnpopular])
+              (\p0 -> do blastLog "Parsing page to decide mode..."
+                         chooseMode board canmakethread p0) mp0
     recMode mode
     blastLog $ "chose mode " ++ show mode
-    (thread, p) <- flMaybeSTM mthread (\t -> return (t, p0)) $
-                    chooseThread mode getPage p0
+    (thread, mpastapage) <- flMaybeSTM mthread (\t -> return (Just t, Nothing)) $
+        appsnd Just <$> chooseThread mode getPage
+            (fromMaybe (error "Page is Nothing while thread specified") mp0)
     recThread thread
     blastLog $ "chose thread " ++ show thread
+    ((escinv, escwrd), pasta) <- blastPasta getThread mpastapage thread
+    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
+        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
     cleanImage <- blastImage mode
     junkImage <- case cleanImage of
         Nothing -> return Nothing
         Just i -> Just <$> flBoolModSTM tappendjunkimages
             (\im -> do blastLog "appending junk to image"
                        appendJunk im) i
-    let getThread i = do
-            blastLog $ "Going into " ++ show i ++ " thread for pasta"
-            blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
-    ((escinv, escwrd), pasta) <- blastPasta getThread p thread
-    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
-        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
     watermark <- liftIO $ readTVarIO tmakewatermark
     (nthreadtime, nposttime) <- blastPost False lthreadtime lposttime w mode thread
             (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
