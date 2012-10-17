@@ -16,9 +16,12 @@ import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
--- TODO обращать внимание на бамплимит в вайпе
--- TODO avoid parsing page if mthread is set
+--- /\  FIXMES /\
+-- /==\ TODOS /==\
+-- \==/ NOTES \==/
+--  \/  PLANS  \/
 
+-- == PERFORMANCE ==
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
 -- CLARIFICATION dropped in favor of fast-tagsoup
 -- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
@@ -28,18 +31,18 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- So it'll lag anyway, unless we move work to different process.
 -- FIXME We need a threadscope profile before we can decide on anything
 
+-- == 1.0 RELEASE ==
+-- TODO обращать внимание на бамплимит в вайпе
+-- TODO avoid parsing page if mthread is set
 -- TODO FIXME FIXME readIORef buBanned
 -- TODO don't regenerate banned threads
 -- TODO don't regenerate threads until asked to.
 -- TODO убирать капчу от дохлых тредов
 -- TODO Show currently active vs. banned vs. dead threads.
 -- TODO better exceptions for 404 ban
-
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
 -- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README
 -- TODO Sane defaults.
--- TODO Updater
--- TODO proxy checker is now useless, bundle it, but don't advertise.
 -- TODO helpMessage
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
@@ -49,11 +52,30 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
--- TODO Фотожабы на тему ссания в жопу, из Kuso Miso Technique.
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
--- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
 
+-- == FUTURE IMPROVEMENTS ==
+-- TODO GTK keyboard completion in board list (list view? table? ad-hoc?)
+-- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO отображать состояние антигейта в updWipeMessage (add hook)
+--      например количество капч решаемых в данный момент или stat.php
+-- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
+-- TODO add blastcli
+-- TODO add zip file permissions to zip-archive
+-- TODO add multipart/form-data to http-conduit
+-- TODO get a hackage account and release antigate
+-- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
+-- TODO drop dependency on custom http-conduit when http-conduit-browser will be released(never?)
+-- TODO i18n (represent messages by types + typeclass?)
+-- TODO configurable timeout
+-- TODO config last thread time
+-- TODO Показывать несколько капч одновременно
+-- TODO background mode
+-- TODO Support 2chnu, alterchan.
+
+-- == CODE QUALITY ==
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type
 -- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
@@ -62,24 +84,6 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- FIXME Кажется за каждый reverse мне светит по ебалу
 -- TODO cleanup
 -- TODO document
-
--- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
--- TODO add blastcli
--- TODO zip file permissions
--- TODO отображать состояние антигейта в updWipeMessage (add hook)
---      например количество капч решаемых в данный момент или stat.php
--- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
--- TODO get a hackage account and release antigate
--- TODO GTK keyboard completion in board list
--- TODO update description when snoyman releases http-conduit-1.7.0
--- TODO add multipart/form-data to http-conduit
--- TODO i18n (represent messages by types + typeclass?)
--- TODO configurable escaping
--- TODO configurable timeout
--- TODO config last thread time
--- TODO Показывать несколько капч одновременно
--- TODO background mode
--- TODO Support 2chnu, alterchan.
 
 bugMessage :: String
 bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"

@@ -105,10 +105,11 @@ killGuiCaptcha :: E ()
 killGuiCaptcha = do
     E{..} <- ask
     writeLog "Killing gui captcha"
-    whenM (not . null <$> get pendingGuiCaptchas) $
+    pgc <- get pendingGuiCaptchas
+    when (not $ null pgc) $
         removeCaptchaWidget
     set pendingGuiCaptchas []
-    set messageLocks 0
+    mod messageLocks (subtract $ length pgc)
 
 deactivateGuiCaptcha :: E [(OriginStamp, Message)]
 deactivateGuiCaptcha = do

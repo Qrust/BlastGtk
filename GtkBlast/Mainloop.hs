@@ -160,13 +160,13 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                     io $ setBanned boardUnits board proxy True
                 LongPost -> tempError 1 $ renderCompactStamp st ++ ": Запостил слишком длинный пост"
                 CorruptedImage -> tempError 2 $ renderCompactStamp st ++ ": Запостил поврежденное изображение"
-                OtherError x -> tempError 7 $ renderCompactStamp st ++ ": " ++ show x
-                InternalError x -> tempError 7 $ renderCompactStamp st ++ ": " ++ show x
+                OtherError x -> tempError 4 $ renderCompactStamp st ++ ": " ++ show x
+                InternalError x -> tempError 4 $ renderCompactStamp st ++ ": " ++ show x
                 CloudflareCaptcha -> do
                     banMessage 7 $ "Если эта ошибка появляется то это баг, сообщите нам об этом"
                     io $ setBanned boardUnits board proxy True
                 CloudflareBan -> do
-                    banMessage 7 $ "Эту проксю пидорнули по клаудфлеру, она бесполезна"
+                    banMessage 4 $ "Эту проксю пидорнули по клаудфлеру, она бесполезна"
                     io $ setBanned boardUnits board proxy True
                 UnknownError -> tempError 4 $ renderCompactStamp st ++ ": Неизвестная ошибка, что-то пошло не так"
         c@SupplyCaptcha{} -> addCaptcha (st, c)
