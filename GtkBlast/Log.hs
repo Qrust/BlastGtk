@@ -20,13 +20,9 @@ import Graphics.UI.Gtk
 
 rawPutStdout :: String -> IO ()
 rawPutStdout s = 
-#ifdef mingw32_HOST_OS
-    return () -- don't output anything on windows because of some errors.(There shouldn't be any output anyway because of the check below, but users are not very responsive and not having windows i can't be sure)
-#else
-    whenM (hIsWritable stdout) $ do
+    whenM (hIsTerminalDevice stdout) $ do
         putStrLn s
         hFlush stdout
-#endif
 
 withOpenLog :: (String -> IO ()) -> FilePath -> String -> IO ()
 withOpenLog put logfile str = do

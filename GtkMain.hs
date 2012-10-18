@@ -16,6 +16,14 @@ import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
+
+
+-- == URGENT ==
+-- ANTIGATE REPORT BAD CAPTCHA
+
+
+
+
 --- /\  FIXMES /\
 -- /==\ TODOS /==\
 -- \==/ NOTES \==/
@@ -44,6 +52,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README
 -- TODO Sane defaults.
 -- TODO helpMessage
+-- TODO Пидорнуть гайд по компиляции из README в COMPILEGUIDE
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
 --      + реклама картинкой

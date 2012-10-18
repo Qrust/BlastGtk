@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.2.0.2.zip",
-                "74c47d6fd0054ff891768a1a0305ac58"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.3.0.3.zip",
+                "3bb4b4663d77618b7f4593498c2d6829"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.2.0.2.zip",
-                "0a7d9395a8de48b2e1d129c7d0666c6d"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.3.0.3.zip",
+                "898aaa59627f705f9c51579a5619133c"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "0.3.0.3",
+            "Пофиксил апдейтер, .hk."
+        ],
         [
             "0.2.0.2",
             "stderr bad file descriptor"
@@ -166,5 +170,5 @@
             "Я в Апдейтере и это мой6 первый ченжлог!"
         ]
     ],
-    "version": "0.2.0.2"
+    "version": "0.3.0.3"
 }

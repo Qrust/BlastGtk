@@ -239,7 +239,7 @@ renderBoard b = "/" <> fromString (map toLower $ show b) <> "/"
 ssach :: IsString a => a
 --ssach = "http://2ch.so"
 -- TODO update later, when they get their domain back
-ssach = "http://2ch.ec"
+ssach = "http://2ch.hk"
 
 ssachBoard :: (Monoid a, IsString a) => Board -> a
 ssachBoard b = ssach <> renderBoard b
