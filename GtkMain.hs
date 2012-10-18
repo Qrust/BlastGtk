@@ -52,12 +52,12 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
--- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 
 -- == FUTURE IMPROVEMENTS ==
+-- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO GTK keyboard completion in board list (list view? table? ad-hoc?)
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
