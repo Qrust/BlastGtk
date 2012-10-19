@@ -1,9 +1,11 @@
 module GtkBlast.Mainloop
     (wipebuttonEnvPart
+    ,boardUnitsEnvPart
     ,mainloop
     ,setMainLoop
     ) where
-import Import hiding (on)
+import Import hiding (on, mod)
+import GtkBlast.Achievement
 import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
@@ -19,37 +21,51 @@ import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Parsing
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get,set)
+import qualified Graphics.UI.Gtk as G (set)
 import Control.Concurrent
 import GHC.Conc
 import Control.Concurrent.STM
 import qualified Data.Map as M
-import Control.Monad.Trans.Maybe
 import Paths_blast_it_with_piss
 
-maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe WipeUnit)
-maintainWipeUnit BoardUnit{..} isActive isWiping w@WipeUnit{..} = do
-        E{..} <- ask
-        st <- io $ threadStatus wuThreadId
-        isBanned <- get wuBanned
-        pxs <- M.keys <$> get proxies
-        if st == ThreadDied || st == ThreadFinished
-            then do
-                writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
-                return Nothing
-            else if not isActive || not isWiping || notElem wuProxy pxs
-                    then do
-                        writeLog $ "blasgtk: Killing thread for " ++ renderBoard buBoard
-                        io $ killThread wuThreadId
-                        return Nothing -- TODO don't regenerate banned threads
-                    else return $ Just w
+updWipeMessage :: E ()
+updWipeMessage = do
+    E{..} <- ask
+    whenM (get wipeStarted) $ do
+        pc <- get postCount
+        let psc = "Сделано постов: " ++ show pc ++ "\n"
+        bnd <- do (ac, bn, dd) <- get wipeStats
+                  return $ "Активно: " ++ show ac ++ " / Забанено: " ++ show bn ++
+                            (if dd > 0 then "\nНаебнулось: " ++ show dd else [])
+        let ach = getAchievementString pc
+        updMessage $ psc ++ bnd ++ (if null ach then [] else "\n" ++ ach)
 
-regenerateExcluding :: Board -> [WipeUnit] -> E [WipeUnit]
+killWipeUnit :: Board -> WipeUnit -> E ()
+killWipeUnit board WipeUnit{..} = do
+    writeLog $ "Killing thread for " ++ renderBoard board ++ " {" ++ show wuProxy ++ "}"
+    io $ killThread wuThreadId
+
+killBoardUnitWipeUnits :: BoardUnit -> E ()
+killBoardUnitWipeUnits BoardUnit{..} = do
+    modM buWipeUnits $ \wus -> mapM_ (killWipeUnit buBoard) wus >> return []
+
+cleanBoardUnitBadRecord :: BoardUnit -> E ()
+cleanBoardUnitBadRecord BoardUnit{..} = do
+    unlessM (null <$> get buBad) $ do
+        writeLog $ "Cleaning board unit " ++ renderBoard buBoard ++ " bad proxy records"
+        set buBad []
+
+killBoardUnit :: BoardUnit -> E ()
+killBoardUnit bu = do
+    killBoardUnitWipeUnits bu
+    cleanBoardUnitBadRecord bu
+
+regenerateExcluding :: Board -> [BlastProxy] -> E [WipeUnit]
 regenerateExcluding board exc = do
     E{..} <- ask
     prx <- M.assocs <$> get proxies
-    when (null prx) $ tempError 2 "Нет проксей"
     catMaybes <$> forM prx (\(p, s) ->
-        if any ((==p) . wuProxy) exc
+        if elem p exc
             then return Nothing
             else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
                     mthread <- io $ atomically $ newTVar Nothing
@@ -58,77 +74,86 @@ regenerateExcluding board exc = do
                         --entryPoint p board Log shS MuSettings{..} s (putStrLn . show)
                         entryPoint p board Log shS MuSettings{..} s $ atomically . writeTQueue tqOut
                     writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
-                    Just . WipeUnit p threadid <$> io (newIORef False)
+                    return $ Just $ WipeUnit p threadid
         )
+
+maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe (Either (BlastProxy, Bool) WipeUnit))
+maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
+        E{..} <- ask
+        st <- io $ threadStatus wuThreadId
+        pxs <- get proxies
+        if st == ThreadDied || st == ThreadFinished
+            then do
+                writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
+                return $ Just $ Left (wuProxy, False)
+            else if not isActive || not hadWipeStarted || M.notMember wuProxy pxs
+                    then killWipeUnit buBoard w >> return Nothing
+                    else return $ Just $ Right w
     
-maintainBoardUnit :: (Int, Int) -> BoardUnit -> E (Int, Int)
-maintainBoardUnit (active, banned) bu@BoardUnit{..} = do
+maintainBoardUnit :: (Int, Int, Int) -> BoardUnit -> E (Int, Int, Int)
+maintainBoardUnit (!activecount, !bannedcount, !deadcount) bu@BoardUnit{..} = do
     E{..} <- ask
     isActive <- get buWidget
-    isWiping <- get wipeStarted
-    new <- catMaybes <$> (mapM (maintainWipeUnit bu isActive isWiping) =<< (get buWipeUnits))
-    regend <- if isActive && isWiping
-                then regenerateExcluding buBoard new
-                else return []
-    set buWipeUnits $ new ++ regend
-    isBanned <- --FIXME FIXME FIXME readIORef buBanned
-                return False
-    return (active + (if isActive then 1 else 0)
-           ,banned + (if isBanned then 1 else 0))
+    hadWipeStarted <- get wipeStarted
+    (newdead, old) <- partitionEithers . catMaybes <$> (mapM (maintainWipeUnit bu isActive hadWipeStarted) =<< get buWipeUnits)
+    mod buBad (newdead++)
+    blacklist <- get buBad
+    new <- if isActive && hadWipeStarted
+            then do
+                regenerateExcluding buBoard $ map wuProxy old ++ map fst blacklist
+            else return []
+    let newwus = old ++ new
+    set buWipeUnits newwus
+    pxs <- get proxies
+    let (banned, dead) = partition snd $ filter (flip M.member pxs . fst) blacklist
+    return (activecount + if isActive then length newwus else 0
+           ,bannedcount + if isActive then length banned else 0
+           ,deadcount + if isActive then length dead else 0)
 
 maintainBoardUnits :: E ()
 maintainBoardUnits = do
     E{..} <- ask
-    (active, banned) <- foldM maintainBoardUnit (0,0) boardUnits
-    set activeCount active
-    set bannedCount banned
+    ws@(active, banned, dead) <- foldM maintainBoardUnit (0,0,0) boardUnits
+    set wipeStats ws
+    when (active == 0) $ do
+        killWipe
+        ifM (M.null <$> get proxies)
+            (redMessage "Нет проксей, выберите прокси для вайпа или вайпайте без прокси")
+            (if banned > 0 || dead > 0
+                then redMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
+                else redMessage "Выберите доски для вайпа")
 
 startWipe :: E ()    
 startWipe = do
     E{..} <- ask
     writeLog "Starting wipe..."
+    uncMessage "Заряжаем пушки..."
     set wipeStarted True
+    io $ buttonSetLabel wbuttonwipe "Прекратить _Вайп"
+    io $ progressBarPulse wprogresswipe
 
 killWipe :: E ()
 killWipe = do
     E{..} <- ask
     writeLog "Stopping wipe..."
     set wipeStarted False
-    maintainBoardUnits
+    mapM_ killBoardUnit boardUnits
     killAllCaptcha
+    io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
+    io $ progressBarSetFraction wprogresswipe 0
+    uncMessage "Вайп ещё не начат"
 
-wipebuttonEnvPart :: Builder -> EnvPart
-wipebuttonEnvPart b = EP
-    (\env _ -> do
-        wbuttonwipe <- builderGetObject b castToButton "wipebutton"
-
-        void $ on wbuttonwipe buttonActivated $ do
-            ifM (not <$> readIORef (wipeStarted env))
-                (runE env $ do
-                    E{..} <- ask
-                    startWipe
-                    io $ buttonSetLabel wbuttonwipe "Прекратить _Вайп"
-                    io $ progressBarPulse wprogresswipe
-                    updWipeMessage
-                    )
-                (runE env $ do
-                    E{..} <- ask
-                    killWipe
-                    io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
-                    io $ progressBarSetFraction wprogresswipe 0
-                    updMessage "Вайп ещё не начат"
-                    )
-        return wbuttonwipe
-        )
-    (const return)
-    (const id)
-
-setBanned :: [BoardUnit] -> Board -> BlastProxy -> Bool -> IO ()
-setBanned boardUnits board proxy st = do
-        maybe (return ()) ((`writeIORef` st) . wuBanned) =<< runMaybeT (do
-            ws <- maybe mzero (liftIO . readIORef . buWipeUnits) $
-                    find ((==board) . buBoard) boardUnits
-            maybe mzero return $ find ((==proxy) . wuProxy) ws)
+setBanned :: Board -> BlastProxy -> E ()
+setBanned board proxy = do
+    writeLog $ "setBanned: " ++ renderBoard board ++ " {" ++ show proxy ++ "}"
+    bus <- asks boardUnits
+    whenJust (find ((==board) . buBoard) bus) $ \BoardUnit{..} -> do
+        bwus <- get buWipeUnits
+        whenJust (find ((==proxy) . wuProxy) bwus) $ \wu -> do
+            writeLog $ "Banning " ++ renderBoard board ++ " {" ++ show proxy ++ "}"
+            killWipeUnit buBoard wu
+            mod buWipeUnits $ delete wu
+            mod buBad ((wuProxy wu, True) :)
 
 reactToMessage :: OutMessage -> E ()
 reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
@@ -139,42 +164,44 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 SuccessLongPost _ -> writeLog (show st ++ ": SuccessLongPost")
                 _ -> writeLog (show s)
             case o of
-                Success -> do
-                    io $ modifyIORef postCount (+1)
-                    io $ setBanned boardUnits board proxy False
-                SuccessLongPost _ -> io $ modifyIORef postCount (+1)
+                Success -> mod postCount (+1)
+                SuccessLongPost _ -> mod postCount (+1)
                 Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
+                SameMessage -> tempError 2 $ stamp $ "Запостил одно и то же сообщение"
+                SameImage -> tempError 2 $ stamp $ "Этот файл уже загружен"
+                TooFastPost -> writeLog $ stamp $ "Вы постите слишком часто, умерьте пыл"
+                TooFastThread -> tempError 3 $ stamp $ "Вы создаете треды слишком часто"
+                NeedCaptcha -> writeLog $ stamp $ "NeedCaptcha"
+                WrongCaptcha -> writeLog $ stamp $ "WrongCaptcha"
+                LongPost -> tempError 1 $ stamp $ "Запостил слишком длинный пост"
+                CorruptedImage -> tempError 2 $ stamp $ "Запостил поврежденное изображение"
+                OtherError x -> tempError 4 $ stamp $ "" ++ show x
+                InternalError x -> tempError 4 $ stamp $ "" ++ show x
                 Banned x -> do
                     banMessage 5 $ "Забанен " ++ renderCompactStamp st
                                 ++ " Причина: " ++ show x
                                 ++ "\nВозможно стоит переподключится или начать вайпать /d/"
-                    io $ setBanned boardUnits board proxy True
-                SameMessage -> tempError 2 $ renderCompactStamp st ++ ": Запостил одно и то же сообщение"
-                SameImage -> tempError 2 $ renderCompactStamp st ++ ": Этот файл уже загружен"
-                TooFastPost -> writeLog $ renderCompactStamp st ++ ": Вы постите слишком часто, умерьте пыл"
-                TooFastThread -> tempError 3 $ renderCompactStamp st ++ ": Вы создаете треды слишком часто"
-                NeedCaptcha -> writeLog $ renderCompactStamp st ++ ": NeedCaptcha"
-                WrongCaptcha -> writeLog $ renderCompactStamp st ++ ": WrongCaptcha"
+                    setBanned board proxy
                 RecaptchaBan -> do
-                    banMessage 7 $ "Забанен рекапчой, охуеть."
-                    io $ setBanned boardUnits board proxy True
-                LongPost -> tempError 1 $ renderCompactStamp st ++ ": Запостил слишком длинный пост"
-                CorruptedImage -> tempError 2 $ renderCompactStamp st ++ ": Запостил поврежденное изображение"
-                OtherError x -> tempError 4 $ renderCompactStamp st ++ ": " ++ show x
-                InternalError x -> tempError 4 $ renderCompactStamp st ++ ": " ++ show x
+                    banMessage 7 $ stamp $ "Забанен рекапчой, охуеть."
+                    setBanned board proxy
                 CloudflareCaptcha -> do
-                    banMessage 7 $ "Если эта ошибка появляется то это баг, сообщите нам об этом"
-                    io $ setBanned boardUnits board proxy True
+                    banMessage 2 $ stamp $ "Если эта ошибка появляется то это баг, сообщите нам об этом"
+                    setBanned board proxy
                 CloudflareBan -> do
-                    banMessage 4 $ "Эту проксю пидорнули по клаудфлеру, она бесполезна"
-                    io $ setBanned boardUnits board proxy True
-                UnknownError -> tempError 4 $ renderCompactStamp st ++ ": Неизвестная ошибка, что-то пошло не так"
+                    banMessage 2 $ stamp $ "Бан по клаудфлеру"
+                    setBanned board proxy
+                Four'o'FourBan -> do
+                    banMessage 2 $ stamp $ "Бан по 404"
+                    setBanned board proxy
+                UnknownError -> tempError 4 $ stamp $ "Неизвестная ошибка, что-то пошло не так"
         c@SupplyCaptcha{} -> addCaptcha (st, c)
         LogMessage _ -> writeLog (show s)
         NoPastas -> do writeLog (show s)
                        tempError 3 "Невозможно прочитать пасты, постим повторяющуюся строку \"NOPASTA\""
         NoImages -> do writeLog (show s)
                        tempError 3 "Невозможно прочитать пикчи, постим капчу"
+  where stamp s = renderCompactStamp st ++ ": " ++ s
 
 mainloop :: E ()
 mainloop = do
@@ -185,8 +212,8 @@ mainloop = do
         regenerateImages
         regenerateProxies
         maintainBoardUnits
-        updWipeMessage
     mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
+    updWipeMessage
 
 setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
 setMainLoop env configfile setConf = do
@@ -200,3 +227,34 @@ setMainLoop env configfile setConf = do
     void $ onDestroy (window env) $ do
         runE env . writeConfig configfile =<< setConf def{coFirstLaunch=False, coLastVersion=version}
         mainQuit
+
+boardUnitsEnvPart :: Builder -> EnvPart
+boardUnitsEnvPart b = EP
+    (\_ c -> do
+        wvboxboards <- builderGetObject b castToVBox "vbox-boards"
+
+        forM ssachBoardsSortedByPostRate $ \(board, sp) -> do
+            wc <- checkButtonNewWithLabel $ renderBoard board
+            when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
+            G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
+            boxPackStart wvboxboards wc PackNatural 0
+            BoardUnit board wc <$> newIORef [] <*> newIORef [])
+    (\v c -> do
+        cab <- map buBoard <$>
+            filterM (toggleButtonGetActive . buWidget) v
+        return c{coActiveBoards=cab})
+    (\v e -> e{boardUnits=v})
+
+wipebuttonEnvPart :: Builder -> EnvPart
+wipebuttonEnvPart b = EP
+    (\env _ -> do
+        wbuttonwipe <- builderGetObject b castToButton "wipebutton"
+
+        void $ on wbuttonwipe buttonActivated $ do
+            ifM (not <$> readIORef (wipeStarted env))
+                (runE env startWipe)
+                (runE env killWipe)
+
+        return wbuttonwipe)
+    (const return)
+    (\v e -> e{wbuttonwipe=v})

@@ -15,12 +15,10 @@ import GtkBlast.Captcha (captchaModeEnvPart)
 import GtkBlast.Proxy
 import GtkBlast.Conf
 import GtkBlast.GtkUtils
-import GtkBlast.Mainloop (wipebuttonEnvPart)
+import GtkBlast.Mainloop (wipebuttonEnvPart, boardUnitsEnvPart)
 import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get, set)
-import qualified Graphics.UI.Gtk as G (set)
 import GHC.Conc
 import Control.Concurrent.STM
 import Paths_blast_it_with_piss
@@ -38,6 +36,7 @@ envParts b =
     ,antigateCaptchaEnvPart b
     ,captchaModeEnvPart b
     ,wipebuttonEnvPart b
+    ,boardUnitsEnvPart b
     ,EP
         (\e c -> do
             wradiofromthread <- build castToRadioButton "radio-fromthread"
@@ -145,21 +144,6 @@ envParts b =
                                        ,wprogresswipe=wpw
                                        ,wbuf = wbuf
                                        })
-    ,EP
-        (\_ c -> do
-            wvboxboards <- build castToVBox "vbox-boards"
-        
-            forM ssachBoardsSortedByPostRate $ \(board, sp) -> do
-                wc <- checkButtonNewWithLabel $ renderBoard board
-                when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
-                G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
-                boxPackStart wvboxboards wc PackNatural 0
-                BoardUnit board wc <$> newIORef [])
-        (\v c -> do
-            cab <- map buBoard <$>
-                filterM (toggleButtonGetActive . buWidget) v
-            return c{coActiveBoards=cab})
-        (\v e -> e{boardUnits=v})
     ,EP
         (\e c -> do
             wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
@@ -359,8 +343,7 @@ createWidgetsAndFillEnv builder conf = do
     wipeStarted <- newIORef False
   
     postCount <- newIORef 0
-    activeCount <- newIORef 0
-    bannedCount <- newIORef 0
+    wipeStats <- newIORef (0, 0, 0)
 
     imagesLast <- newIORef []
 

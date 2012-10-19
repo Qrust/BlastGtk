@@ -33,11 +33,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
 
 -- == 1.0 RELEASE ==
--- TODO FIXME FIXME readIORef buBanned
--- TODO don't regenerate banned threads ((don't) kill banned threads)
--- TODO don't regenerate threads until asked to.
--- TODO убирать капчу от дохлых тредов
--- TODO Show currently active vs. banned vs. dead threads.
+-- TODO убирать капчу от дохлых/забаненных/убранных проксей/досок.
 -- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
 -- TODO обращать внимание на бамплимит в вайпе
 -- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.

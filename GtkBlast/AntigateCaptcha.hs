@@ -19,6 +19,7 @@ import Graphics.UI.Gtk hiding (get, set)
 import GHC.Conc
 import Control.Concurrent.STM
 import Text.Recognition.Antigate
+import qualified Data.Map as M
 
 recaptchaCaptchaConf :: CaptchaConf
 recaptchaCaptchaConf =

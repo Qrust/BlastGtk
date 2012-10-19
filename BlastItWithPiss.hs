@@ -227,6 +227,18 @@ blastLog msg = do
     when (d == Log) $ do
         blastOut (LogMessage msg)
 
+-- HACK abortWithOutcome
+data AbortOutcome = AbortOutcome !Outcome
+    deriving (Show, Typeable)
+
+instance Exception AbortOutcome
+
+abortWithOutcome :: Outcome -> BlastLog a
+abortWithOutcome o = do
+    blastOut $ OutcomeMessage o
+    throwIO (AbortOutcome o)
+-- /HACK
+
 blast :: Blast a -> BlastLog a
 blast = lift . lift
 
@@ -279,14 +291,18 @@ blastCaptcha wakabapl thread = do
                 AbortCaptcha -> return (chKey, Nothing)
 
 -- TODO Should be buggy as hell.
-blastCloudflare :: BlastLog (Response [Tag Text]) -> String -> BlastLog (Response [Tag Text])
-blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
+-- FIXME Code duplication with "post"
+blastCloudflare :: (Response [Tag Text] -> BlastLog b) -> BlastLog (Response [Tag Text]) -> String -> BlastLog b
+blastCloudflare md whatrsp url = blastCloudflare' =<< whatrsp
   where blastCloudflare' rsp
-            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) =
-                return rsp -- oyoyoyoy
+            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
+                abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
+            | responseStatus rsp == status404 && (maybe False (=="NWS_QPLUS_HY") $
+                lookup hServer $ responseHeaders rsp) = do
+                abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
             | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
                 cloudflareChallenge
-            | otherwise = return rsp
+            | otherwise = md rsp
         cloudflareChallenge = do
             blastLog "Encountered cloudflare challenge"
             ProxyS{..} <- askProxyS
@@ -305,7 +321,7 @@ blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
                         then cloudflareChallenge
                         else do blastLog "Got cloudflare cookies"
                                 blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
-                                whatrsp
+                                md =<< whatrsp
                 else handle (\(a::SomeException) -> do
                                 liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
                                 throwIO a) $ do
@@ -332,19 +348,19 @@ blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
                             if ckl==0
                                 then do blastLog "Couldn't get Cloudflare cookies. Retrying."
                                         liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
-                                        blastCloudflare whatrsp url
+                                        blastCloudflare md whatrsp url
                                 else do blastLog $ "Cloudflare cookie count: " ++ show (length $ destroyCookieJar ck)
                                         liftIO $ atomically $ do
                                             putTMVar pcloudflareCaptchaLock ()
                                             putTMVar psharedCookies ck
                                         blastLog "finished working on captcha"
-                                        whatrsp
+                                        md =<< whatrsp
                         ReloadCaptcha -> cloudflareChallenge
                         AbortCaptcha -> do
                             blastLog "Aborting cloudflare captcha. This might have unforeseen consequences."
                             liftIO $ atomically $ do
                                 putTMVar pcloudflareCaptchaLock ()
-                            whatrsp
+                            md =<< whatrsp
 
 blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
@@ -403,18 +419,14 @@ blastLoop w lthreadtime lposttime = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
     let getPage p = do
             let url = ssachPage board p
-            let chkStatus st@Status{statusCode=c} heads
-                    | c /= 200 && c /= 403 =
-                        Just $ toException $ StatusCodeException st heads
-                    | otherwise =
-                        Nothing
-            blastLog $ "chooseThread: getPage: going to page " ++ show p
-            parsePage board . responseBody <$>
-                blastCloudflare (blast $ httpReqStrTags $
+            let chkStatus _ _ = Nothing
+            blastLog $ "getPage: going to page " ++ show p
+            blastCloudflare (return . parsePage board . responseBody)
+                (blast $ httpReqStrTags $
                     (fromJust $ parseUrl url){checkStatus=chkStatus}) url
     let getThread i = do
             blastLog $ "Going into " ++ show i ++ " thread for pasta"
-            blast $ head . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
+            blast $ headNote "PastaHead fail" . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
     now <- liftIO $ getPOSIXTime
     canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                         (return $ now - lthreadtime >= ssachThreadTimeout board)
@@ -470,9 +482,10 @@ entryPoint proxy board lgDetail shS muS prS output = do
         blast $ httpSetProxy proxy
         let hands =
               [Handler $ \(a::AsyncException) -> throwIO a
-              ,Handler $ \(a::HttpException) -> do
+              {-,Handler $ \(a::HttpException) -> do
                 blastLog $ "Got http exception, restarting. Exception was: " ++ show a
-                start -- Dunno what to do except restart.
+                start -- Dunno what to do except restart.-}
+              ,Handler $ \(_::AbortOutcome) -> start --HACK abortOutcome
               ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException a

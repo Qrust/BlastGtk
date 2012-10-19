@@ -21,13 +21,13 @@ import Control.Monad.Trans.Reader
 
 data WipeUnit = WipeUnit {wuProxy :: !BlastProxy
                          ,wuThreadId :: !ThreadId
-                         ,wuBanned :: !(IORef Bool)
                          }
     deriving (Eq)
 
 data BoardUnit = BoardUnit {buBoard :: !Board
                            ,buWidget :: !CheckButton
                            ,buWipeUnits :: !(IORef [WipeUnit])
+                           ,buBad :: !(IORef [(BlastProxy, Bool)])
                            -- TODO right now we don't support configuring per-board
                            --      wipe preferences
                            --,buMuSettings :: MuSettings
@@ -38,8 +38,7 @@ data Env = E
      messageLocks :: IORef Int
     ,wipeStarted :: IORef Bool
     ,postCount :: IORef Int
-    ,activeCount :: IORef Int
-    ,bannedCount :: IORef Int
+    ,wipeStats :: IORef (Int, Int, Int)
     ,pastaSet :: IORef PastaSet
     ,pastaMod :: IORef ModificationTime
     ,imagesLast :: IORef [String]
@@ -66,6 +65,7 @@ data Env = E
     ,wentrycaptcha :: Entry
     ,wbuttoncaptchaok :: Button
     ,wprogressalignment :: Alignment
+    ,wbuttonwipe :: Button
     ,wprogresswipe :: ProgressBar
     ,wentryimagefolder :: Entry
     ,wcheckimages :: CheckButton
@@ -92,8 +92,7 @@ instance NFData Env where
          messageLocks
         `seq` wipeStarted
         `seq` postCount
-        `seq` activeCount
-        `seq` bannedCount
+        `seq` wipeStats
         `seq` pastaSet
         `seq` pastaMod
         `seq` imagesLast
@@ -120,6 +119,7 @@ instance NFData Env where
         `seq` wentrycaptcha
         `seq` wbuttoncaptchaok
         `seq` wprogressalignment
+        `seq` wbuttonwipe
         `seq` wprogresswipe
         `seq` wentryimagefolder
         `seq` wcheckimages

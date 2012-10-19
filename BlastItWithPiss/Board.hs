@@ -230,8 +230,10 @@ ssachBoardsSortedByPostRate =
     ]
 
 readBoard :: String -> Maybe Board
-readBoard x | head x == '/' && last x == '/' = readMay $ map toUpper $ init $ tail x
-            | otherwise = Nothing
+readBoard ('/':x@(_:_))
+    | last x == '/' = readMay $ map toUpper $ init x
+    | otherwise = Nothing
+readBoard _ = Nothing
 
 renderBoard :: (Monoid a, IsString a) => Board -> a
 renderBoard b = "/" <> fromString (map toLower $ show b) <> "/"

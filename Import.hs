@@ -9,6 +9,8 @@ module Import
     ,ifM
     ,whenM
     ,unlessM
+    ,whenJust
+    ,whenJustM
     ,fromLeft
     ,fromRight
     ,takeUntil
@@ -16,6 +18,7 @@ module Import
     ,dropUntilLP
     ,findMap
     ,findMapM
+    ,anyM
     ,stripPrefixOfP
     ,isPrefixOfP
     ,isInfixOfP
@@ -33,7 +36,6 @@ module Import
     ,untilNothing
     ,fromTrySome
     ,modifyIORefM
-    ,anyM
     ) where
 import Debug.Trace as A
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
@@ -79,6 +81,7 @@ instance NFData LB.ByteString where
     rnf r = LB.toChunks r `deepseq` ()
 #endif
 
+{-# INLINE toLBS #-}
 toLBS :: ByteString -> LByteString
 toLBS x = LB.fromChunks [x]
 
@@ -107,6 +110,14 @@ whenM i t = ifM i t (return ())
 unlessM :: Monad m => m Bool -> m () -> m ()
 unlessM i t = ifM i (return ()) t
 
+{-# INLINE whenJust #-}
+whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()
+whenJust mb m = maybe (return ()) m mb
+
+{-# INLINE whenJustM #-}
+whenJustM :: Monad m => m (Maybe a) -> (a -> m ()) -> m ()
+whenJustM mmb m = maybe (return ()) m =<< mmb
+
 {-# INLINE fromLeft #-}
 fromLeft :: Either a b -> a
 fromLeft = either id (error "fromLeft failed")
@@ -133,10 +144,11 @@ findMap f xs = headMay (mapMaybe f xs)
 
 findMapM :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
 findMapM _ [] = return Nothing
-findMapM f (x:xs) = do a <- f x
-                       if isJust a
-                        then return a
-                        else findMapM f xs
+findMapM f (x:xs) = do
+    a <- f x
+    if isJust a
+        then return a
+        else findMapM f xs
 
 stripPrefixOfP :: [a -> Bool] -> [a] -> Maybe [a]
 stripPrefixOfP [] a = Just a
@@ -148,15 +160,18 @@ isPrefixOfP [] _ = True
 isPrefixOfP _ [] = False
 isPrefixOfP (p:ps) (x:xs) = p x && isPrefixOfP ps xs
 
+{-# INLINABLE isInfixOfP #-}
 isInfixOfP :: [a -> Bool] -> [a] -> Bool
 isInfixOfP predicates list = any (isPrefixOfP predicates) $ tails list
 
+{-# INLINABLE getPrefixOfP #-}
 getPrefixOfP :: [a -> Bool] -> [a] -> Maybe [a]
 getPrefixOfP = getPrefixOfP' []
   where getPrefixOfP' acc [] _ = Just acc
         getPrefixOfP' acc (p:ps) (x:xs) | p x = getPrefixOfP' (acc ++ [x]) ps xs
         getPrefixOfP' _ _ _ = Nothing
 
+{-# INLINABLE getInfixOfP #-}
 getInfixOfP :: [a -> Bool] -> [a] -> Maybe [a]
 getInfixOfP ps xs = findMap (getPrefixOfP ps) $ tails xs
 
@@ -174,6 +189,7 @@ delimitByLE d l =
         Just (a, _, b) -> a : delimitByLE d b
         Nothing -> [l]
 
+{-# INLINABLE slice #-}
 slice :: Int -> [a] -> [[a]]
 slice _ [] = []
 slice len list =
@@ -207,10 +223,7 @@ justIf :: (a -> Bool) -> a -> Maybe a
 justIf p a = if p a then Just a else Nothing
 
 untilJust :: Monad m => m (Maybe a) -> m a
-untilJust m = do x <- m
-                 case x of
-                    Just a -> return a
-                    Nothing -> untilJust m
+untilJust m = maybe (untilJust m) return =<< m
 
 untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
 untilNothing m = do x <- m
@@ -218,6 +231,7 @@ untilNothing m = do x <- m
                         Just a -> (a :) <$> untilNothing m
                         Nothing -> return []
 
+{-# INLINABLE fromTrySome #-}
 fromTrySome :: MonadBaseControl IO m => m a -> m a -> m a
 fromTrySome e m = do
     a <- try m
@@ -225,9 +239,9 @@ fromTrySome e m = do
         Left (_::SomeException) -> e
         Right z -> return z
 
+{-# INLINE modifyIORefM #-}
 modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
-modifyIORefM r m =
-    writeIORef r =<< m =<< readIORef r
+modifyIORefM r m = writeIORef r =<< m =<< readIORef r
 
 anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 anyM m [] = return False

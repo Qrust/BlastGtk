@@ -30,4 +30,4 @@ getAchievement a =
 
 getAchievementString :: Int -> String
 getAchievementString =
-    maybe [] (("\nAchievement unlocked: \"" ++) . (++ "\"")) . getAchievement
+    maybe [] (("Achievement unlocked: \"" ++) . (++ "\"")) . getAchievement

@@ -19,6 +19,7 @@ import Graphics.UI.Gtk hiding (get, set)
 import Control.Concurrent.STM
 import System.IO.Temp
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Map as M
 
 captchaError :: String -> E ()
 captchaError =
@@ -73,17 +74,26 @@ removeCaptchaWidget = do
             widgetHide window
 
 addGuiCaptchas :: [(OriginStamp, Message)] -> E ()
-addGuiCaptchas [] = writeLog "Added 0 gui captchas..."
+addGuiCaptchas [] = writeLog "ERROR Added 0 gui captchas..."
 addGuiCaptchas sps = do
     E{..} <- ask
     pc <- get pendingGuiCaptchas
     mod pendingGuiCaptchas (++sps)
+    writeLog $ "Added " ++ show (length sps) ++ " gui captchas"
     when (null pc) $ do
         updateCaptchaWidget
         putCaptchaWidget
 
 addGuiCaptcha :: (OriginStamp, Message) -> E ()
 addGuiCaptcha sp = addGuiCaptchas [sp]
+
+unsetCurrentCaptcha :: E ()
+unsetCurrentCaptcha = do
+    E{..} <- ask
+    mod messageLocks (subtract 1)
+    ifM (null <$> get pendingGuiCaptchas)
+        removeCaptchaWidget
+        updateCaptchaWidget
 
 removeCurrentCaptchaWith :: ((OriginStamp, Message) -> E ()) -> E ()
 removeCurrentCaptchaWith f = do
@@ -94,10 +104,7 @@ removeCurrentCaptchaWith f = do
         (c:cs) -> do
             f c
             set pendingGuiCaptchas cs
-            mod messageLocks (subtract 1)
-            if (null cs)
-                then removeCaptchaWidget
-                else updateCaptchaWidget
+            unsetCurrentCaptcha
 
 removeCurrentCaptcha :: CaptchaAnswer -> E ()
 removeCurrentCaptcha a = do
@@ -117,8 +124,7 @@ killGuiCaptcha = do
     E{..} <- ask
     writeLog "Killing gui captcha"
     pgc <- get pendingGuiCaptchas
-    when (not $ null pgc) $
-        removeCaptchaWidget
+    when (not $ null pgc) removeCaptchaWidget
     set pendingGuiCaptchas []
     mod messageLocks (subtract $ length pgc)
 

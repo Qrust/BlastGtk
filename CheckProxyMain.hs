@@ -100,6 +100,8 @@ mainloop board Config{..} ips mvs = do
                         ape cloudflare_ban ip
                     CloudflareCaptcha -> do
                         ape cloudflare_captcha ip
+                    Four'o'FourBan -> do
+                        ape four'o'four ip
                     Banned reason -> do
                         ape banned $ ip ++ "| banned, reason was: " ++ show reason
                     UnknownError -> do

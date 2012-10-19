@@ -157,15 +157,18 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
     catches
-        (do Response st _ heads tags <- httpReqStrTags req
+        (do Response st _ heads ~tags <- httpReqStrTags req
             case()of
-             _ | (statusCode st >= 300 && statusCode st < 400)
-                 && (maybe False (T.isInfixOf "res/" . T.decodeASCII) $
+             _ | (statusCode st >= 300 && statusCode st < 400) &&
+                 (maybe False (T.isInfixOf "res/" . T.decodeASCII) $
                         lookup "Location" heads)
                 -> return (success, Nothing)
                | statusCode st == 403
                 -> maybe (throwIO $ StatusCodeException st heads)
                     (return . flip (,) (Just tags)) $ detectCloudflare tags
+               | statusCode st == 404 && (maybe False (=="NWS_QPLUS_HY") $
+                    lookup hServer heads)
+                -> return (Four'o'FourBan, Nothing)
                | statusCode st >= 200 && statusCode st <= 300
                 -> return (detectOutcome tags, Just tags)
                | otherwise

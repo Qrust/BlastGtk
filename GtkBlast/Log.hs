@@ -8,15 +8,18 @@ module GtkBlast.Log
     ,tempError
     ,banMessage
     ,updMessage
+    ,uncMessage
+    ,redMessage
     ,appFile
-    ,updWipeMessage
     ) where
 import Import
 import GtkBlast.IO
-import GtkBlast.Achievement
 import GtkBlast.Environment
 import GtkBlast.GtkUtils
 import Graphics.UI.Gtk
+
+red :: String -> String
+red s = "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
 
 rawPutStdout :: String -> IO ()
 rawPutStdout s = 
@@ -51,14 +54,14 @@ writeLog :: String -> E ()
 writeLog s = ask >>= \w -> io $ writeLogIO (wbuf w) s
 
 showMessage :: (Env -> CheckButton) -> String -> Maybe Int -> Bool -> String -> E ()
-showMessage getCheck msgname mUnlockT red msg = do
+showMessage getCheck msgname mUnlockT mkRed msg = do
     E{wlabelmessage=wlabel, ..} <- ask
     wcheck <- asks getCheck
     io $ modifyIORef messageLocks (+1)
     n <- io getPOSIXTime
-    writeLog $ "blasgtk, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
-    if red
-        then io $ labelSetMarkup wlabel $ "<span foreground=\"#ff0000\">" ++ msg ++ "</span>"
+    writeLog $ "blastgtk, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
+    if mkRed
+        then io $ labelSetMarkup wlabel $ red msg
         else io $ labelSetText wlabel msg
     io $ whenM (toggleButtonGetActive wcheck) $ windowPopup window
     case mUnlockT of
@@ -71,8 +74,7 @@ tempError t s = do
     showMessage wcheckannoyerrors "Displayed error message" (Just t) True s
 
 banMessage :: Int -> String -> E ()
-banMessage t s =
-    showMessage wcheckannoy "Ban message" (Just t) True s
+banMessage t s = showMessage wcheckannoy "Ban message" (Just t) True s
 
 updMessage :: String -> E ()
 updMessage s = do
@@ -84,17 +86,18 @@ updMessage s = do
                 io $ writeIORef messageLocks 0
                 tempError 5 "Ой-ой, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
 
+uncMessage :: String -> E ()
+uncMessage s = do
+    E{..} <- ask
+    writeLog $ "blastgtk, Unconditinal message: " ++ s
+    io $ labelSetText wlabelmessage s
+
+redMessage :: String -> E ()
+redMessage s = do
+    E{..} <- ask
+    writeLog $ "blastgtk, Red message: " ++ s
+    io $ labelSetMarkup wlabelmessage $ red s
+
 appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
 appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""
                              return d) $ io $ m f
-
-updWipeMessage :: E ()
-updWipeMessage = do
-    E{..} <- ask
-    pc <- io $ readIORef postCount
-    let psc = "Сделано постов: " ++ show pc
-    bnd <- do ac <- io $ readIORef activeCount
-              bn <- io $ readIORef bannedCount
-              return $ "\nЗабанен на досках: " ++ show bn ++ "/" ++ show ac
-    let ach = getAchievementString pc
-    updMessage $ psc ++ bnd ++ ach

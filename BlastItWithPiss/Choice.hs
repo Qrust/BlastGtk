@@ -173,14 +173,23 @@ defaultStrategy =
        ,BumpOld        / 35
        ,CreateNew      / always]
 
+unlocked :: Thread -> Bool
+unlocked = not . locked
+
+unpinned :: Thread -> Bool
+unpinned = not . pinned
+
+unlockedUnpinned :: Thread -> Bool
+unlockedUnpinned t = unlocked t && unpinned t
+
 unlockedSticky :: Thread -> Bool
 unlockedSticky Thread{..} = not locked && pinned
 
 newThread :: Thread -> Bool
-newThread t = postcount t <= 10
+newThread t = postcount t <= 5
 
 veryPopularThread :: Thread -> Bool
-veryPopularThread t = postcount t >= 150
+veryPopularThread t = postcount t >= 100
 
 tooFast :: Int -> Bool
 tooFast s = s >= 200
@@ -202,9 +211,10 @@ adjustStrategy strategy canmakethread Page{..}
     , vps <- if tooFast speed
                 then [SagePopular, ShitupSticky]
                 else [BumpOld, CreateNew]
-    , aux <- (\(x, r) -> let y = r * (if' (x `elem` nps) new 0)
-                             z = r * (if' (x `elem` vps) vpop 0)
-                        in (x, r + y + z))
+    , aux <- \(x, r) ->
+                let y = r * if' (x `elem` nps) new 0
+                    z = r * if' (x `elem` vps) vpop 0
+                in (x, r + y + z)
     = map aux $ filter (not . badst) strategy
 
 chooseStrategy :: Board -> Bool -> Page -> Strategy
@@ -218,24 +228,22 @@ chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
 chooseMode a b c = chooseModeStrategy $ chooseStrategy a b c
 
 chooseThread' :: MonadChoice m => Bool -> Mode -> Page -> m (Maybe Int)
-chooseThread' _ CreateNew Page{..} = do
-    liftIO $ putStrLn "chooseThread': WTF, this should never happen. Whatever..."
-    return Nothing
+chooseThread' _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
 chooseThread' canfail mode Page{..}
     --inb4 >kokoko
     | thrds <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
-                else let nost = filter (not . pinned) threads -- we don't include stickies
-                     in if null nost then threads else nost -- what can we do if there are only stickies left?
-    , addfail <- if mode /= ShitupSticky && canfail
-                    then (((-1), 50) :) -- add the possibility of failure
-                                       -- in that case we advance to the next/previous page
-                    else id
+                else let nost = filter unlockedUnpinned threads -- we don't include stickies
+                     in if null nost then filter unlocked threads else nost -- what can we do if there are only stickies left?
     , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
                 else id
-    = justIf (>= 0) <$> fromList (addfail $
-                map (threadId &&& inv . fromIntegral . postcount) thrds)
+    , addfail <- if mode /= ShitupSticky && canfail
+                    then ((-1, inv 50) :) -- add the possibility of failure
+                                                 -- in that case we advance to the next/previous page
+                    else id
+    = justIf (>= 0) <$>
+        fromList (addfail $ map (threadId &&& inv . fromIntegral . postcount) thrds)
 
 chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
 chooseThread CreateNew _ p0 = return (Nothing, p0)

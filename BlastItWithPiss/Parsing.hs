@@ -103,24 +103,24 @@ instance NFData Thread where
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
 
-innerTextWithBr :: [Tag Text] -> Text
-innerTextWithBr = T.concat . mapMaybe aux
+innerTextWithBr :: [Tag Text] -> String
+innerTextWithBr = concat . mapMaybe aux
     where aux (TagOpen "br" []) = Just "\n"
-          aux a = maybeTagText a
+          aux a = T.unpack <$> maybeTagText a
 
 parseOpPost :: Int -> [Tag Text] -> (Post, [Tag Text])
 parseOpPost i ts =
     let (postcont, rest) = break (==TagClose "blockquote") ts
-    in (Post i $ T.unpack $ innerTextWithBr postcont, tailSafe rest)
+    in (Post i $ innerTextWithBr postcont, tailSafe rest)
 
 parsePosts :: [Tag Text] -> ([Post], [Tag Text])
 parsePosts = appfst reverse . go []
-  where stripM ('m':a) = Just a
-        stripM _ = Nothing
+  where strip'm' ('m':a) = Just a
+        strip'm' _ = Nothing
         go posts (TagOpen "blockquote" (("id", mpostid):_):ts) =
             let (postcont, (_:rest)) = break (==TagClose "blockquote") ts
-            in case (`Post` T.unpack (innerTextWithBr postcont)) <$>
-                (readMay =<< stripM (T.unpack mpostid)) of
+            in case (flip Post $ innerTextWithBr postcont) <$>
+                        (readMay =<< strip'm' (T.unpack mpostid)) of
                 Just a -> go (a:posts) rest
                 Nothing -> go posts rest
         go posts a@(t:ts)
@@ -131,8 +131,8 @@ parsePosts = appfst reverse . go []
 parseOmitted :: [Tag Text] -> (Maybe Int, [Tag Text])
 parseOmitted (TagText x:ts) =
     let t = dropWhile isSpace $ T.unpack x
-    in case (readMay . takeUntil isSpace =<< stripPrefix "Пропущено " t)
-        <|> (readMay $ takeUntil isSpace t) of
+    in case (readMay . takeUntil isSpace =<< stripPrefix "Пропущено " t) <|>
+                (readMay $ takeUntil isSpace t) of
         Just a -> (Just a, ts)
         Nothing -> parseOmitted ts
 parseOmitted (TagOpen "script" _:ts) = (Nothing, ts)
@@ -168,11 +168,11 @@ parseThreads = appfst reverse . go []
 
 parseSpeed :: [Tag Text] -> Maybe Int
 parseSpeed t = getSpeed =<< parseSpeed' t
-  where stripSpeedPrefix a = T.stripPrefix "[Скорость борды: " (T.stripStart a)
-                         <|> T.stripPrefix "[Posting speed: " (T.stripStart a)
-        getSpeed = readMay . takeUntil isSpace . T.unpack
+  where stripSpeedPrefix a = stripPrefix "[Скорость борды: " (dropWhile isSpace a)
+                         <|> stripPrefix "[Posting speed: " (dropWhile isSpace a)
+        getSpeed = readMay . takeUntil isSpace
         parseSpeed' =
-            stripSpeedPrefix . innerText .
+            stripSpeedPrefix . T.unpack . innerText .
                 dropUntil (== tgOpen "p" [("class", "footer")])
 
 parsePages :: [Tag Text] -> ((Int, Int), [Tag Text])
@@ -184,18 +184,19 @@ parsePages tags =
         texts = filter (T.any isNumber) $ mapMaybe maybeTagText work
         current = fromMaybe 0 (findMap extract texts)
         others = maximum (current : mapMaybe (readMay . T.unpack) texts)
-        in ((current, others), rest)
+    in ((current, others), rest)
 
 parsePage :: Board -> [Tag Text] -> Page
 parsePage board html =
     let (tds, rest1) = parseThreads html
-        ((i, ps), rest2) = parsePages rest1
+        ((i, lp), rest2) = parsePages rest1
+         -- if parse fails assume last recorded speed, or 0 if none recorded.
+        spd = flip fromMaybe (parseSpeed rest2) $
+                fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate
     in
     Page {pageId = i
-         ,lastpage = ps
-         -- if parse fails assume last recorded speed, or 0 if none recorded.
-         ,speed = fromMaybe (fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate) $
-                    parseSpeed rest2
+         ,lastpage = lp
+         ,speed = spd
          ,threads = tds
          }
 
@@ -246,6 +247,7 @@ data Outcome = Success
              | CorruptedImage
              | CloudflareCaptcha
              | CloudflareBan
+             | Four'o'FourBan
              | OtherError {errMessage :: ErrorMessage}
              | InternalError {errException :: ErrorException}
              | UnknownError
@@ -292,6 +294,12 @@ cloudflareBan :: [Tag Text] -> Bool
 cloudflareBan =
     isInfixOfP [(==tgOpen "title" []), maybe False (T.isPrefixOf "Access Denied") . maybeTagText]
 
+detectCloudflare :: [Tag Text] -> Maybe Outcome
+detectCloudflare tags
+    | cloudflareCaptcha tags = Just CloudflareCaptcha
+    | cloudflareBan tags = Just CloudflareBan
+    | otherwise = Nothing
+
 detectOutcome :: [Tag Text] -> Outcome
 detectOutcome tags
     | wordfiltered tags = Wordfilter
@@ -322,12 +330,6 @@ detectOutcome tags
               | otherwise
                 -> OtherError (Err $ T.unpack err)
     | otherwise = UnknownError
-
-detectCloudflare :: [Tag Text] -> Maybe Outcome
-detectCloudflare tags
-    | cloudflareCaptcha tags = Just CloudflareCaptcha
-    | cloudflareBan tags = Just CloudflareBan
-    | otherwise = Nothing
 {-
 awaitUntil :: Monad m => (i -> Bool) -> GSink i m (Maybe i)
 awaitUntil p = loop
