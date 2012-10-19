@@ -54,6 +54,7 @@ library
                   ,transformers
                   ,network
                   ,http-conduit >= 1.7
+--                  ,http-conduit-browser >= 1.6.2
                   ,http-types
                   ,mime-types
                   ,socks

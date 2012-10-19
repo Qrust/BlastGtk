@@ -39,7 +39,6 @@ import qualified Data.ByteString.Char8 as B8
 
 import qualified Data.Text.Encoding as T
 
-
 type Blast = BrowserAction
 
 data BlastProxy = HttpProxy !Proxy
@@ -101,9 +100,10 @@ userAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
 
 canonicalizeBrowser :: BrowserAction ()
 canonicalizeBrowser = do
-    setUserAgent $ Just userAgent
     setMaxRedirects Nothing
+    setMaxRetryCount 2 -- retry once
     setTimeout $ Just $ 10 * 1000000
+    setUserAgent $ Just userAgent
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
                        ,(hConnection, "keep-alive")]
     --
@@ -111,10 +111,10 @@ canonicalizeBrowser = do
     --
 
 runBlast :: Blast a -> IO a
-runBlast f = 
-    withManager (`browse` do
+runBlast blast = 
+    withManager $ flip browse $ do
         canonicalizeBrowser
-        f)
+        blast
 
 httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
 httpSetProxys h s = do
