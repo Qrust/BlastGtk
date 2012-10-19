@@ -54,10 +54,9 @@ data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
 
 data CaptchaType = CaptchaPosting | CaptchaCloudflare
 
-data CaptchaAnswer = Answer !String
+data CaptchaAnswer = Answer !String !(OriginStamp -> IO ())
                    | ReloadCaptcha
                    | AbortCaptcha
-    deriving (Eq, Show, Ord)
 
 data OriginStamp = OriginStamp {oTime :: !POSIXTime
                                ,oProxy :: !BlastProxy
@@ -116,6 +115,11 @@ instance Show Message where
     show NoPastas = "NoPastas"
     show NoImages = "NoImages"
 
+instance Show CaptchaAnswer where
+    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
+    show ReloadCaptcha = "ReloadCaptcha"
+    show AbortCaptcha = "AbortCaptcha"
+
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
 
@@ -125,7 +129,7 @@ instance Default OriginInfo where
 instance NFData CaptchaType
 
 instance NFData CaptchaAnswer where
-    rnf (Answer s) = rnf s
+    rnf (Answer s r) = r `seq` rnf s
     rnf ReloadCaptcha = ()
     rnf AbortCaptcha = ()
 
@@ -202,16 +206,20 @@ recMode m = lift get >>= \s -> lift $ put s{gmode=m}
 recThread :: (Maybe Int) -> BlastLog ()
 recThread t = lift get >>= \s -> lift $ put s{gthread=t}
 
-blastOut :: Message -> BlastLog ()
-blastOut msg = do
-    to <- askOut
+genOriginStamp :: BlastLog OriginStamp
+genOriginStamp = do
     proxy <- askProxy
     board <- askBoard
     OriginInfo{..} <- askOrI
-    liftIO $ do
-        now <- getPOSIXTime
-        let a = OutMessage (OriginStamp now proxy board gmode gthread) msg
-        a `deepseq` to a
+    now <- liftIO getPOSIXTime
+    return $ OriginStamp now proxy board gmode gthread
+
+blastOut :: Message -> BlastLog ()
+blastOut msg = do
+    to <- askOut
+    st <- genOriginStamp
+    let a = OutMessage st msg
+    liftIO $ a `deepseq` to a
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
@@ -252,13 +260,13 @@ blastPasta getThread p0 tid = do
     s <- lift get
     liftIO $ pastagen (runBlast . runBlastLogSt r s . getThread) p0 tid
 
-blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe String)
+blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe (String, (OriginStamp -> IO ())))
 blastCaptcha wakabapl thread = do
     board <- askBoard
     chKey <- blast $ getChallengeKey ssachRecaptchaKey
     mbbytes <- blast $ ssachGetCaptcha board thread ssachRecaptchaKey chKey
     case mbbytes of
-        Nothing -> return (chKey, Just "")
+        Nothing -> return (chKey, Just ("", const $ return ()))
         Just bytes -> do
             m <- newEmptyMVar
             blastOut $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!)
@@ -266,11 +274,11 @@ blastCaptcha wakabapl thread = do
             a <- takeMVar m
             blastLog "got captcha mvar"
             case a of
-                Answer s -> return (chKey, Just s)
+                Answer s r -> return (chKey, Just (s, r))
                 ReloadCaptcha -> blastCaptcha wakabapl thread
                 AbortCaptcha -> return (chKey, Nothing)
 
--- TODO It's probably buggy as hell.
+-- TODO Should be buggy as hell.
 blastCloudflare :: BlastLog (Response [Tag Text]) -> String -> BlastLog (Response [Tag Text])
 blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
   where blastCloudflare' rsp
@@ -305,10 +313,11 @@ blastCloudflare whatrsp url = blastCloudflare' =<< whatrsp
                     chKey <- blast $ getChallengeKey cloudflareRecaptchaKey
                     bytes <- blast $ getCaptchaImage chKey
                     m <- newEmptyMVar
+                    -- FIXME wait, why the hell don't we use blastCaptcha?
                     blastOut $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!)
                     a <- takeMVar m
                     case a of
-                        Answer s -> do
+                        Answer s _ -> do
                             let rq = urlEncodedBody
                                     [("recaptcha_challenge_key", fromString chKey)
                                     ,("recaptcha_response_key", fromString s)
@@ -343,10 +352,11 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
     (chKey, mcap) <- if cap || mode==CreateNew || not ssachAdaptivity
                         then do blastLog "querying captcha"
                                 blastCaptcha wakabapl thread
-                        else return ("", Just "")
+                        else do blastLog "skipping captcha"
+                                return ("", Just ("", const $ return ()))
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
-        Just captcha -> do
+        Just (captcha, reportbad) -> do
             -- TODO post reposts
             p <- blast $ prepare board thread postdata chKey captcha wakabapl
                                  otherfields ssachLengthLimit
@@ -382,6 +392,7 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                         return (beforePost - (ssachThreadTimeout board / 2), lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                         blastLog $ show o ++ ", requerying"
+                        liftIO . reportbad =<< genOriginStamp
                         blastPost True lthreadtime lposttime w mode thread postdata
                   | otherwise -> do
                         blastLog "post failed"

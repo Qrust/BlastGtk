@@ -16,14 +16,6 @@ import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
-
-
--- == URGENT ==
--- ANTIGATE REPORT BAD CAPTCHA
-
-
-
-
 --- /\  FIXMES /\
 -- /==\ TODOS /==\
 -- \==/ NOTES \==/

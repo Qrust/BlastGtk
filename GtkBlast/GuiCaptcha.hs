@@ -16,12 +16,17 @@ import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Board
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
+import Control.Concurrent.STM
 import System.IO.Temp
 import qualified Data.ByteString.Lazy as L
 
-captchaMessage :: String -> E ()
-captchaMessage s =
-    showMessage wcheckannoy "Captcha message" Nothing False s
+captchaError :: String -> E ()
+captchaError =
+    showMessage wcheckannoy "Captcha error" (Just 2) True
+
+captchaMessagePersistent :: String -> E ()
+captchaMessagePersistent s =
+    showMessage wcheckannoy "Persistent captcha message" Nothing False s
     -- showMessage increments messageLocks, we deincrement messageLock in removeCurrentCaptcha
 
 formatCaptchaMessage :: CaptchaType -> OriginStamp -> String
@@ -47,7 +52,7 @@ updateCaptchaWidget = do
                 io $ imageSetFromFile wimagecaptcha fn
                 writeLog "switched captcha"
                 io $ entrySetText wentrycaptcha ""
-                captchaMessage $ formatCaptchaMessage (captchaType c) st
+                captchaMessagePersistent $ formatCaptchaMessage (captchaType c) st
 
 putCaptchaWidget :: E ()
 putCaptchaWidget = do
@@ -96,9 +101,15 @@ removeCurrentCaptchaWith f = do
 
 removeCurrentCaptcha :: CaptchaAnswer -> E ()
 removeCurrentCaptcha a = do
-    removeCurrentCaptchaWith $ \(OriginStamp{..}, c) -> do
-        writeLog $ "Sending " ++ show a ++ " to " ++ "{" ++ show oProxy ++ "} " ++ renderBoard oBoard
+    removeCurrentCaptchaWith $ \(st, c) -> do
+        writeLog $ "Sending " ++ show a ++ " to " ++ renderCompactStamp st
         io $ captchaSend c a
+
+maintainGuiCaptcha :: E ()
+maintainGuiCaptcha = do
+    reps <- io . atomically . untilNothing . tryReadTQueue =<< asks guiReportQueue
+    forM_ reps $ \st -> do
+        captchaError $ "Неправильно введена капча\n" ++ renderCompactStamp st
 
 -- | Should only be called when you're sure no one blocks on captcha
 killGuiCaptcha :: E ()
@@ -132,6 +143,8 @@ guiCaptchaEnvPart b = EP
 
         pendingGuiCaptchas <- newIORef []
 
+        guiReportQueue <- atomically newTQueue
+
         void $ on weventboxcaptcha buttonPressEvent $ do
             io $ runE env $ removeCurrentCaptcha ReloadCaptcha
             return True
@@ -139,20 +152,20 @@ guiCaptchaEnvPart b = EP
         void $ on wbuttoncaptchaok buttonActivated $ do
             x <- entryGetText wentrycaptcha
             {-if null x
-                then captchaMessage "Пожалуйста введите капчу"
+                then captchaError "Пожалуйста введите капчу"
                 else removeCurrentCaptcha $ Answer x-}
-            runE env $ removeCurrentCaptcha $ Answer x
+            runE env $ removeCurrentCaptcha $ Answer x (atomically . writeTQueue guiReportQueue)
     
         void $ on wbuttoncaptchacancel buttonActivated $ do
             runE env $ removeCurrentCaptcha AbortCaptcha
 
-        return (wvboxcaptcha, wimagecaptcha, wentrycaptcha, wbuttoncaptchaok, pendingGuiCaptchas))
+        return (wvboxcaptcha, wimagecaptcha, wentrycaptcha, wbuttoncaptchaok, pendingGuiCaptchas, guiReportQueue))
     (const return)
-    (\(wvc, wic, wec, wbco, pc) e -> e{wvboxcaptcha=wvc
-                                      ,wimagecaptcha=wic
-                                      ,wentrycaptcha=wec
-                                      ,wbuttoncaptchaok=wbco
-                                      ,pendingGuiCaptchas=pc})
-
-maintainGuiCaptcha :: E ()
-maintainGuiCaptcha = return ()
+    (\(wvc, wic, wec, wbco, pc, grq) e ->
+        e{wvboxcaptcha=wvc
+         ,wimagecaptcha=wic
+         ,wentrycaptcha=wec
+         ,wbuttoncaptchaok=wbco
+         ,pendingGuiCaptchas=pc
+         ,guiReportQueue=grq
+         })

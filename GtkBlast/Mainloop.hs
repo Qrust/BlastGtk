@@ -145,18 +145,18 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 SuccessLongPost _ -> io $ modifyIORef postCount (+1)
                 Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
                 Banned x -> do
-                    banMessage 5 $ "Забанен на доске " ++ renderCompactStamp st
+                    banMessage 5 $ "Забанен " ++ renderCompactStamp st
                                 ++ " Причина: " ++ show x
                                 ++ "\nВозможно стоит переподключится или начать вайпать /d/"
                     io $ setBanned boardUnits board proxy True
                 SameMessage -> tempError 2 $ renderCompactStamp st ++ ": Запостил одно и то же сообщение"
-                SameImage -> tempError 2 $ renderCompactStamp st ++ ": Запостил одну и ту же пикчу"
-                TooFastPost -> return () -- tempError 2 $ renderCompactStamp st ++ ": Вы постите слишком часто, умерьте пыл"
+                SameImage -> tempError 2 $ renderCompactStamp st ++ ": Этот файл уже загружен"
+                TooFastPost -> writeLog $ renderCompactStamp st ++ ": Вы постите слишком часто, умерьте пыл"
                 TooFastThread -> tempError 3 $ renderCompactStamp st ++ ": Вы создаете треды слишком часто"
-                NeedCaptcha -> return ()
-                WrongCaptcha -> tempError 3 "Неправильно введена капча"
+                NeedCaptcha -> writeLog $ renderCompactStamp st ++ ": NeedCaptcha"
+                WrongCaptcha -> writeLog $ renderCompactStamp st ++ ": WrongCaptcha"
                 RecaptchaBan -> do
-                    banMessage 7 $ "Забанен рекапчой, охуеть. Переподключайся, мудило"
+                    banMessage 7 $ "Забанен рекапчой, охуеть."
                     io $ setBanned boardUnits board proxy True
                 LongPost -> tempError 1 $ renderCompactStamp st ++ ": Запостил слишком длинный пост"
                 CorruptedImage -> tempError 2 $ renderCompactStamp st ++ ": Запостил поврежденное изображение"

@@ -52,6 +52,7 @@ data Env = E
     ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, Message))]
     ,antigateLogQueue :: TQueue (Either String String)
     ,pendingGuiCaptchas :: IORef [(OriginStamp, Message)]
+    ,guiReportQueue :: TQueue OriginStamp
     ,boardUnits :: [BoardUnit]
 
     ,tqOut :: TQueue OutMessage
@@ -105,6 +106,7 @@ instance NFData Env where
         `seq` pendingAntigateCaptchas
         `seq` antigateLogQueue
         `seq` pendingGuiCaptchas
+        `seq` guiReportQueue
         `seq` boardUnits
     
         `seq` tqOut

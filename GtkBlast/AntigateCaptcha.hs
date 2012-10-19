@@ -33,24 +33,30 @@ recaptchaCaptchaConf =
         }
 
 antigateThread :: (OriginStamp, Message) -> TQueue (Either String String) -> String -> IO ()
-antigateThread (OriginStamp{..}, SupplyCaptcha{..}) tq key =
+antigateThread (st, SupplyCaptcha{..}) tq key =
     flip catches hands $ do
             -- FIXME we assume recaptcha
-        (_, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes
-        lg $ "Sending antigate answer \"" ++ str ++ "\" to {" ++ show oProxy ++"} " ++ renderBoard oBoard
-        captchaSend $ Answer str
+        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes
+        lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
+        captchaSend $ Answer str (handle errex . report cid)
   where lg = atomically . writeTQueue tq . Right
         err = atomically . writeTQueue tq . Left
+        report cid nst = do
+            lg $ "Reporting bad captcha id " ++ show cid ++ " for " ++ renderCompactStamp nst
+            reportBad key cid
+        errex (e::SomeException) = err (show e)
         hands =
             [Handler $ \(e::SolveException) -> do
                 case e of
                     SolveExceptionUpload a ->
-                        err $ "Не удалось загрузить капчу на антигейт, ошибка: " ++ show a ++ "\n" ++ "{" ++ show oProxy ++ "}" ++ renderBoard oBoard
+                        err $ "Не удалось загрузить капчу на антигейт, ошибка: " ++ show a ++ "\n" ++ renderCompactStamp st
                     SolveExceptionCheck i a ->
-                        err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ "{" ++ show oProxy ++ "}" ++ renderBoard oBoard
-                lg $ "Aborting antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
+                        err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ renderCompactStamp st
+                lg $ "Aborting antigate thread for " ++ renderCompactStamp st
                 captchaSend AbortCaptcha
+            ,Handler errex
             ]
+antigateThread _ _ _ = error "FIXME Impossible happened, switch from Message, to a dedicated SupplyCaptcha type"
 
 startAntigateThread :: (OriginStamp, Message) -> E (ThreadId, (OriginStamp, Message))
 startAntigateThread c@(OriginStamp{..},_) = do
@@ -116,7 +122,7 @@ antigateCaptchaEnvPart b = EP
         wentryantigatekey <- (rec coAntigateKey $ builderGetObject b castToEntry "entryantigatekey") e c
 
         pendingAntigateCaptchas <- newIORef []
-        antigateLogQueue <- atomically $ newTQueue
+        antigateLogQueue <- atomically newTQueue
 
         return (wentryantigatekey, pendingAntigateCaptchas, antigateLogQueue))
     (\(v,_,_) c -> get v ? \a -> c{coAntigateKey=a})
