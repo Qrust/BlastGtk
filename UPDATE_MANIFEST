@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.3.0.101.zip",
-                "7b962a43de6ab647f8d94ba00857fbff"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.3.0.200.zip",
+                "8e705fefc6c533b901f65907e0abf2ce"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.3.0.101.zip",
-                "871bfd45020cde5e64fedd23b06c56b8"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.3.0.200.zip",
+                "d98d8fb5eac9ac8901abad9eb5640461"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "0.3.0.200",
+            "Фикс(?) выбора тредов, Треды больше не регенерируются, фикс статистики банов, баны по 404"
+        ],
         [
             "0.3.0.101",
             "Добавлен репортинг плохих капч на антигейте"
@@ -174,5 +178,5 @@
             "Я в Апдейтере и это мой6 первый ченжлог!"
         ]
     ],
-    "version": "0.3.0.101"
+    "version": "0.3.0.200"
 }
