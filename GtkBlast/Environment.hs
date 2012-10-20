@@ -27,7 +27,8 @@ data WipeUnit = WipeUnit {wuProxy :: !BlastProxy
 data BoardUnit = BoardUnit {buBoard :: !Board
                            ,buWidget :: !CheckButton
                            ,buWipeUnits :: !(IORef [WipeUnit])
-                           ,buBad :: !(IORef [(BlastProxy, Bool)])
+                           ,buBanned :: !(IORef [BlastProxy])
+                           ,buDead :: !(IORef [BlastProxy])
                            -- TODO right now we don't support configuring per-board
                            --      wipe preferences
                            --,buMuSettings :: MuSettings

@@ -15,6 +15,8 @@ import GtkBlast.GuiCaptcha
 import GtkBlast.AntigateCaptcha
 import GtkBlast.Type_CaptchaMode
 import "blast-it-with-piss" BlastItWithPiss
+import "blast-it-with-piss" BlastItWithPiss.Board
+import "blast-it-with-piss" BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
 
 cmToBool :: CaptchaMode -> Bool
@@ -73,9 +75,9 @@ captchaModeEnvPart b = EP
     (\v c -> get v ? \a -> c{coCaptchaMode=a})
     (\v e -> e{captchaMode=v})
 
-maintainCaptcha :: E ()
-maintainCaptcha = do
+maintainCaptcha :: [(Board, [BlastProxy])] -> E ()
+maintainCaptcha blacklist = do
     cm <- get =<< asks captchaMode
     case cm of
-        Gui -> maintainGuiCaptcha
-        Antigate -> maintainAntigateCaptcha
+        Gui -> maintainGuiCaptcha blacklist
+        Antigate -> maintainAntigateCaptcha blacklist

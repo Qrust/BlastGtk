@@ -235,6 +235,7 @@ instance Exception AbortOutcome
 
 abortWithOutcome :: Outcome -> BlastLog a
 abortWithOutcome o = do
+    blastLog $ "Aborting with outcome: " ++ show o
     blastOut $ OutcomeMessage o
     throwIO (AbortOutcome o)
 -- /HACK
@@ -244,6 +245,7 @@ blast = lift . lift
 
 blastImage :: Mode -> BlastLog (Maybe Image)
 blastImage mode = do
+    blastLog "Choosing image..."
     ShSettings{..} <- askShS
     use <- liftIO $ readTVarIO tuseimages
     if not use && mode /= CreateNew || mode == SagePopular
@@ -293,16 +295,20 @@ blastCaptcha wakabapl thread = do
 -- TODO Should be buggy as hell.
 -- FIXME Code duplication with "post"
 blastCloudflare :: (Response [Tag Text] -> BlastLog b) -> BlastLog (Response [Tag Text]) -> String -> BlastLog b
-blastCloudflare md whatrsp url = blastCloudflare' =<< whatrsp
+blastCloudflare md whatrsp url = do
+    blastLog "Starting blastCloudflare"
+    blastCloudflare' =<< whatrsp
   where blastCloudflare' rsp
-            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
-                abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
             | responseStatus rsp == status404 && (maybe False (=="NWS_QPLUS_HY") $
                 lookup hServer $ responseHeaders rsp) = do
                 abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
+            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
+                abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
             | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
                 cloudflareChallenge
-            | otherwise = md rsp
+            | otherwise = do
+                blastLog "blastCloudflare: No cloudflare spotted..."
+                md rsp
         cloudflareChallenge = do
             blastLog "Encountered cloudflare challenge"
             ProxyS{..} <- askProxyS
@@ -431,7 +437,9 @@ blastLoop w lthreadtime lposttime = do
     canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
                         (return $ now - lthreadtime >= ssachThreadTimeout board)
                         (return False)
-    mp0 <- flMaybeSTM mthread (const $ return Nothing) $ Just <$> getPage 0
+    mp0 <- flMaybeSTM mthread (const $ return Nothing) $ do
+                blastLog "mp0: Getting first page."
+                Just <$> getPage 0
     flip (maybe $ blastLog "Thread chosen, ommitting page parsing") mp0 $ \p0 ->
         blastLog $ "page params:\n" ++
                    "page id: " ++ show (pageId p0) ++ "\n" ++
@@ -442,15 +450,17 @@ blastLoop w lthreadtime lposttime = do
     mode <- flMaybeSTM mmode return $
         maybe (do blastLog "No page, choosing from SagePopular/BumpUnpopular"
                   chooseFromList [SagePopular, BumpUnpopular])
-              (\p0 -> do blastLog "Parsing page to decide mode..."
+              (\p0 -> do blastLog "Choosing mode..."
                          chooseMode board canmakethread p0) mp0
     recMode mode
     blastLog $ "chose mode " ++ show mode
-    (thread, mpastapage) <- flMaybeSTM mthread (\t -> return (Just t, Nothing)) $
-        appsnd Just <$> chooseThread mode getPage
+    (thread, mpastapage) <- flMaybeSTM mthread (\t -> return (Just t, Nothing)) $ do
+        blastLog "Choosing thread..."
+        appsnd Just <$> chooseThread board mode getPage
             (fromMaybe (error "Page is Nothing while thread specified") mp0)
     recThread thread
     blastLog $ "chose thread " ++ show thread
+    blastLog "Choosing pasta..."
     ((escinv, escwrd), pasta) <- blastPasta getThread mpastapage thread
     blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""

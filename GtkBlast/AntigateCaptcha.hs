@@ -15,6 +15,7 @@ import GtkBlast.Conf
 import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
 import "blast-it-with-piss" BlastItWithPiss.Board
+import "blast-it-with-piss" BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
 import GHC.Conc
 import Control.Concurrent.STM
@@ -36,7 +37,7 @@ recaptchaCaptchaConf =
 antigateThread :: (OriginStamp, Message) -> TQueue (Either String String) -> String -> IO ()
 antigateThread (st, SupplyCaptcha{..}) tq key =
     flip catches hands $ do
-            -- FIXME we assume recaptcha
+        -- FIXME we assume recaptcha
         (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes
         lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
         captchaSend $ Answer str (handle errex . report cid)
@@ -55,6 +56,8 @@ antigateThread (st, SupplyCaptcha{..}) tq key =
                         err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ renderCompactStamp st
                 lg $ "Aborting antigate thread for " ++ renderCompactStamp st
                 captchaSend AbortCaptcha
+            ,Handler $ \(e::AsyncException) -> do
+                lg $ "Antigate thread killed by async " ++ show e ++ " " ++ renderCompactStamp st
             ,Handler errex
             ]
 antigateThread _ _ _ = error "FIXME Impossible happened, switch from Message, to a dedicated SupplyCaptcha type"
@@ -90,31 +93,51 @@ displayLogs = do
             Left e -> tempError 3 e
             Right l -> writeLog l
 
-maintainAntigateCaptcha :: E ()
-maintainAntigateCaptcha = do
-    filterDead
+filterBlacklist :: [(Board, [BlastProxy])] -> E ()
+filterBlacklist blacklist = do
+    E{..} <- ask
+    pac <- get pendingAntigateCaptchas
+    pxs <- get proxies
+    let (good, bad) =
+            partition (\(_, (OriginStamp{..}, _)) ->
+                        (fromMaybe False $ notElem oProxy <$> lookup oBoard blacklist)
+                        -- if a board isn't in blacklist, then it must be inactive.
+                        && M.member oProxy pxs) pac
+    set pendingAntigateCaptchas good
+    forM_ bad $ \(t, (st,_)) -> do
+        writeLog $ "Killing dead antigate captcha for " ++ renderCompactStamp st
+        io $ killThread t
+
+maintainAntigateCaptcha :: [(Board, [BlastProxy])] -> E ()
+maintainAntigateCaptcha blacklist = do
     displayLogs
+    filterDead
+    filterBlacklist blacklist
+
+killAntigateCaptchas :: E [(OriginStamp, Message)]
+killAntigateCaptchas = do
+    E{..} <- ask
+    oldPac <- get pendingAntigateCaptchas
+    pc <- forM oldPac $ \(t, c) -> do
+        writeLog "Killing antigate thread"
+        io $ killThread t
+        return c
+    set pendingAntigateCaptchas []
+    return pc
 
 killAntigateCaptcha :: E ()
 killAntigateCaptcha = do
     E{..} <- ask
     writeLog "Killing antigate captcha"
-    oldPac <- get pendingAntigateCaptchas
-    io $ forM_ oldPac $ killThread . fst
-    set pendingAntigateCaptchas []
+    void $ killAntigateCaptchas
     displayLogs
 
 deactivateAntigateCaptcha :: E [(OriginStamp, Message)]
 deactivateAntigateCaptcha = do
     E{..} <- ask
     writeLog "Deactivating antigate captcha..."
-    oldPac <- get pendingAntigateCaptchas
-    pc <- forM oldPac $ \(t, c) -> do
-        writeLog "Killing antigate thread"
-        io $ killThread t
-        return c
+    pc <- killAntigateCaptchas
     displayLogs
-    filterDead
     return pc
 
 antigateCaptchaEnvPart :: Builder -> EnvPart

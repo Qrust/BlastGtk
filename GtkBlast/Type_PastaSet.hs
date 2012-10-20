@@ -3,8 +3,7 @@ module GtkBlast.Type_PastaSet
     ) where
 import Prelude
 
-data PastaSet = Mocha
-              | PastaFile
+data PastaSet = PastaFile
               | Num
               | Char
               | FromThread

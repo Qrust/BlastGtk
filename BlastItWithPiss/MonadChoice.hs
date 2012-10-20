@@ -18,9 +18,9 @@ instance MonadIO m => MonadRandom (ResourceT m) where
     getRandomR = liftIO . getRandomR
     getRandomRs = liftIO . getRandomRs
 
-class (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
+class (MonadRandom m, MonadIO m, MonadBaseControl IO m, Applicative m) => MonadChoice m
 
-instance (MonadRandom m, MonadIO m, Applicative m) => MonadChoice m
+instance (MonadRandom m, MonadIO m, MonadBaseControl IO m, Applicative m) => MonadChoice m
 
 chooseFromList :: MonadChoice m => [a] -> m a
 chooseFromList [] = error "chooseFromList supplied with empty list."

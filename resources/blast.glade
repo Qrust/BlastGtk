@@ -137,7 +137,7 @@
     </child>
   </object>
   <object class="GtkWindow" id="window1">
-    <property name="width_request">420</property>
+    <property name="width_request">450</property>
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Вайпалка Мочана</property>
     <property name="role">wipe-status</property>
@@ -556,31 +556,11 @@
 Плюс модерам сложнее детектировать вайп.</property>
                                             <property name="use_underline">True</property>
                                             <property name="draw_indicator">True</property>
-                                            <property name="group">radio-mocha</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">False</property>
                                             <property name="position">0</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkRadioButton" id="radio-mocha">
-                                            <property name="label" translatable="yes">Копипаста про _мочу
-(АВТОБАН)</property>
-                                            <property name="use_action_appearance">False</property>
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">True</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="tooltip_text" translatable="yes">За постинг пасты про мочу следует автоматический бан. Использовать для быстрого бана подсети.</property>
-                                            <property name="use_underline">True</property>
-                                            <property name="active">True</property>
-                                            <property name="draw_indicator">True</property>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">False</property>
-                                            <property name="position">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -593,12 +573,12 @@
                                             <property name="tooltip_text" translatable="yes">24679823476976982476892476892487627</property>
                                             <property name="use_underline">True</property>
                                             <property name="draw_indicator">True</property>
-                                            <property name="group">radio-mocha</property>
+                                            <property name="group">radio-fromthread</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">False</property>
-                                            <property name="position">2</property>
+                                            <property name="position">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -611,12 +591,12 @@
                                             <property name="tooltip_text" translatable="yes">aldjbnadjfjpтпщфзлватпщknfgmзщтищотkopfdn</property>
                                             <property name="use_underline">True</property>
                                             <property name="draw_indicator">True</property>
-                                            <property name="group">radio-mocha</property>
+                                            <property name="group">radio-fromthread</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">False</property>
-                                            <property name="position">3</property>
+                                            <property name="position">2</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -626,17 +606,15 @@
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
-                                            <property name="tooltip_text" translatable="yes">Файл с пастой можно указать в подменю "Дополнительно"
-Файл с пастами должен быть в кодировке utf8, между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы "resources/mocha", "resources/analniy-sadism".
-Обход вордфильтра и невидимые символы настраиваются в "Дополнительно"</property>
                                             <property name="use_underline">True</property>
+                                            <property name="active">True</property>
                                             <property name="draw_indicator">True</property>
-                                            <property name="group">radio-mocha</property>
+                                            <property name="group">radio-fromthread</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">False</property>
-                                            <property name="position">4</property>
+                                            <property name="position">3</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -656,15 +634,43 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="check-thread">
-                                <property name="label" translatable="yes">Со_здавать треды</property>
-                                <property name="use_action_appearance">False</property>
+                              <object class="GtkVBox" id="vbox26">
                                 <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="use_underline">True</property>
-                                <property name="active">True</property>
-                                <property name="draw_indicator">True</property>
+                                <property name="can_focus">False</property>
+                                <child>
+                                  <object class="GtkCheckButton" id="checkescapeall">
+                                    <property name="label" translatable="yes">Обходить вордфильтр
+(АВТОБАН, Паста из файла)</property>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="active">True</property>
+                                    <property name="draw_indicator">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkCheckButton" id="check-thread">
+                                    <property name="label" translatable="yes">Со_здавать треды</property>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="active">True</property>
+                                    <property name="draw_indicator">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -891,24 +897,6 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkCheckButton" id="check-annoyerrors">
-                                    <property name="label" translatable="yes">Разворачивать окно при
-о_шибках</property>
-                                    <property name="use_action_appearance">False</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="use_underline">True</property>
-                                    <property name="active">True</property>
-                                    <property name="draw_indicator">True</property>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">0</property>
-                                  </packing>
-                                </child>
-                                <child>
                                   <object class="GtkCheckButton" id="check-tray">
                                     <property name="label" translatable="yes">_Сворачивать в трей
 вместо закрытия</property>
@@ -924,7 +912,7 @@
                                   <packing>
                                     <property name="expand">False</property>
                                     <property name="fill">False</property>
-                                    <property name="position">1</property>
+                                    <property name="position">0</property>
                                   </packing>
                                 </child>
                               </object>
@@ -1198,12 +1186,12 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="checkescapeinv">
-                                <property name="label" translatable="yes">_Невидимые символы</property>
+                                <property name="label" translatable="yes">_Невидимые символы
+(АВТОБАН, Паста из файла)</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Добавлять в пасту из файла или в копипасту про мочу дохуя невидимых символов, за это можно получить автобан.</property>
                                 <property name="use_underline">True</property>
                                 <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
@@ -1216,12 +1204,12 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="checkescapewrd">
-                                <property name="label" translatable="yes">Обходить вордфильтр</property>
+                                <property name="label" translatable="yes">Заменять на латиницу
+(АВТОБАН, Паста из файла)</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="tooltip_text" translatable="yes">Действует только на копипасту про мочу и пасту из файла. Пытаться обойти вордфильтр с помощью невидимых символов и замен букв. Можно получить автобан.</property>
                                 <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1270,6 +1258,24 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
+                              <object class="GtkCheckButton" id="check-annoyerrors">
+                                <property name="label" translatable="yes">Разворачивать окно при
+о_шибках</property>
+                                <property name="use_action_appearance">False</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="use_underline">True</property>
+                                <property name="active">True</property>
+                                <property name="draw_indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
                               <object class="GtkCheckButton" id="check-annoy">
                                 <property name="label" translatable="yes">_Разворачивать окно при
 капче или бане</property>
@@ -1285,7 +1291,7 @@
                               <packing>
                                 <property name="expand">True</property>
                                 <property name="fill">True</property>
-                                <property name="position">0</property>
+                                <property name="position">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1301,7 +1307,7 @@
                               <packing>
                                 <property name="expand">True</property>
                                 <property name="fill">True</property>
-                                <property name="position">1</property>
+                                <property name="position">2</property>
                               </packing>
                             </child>
                           </object>

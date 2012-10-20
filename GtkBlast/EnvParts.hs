@@ -37,70 +37,7 @@ envParts b =
     ,captchaModeEnvPart b
     ,wipebuttonEnvPart b
     ,boardUnitsEnvPart b
-    ,EP
-        (\e c -> do
-            wradiofromthread <- build castToRadioButton "radio-fromthread"
-            wradiomocha <- build castToRadioButton "radio-mocha"
-            wradionum <- build castToRadioButton "radio-num"
-            wradiochar <- build castToRadioButton "radio-char"
-            wradiopastafile <- build castToRadioButton "radio-pastafile"
-        
-            let pastaradio =
-                    [(FromThread, wradiofromthread)
-                    ,(Mocha, wradiomocha)
-                    ,(Num, wradionum)
-                    ,(Char, wradiochar)
-                    ,(PastaFile, wradiopastafile)
-                    ]
-        
-            fromMaybe (return ()) $ (`findMap` pastaradio) $ \(p, w) ->
-                if p == coPastaSet c
-                    then Just $ toggleButtonSetActive w True
-                    else Nothing
-
-            pastaMod <- newIORef nullTime
-            pastaSet <- newIORef $ coPastaSet c
-
-            forM pastaradio $ \(p, w) -> do
-                on w toggled $
-                    whenM (toggleButtonGetActive w) $ do
-                        writeIORef pastaSet p
-                        writeIORef pastaMod nullTime -- force update
-                        runE e $ regeneratePastaGen
-
-            wentrypastafile <- (rec coPastaFile $ build castToEntry "entrypastafile") e c
-            wbuttonpastafile <- build castToButton "buttonpastafile"
-
-            onFileChooserEntryButton False wbuttonpastafile wentrypastafile (runE e . writeLog) $ do
-                whenM ((==PastaFile) <$> readIORef pastaSet) $ do
-                    writeIORef pastaMod nullTime -- force update
-                    runE e $ regeneratePastaGen
-
-            wcheckescapeinv <- (rec coEscapeInv $ build castToCheckButton "checkescapeinv") e c
-            wcheckescapewrd <- (rec coEscapeWrd $ build castToCheckButton "checkescapewrd") e c
-
-            on wcheckescapeinv buttonActivated $ do
-                writeIORef pastaMod nullTime -- force update
-                runE e $ regeneratePastaGen
-
-            on wcheckescapewrd buttonActivated $ do
-                writeIORef pastaMod nullTime -- force update
-                runE e $ regeneratePastaGen
-
-            return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd)
-            )
-        (\(v1,_,v2,v3,v4) c -> do
-            ps <- get v1
-            pf <- get v2
-            ei <- get v3
-            ew <- get v4
-            return c{coPastaSet=ps, coPastaFile=pf, coEscapeInv=ei, coEscapeWrd=ew})
-        (\(ps,pm,wepf,wcei,wcew) e -> e{pastaSet=ps
-                                       ,pastaMod=pm
-                                       ,wentrypastafile=wepf
-                                       ,wcheckescapeinv=wcei
-                                       ,wcheckescapewrd=wcew
-                                       })
+    ,pastaEnvPart b
     ,EP
         (rec coSettingsShown $ build castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})

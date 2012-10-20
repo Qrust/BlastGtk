@@ -176,15 +176,17 @@ parseSpeed t = getSpeed =<< parseSpeed' t
                 dropUntil (== tgOpen "p" [("class", "footer")])
 
 parsePages :: [Tag Text] -> ((Int, Int), [Tag Text])
-parsePages tags =
-    let (work, (_:rest)) = break (== tgClose "tbody") tags
-        extract t = if T.isInfixOf "[" t
+parsePages tags
+    | (work, (_:rest)) <- break (== tgClose "tbody") tags
+    , texts <- filter (T.any isNumber) $ mapMaybe maybeTagText work
+    , current <- fromMaybe 0 (findMap extract texts)
+    , others <- maximum (current : mapMaybe (readMay . T.unpack) texts)
+        = ((current, others), rest)
+    | otherwise
+        = ((0, 0), tags)
+  where extract t = if T.isInfixOf "[" t
                         then readMay $ takeWhile isNumber $ dropUntil isNumber $ T.unpack t
                         else Nothing
-        texts = filter (T.any isNumber) $ mapMaybe maybeTagText work
-        current = fromMaybe 0 (findMap extract texts)
-        others = maximum (current : mapMaybe (readMay . T.unpack) texts)
-    in ((current, others), rest)
 
 parsePage :: Board -> [Tag Text] -> Page
 parsePage board html =

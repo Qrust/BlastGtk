@@ -17,6 +17,7 @@ module BlastItWithPiss.Board
     ,ssachLengthLimit
     ,ssachThreadTimeout
     ,ssachPostTimeout
+    ,ssachBumpLimit
 
     -- * Hoptoparasha
     ,hoptoparasha
@@ -270,6 +271,10 @@ ssachPostTimeout _ = if ssachAdaptivity then 10 else 0
 ssachAdaptivity :: Bool
 -- TODO update later, when they disable adaptivity
 ssachAdaptivity = True
+
+ssachBumpLimit :: Num a => Board -> a
+ssachBumpLimit B = 513
+ssachBumpLimit _ = 1000 -- TODO ssachbumplimit
 
 ssachLastRecordedWakabaplAndFields :: String -> (String, [Field])
 ssachLastRecordedWakabaplAndFields hostAndBoard =

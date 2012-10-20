@@ -3,20 +3,28 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.3.0.200.zip",
-                "8e705fefc6c533b901f65907e0abf2ce"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.9.0.0.zip",
+                "d42edbd2e51751bd0e7b6fcbc7d6ff60"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.3.0.200.zip",
-                "d98d8fb5eac9ac8901abad9eb5640461"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.9.0.0.zip",
+                "d7cb6389b88adfa69ef5958af57c91e0"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "0.9.0.0",
+            "Убирается капча от дохлых/забаненных тредов и от досок которые больше не вайпаются.; Отдельная кнопка для обхода вордфильтра с автобаном.; ГУИ расширен на 30 пикселей."
+        ],
+        [
+            "0.9.0.0",
+            "Убирается капча от дохлых/забаненных тредов и от досок которые больше не вайпаются.; Отдельная кнопка для обхода вордфильтра с автобаном.; ГУИ расширен на 30 пикселей."
+        ],
         [
             "0.3.0.200",
             "Фикс(?) выбора тредов, Треды больше не регенерируются, фикс статистики банов, баны по 404"
@@ -178,5 +186,5 @@
             "Я в Апдейтере и это мой6 первый ченжлог!"
         ]
     ],
-    "version": "0.3.0.200"
+    "version": "0.9.0.0"
 }

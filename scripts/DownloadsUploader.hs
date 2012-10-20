@@ -126,7 +126,9 @@ main = do
         (fromMaybe emptyUpdate . decode . toLBS) <$>
             try (B.readFile "UPDATE_MANIFEST")
     hSetEcho stdin True
-    chlog <- fromMaybe (error "Please write changelog") <$> readline "Changes in this version:\n"
+    chlog <- map (\x -> if x==';' then '\n' else x) .
+                fromMaybe (error "Please write changelog") <$>
+                    readline "Changes in this version:\n"
     putStrLn "Computing linux archive hash"
     labytes <- B.readFile la
     let lasum = renderMD5 $ hash' labytes

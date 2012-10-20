@@ -87,8 +87,8 @@ addGuiCaptchas sps = do
 addGuiCaptcha :: (OriginStamp, Message) -> E ()
 addGuiCaptcha sp = addGuiCaptchas [sp]
 
-unsetCurrentCaptcha :: E ()
-unsetCurrentCaptcha = do
+resetCurrentCaptcha :: E ()
+resetCurrentCaptcha = do
     E{..} <- ask
     mod messageLocks (subtract 1)
     ifM (null <$> get pendingGuiCaptchas)
@@ -104,7 +104,7 @@ removeCurrentCaptchaWith f = do
         (c:cs) -> do
             f c
             set pendingGuiCaptchas cs
-            unsetCurrentCaptcha
+            resetCurrentCaptcha
 
 removeCurrentCaptcha :: CaptchaAnswer -> E ()
 removeCurrentCaptcha a = do
@@ -112,11 +112,28 @@ removeCurrentCaptcha a = do
         writeLog $ "Sending " ++ show a ++ " to " ++ renderCompactStamp st
         io $ captchaSend c a
 
-maintainGuiCaptcha :: E ()
-maintainGuiCaptcha = do
-    reps <- io . atomically . untilNothing . tryReadTQueue =<< asks guiReportQueue
+maintainGuiCaptcha :: [(Board, [BlastProxy])] -> E ()
+maintainGuiCaptcha blacklist = do
+    E{..} <- ask
+    reps <- io $ atomically $ untilNothing $ tryReadTQueue guiReportQueue
     forM_ reps $ \st -> do
         captchaError $ "Неправильно введена капча\n" ++ renderCompactStamp st
+    pgc <- get pendingGuiCaptchas
+    unless (null pgc) $ do
+        pxs <- get proxies
+        let (cst,_) = head pgc
+        let (good, bad) =
+                partition (\(OriginStamp{..}, _) ->
+                            (fromMaybe False $ notElem oProxy <$> lookup oBoard blacklist)
+                            -- if a board isn't in blacklist, then it must be inactive.
+                            && M.member oProxy pxs) pgc
+        set pendingGuiCaptchas good
+        let lb = length bad
+        unless (lb == 0) $ do
+            writeLog $ "Filtered gui captcha from dead proxies, bad captchas: " ++ show lb
+        when (any (\(st,_) -> oBoard st == oBoard cst && oProxy st == oProxy cst) bad) $ do
+            writeLog "Resetting current gui captcha due to its master being blacklisted..."
+            resetCurrentCaptcha
 
 -- | Should only be called when you're sure no one blocks on captcha
 killGuiCaptcha :: E ()

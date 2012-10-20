@@ -60,7 +60,7 @@ instance Default Conf where
          { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
            -- coActiveBoards = [NE, MDK]
           coActiveBoards = [B, VG]
-         ,coPastaSet = Mocha
+         ,coPastaSet = PastaFile
          ,coCreateThreads = True
          ,coImageFolder = "images"
          ,coAttachImages = True
@@ -85,7 +85,7 @@ instance Default Conf where
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
          ,coLastVersion = version
-         ,coPastaFile = "resources/analniy-sadism"
+         ,coPastaFile = "resources/mocha"
          ,coEscapeInv = True
          ,coEscapeWrd = True
          }

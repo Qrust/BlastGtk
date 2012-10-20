@@ -15,6 +15,8 @@ import System.Directory (setCurrentDirectory)
 import System.Environment.Executable (splitExecutablePath)
 #endif
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
+import Paths_blast_it_with_piss
+import Data.Version
 
 --- /\  FIXMES /\
 -- /==\ TODOS /==\
@@ -33,30 +35,24 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
 
 -- == 1.0 RELEASE ==
--- TODO убирать капчу от дохлых/забаненных/убранных проксей/досок.
--- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
--- TODO обращать внимание на бамплимит в вайпе
--- TODO Обход вордфильтра — автобан. Это фича, сделать отдельную кнопку.
--- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README
--- TODO Sane defaults.
--- TODO helpMessage
--- TODO Пидорнуть гайд по компиляции из README в COMPILEGUIDE
+-- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
 -- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
 --      и соответствующая опция для отключения рекламы вайпалки
 --      + реклама картинкой
--- TODO Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
+-- TODO helpMessage, Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
 --      , даже "я посрал" — приветствуется.
 --      И о том что если вы забанены или кажется что что-то не так, то можно
 --      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
 --      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
--- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
--- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
+-- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README, sane defaults
+-- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 
 -- == FUTURE IMPROVEMENTS ==
--- TODO Configurable max_bid, sleepwait and sleepcaptcha
--- TODO GTK keyboard completion in board list (list view? table? ad-hoc?)
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
+-- TODO Configurable max_bid, sleepwait and sleepcaptcha
+-- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
@@ -74,7 +70,7 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 -- TODO Support 2chnu, alterchan.
 
 -- == CODE QUALITY ==
--- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type
+-- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
@@ -106,7 +102,7 @@ main = withSocketsDo $ do
 #endif
     -- read configuration
 
-    rawPutLog =<< ("Starting blastgtk. Current POSIX time is " ++) . show <$> getPOSIXTime
+    rawPutLog =<< (("Starting blastgtk. Version " ++ showVersion version ++ ". Current POSIX time is ") ++) . show <$> getPOSIXTime
 
     configfile <- (</> "config.json") <$> configDir
 

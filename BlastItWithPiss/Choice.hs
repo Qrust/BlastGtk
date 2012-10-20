@@ -99,7 +99,7 @@ strategies =
             ,ShitupSticky / 100
             ,BumpOld / 33
             ,CreateNew / always]
-        , MMO /
+        ,MMO /
             [SagePopular / 50
             ,BumpUnpopular / 40
             ,ShitupSticky / 100
@@ -169,7 +169,7 @@ defaultStrategy =
         always = 1000000000
     in [SagePopular    / 10
        ,BumpUnpopular  / 30
-       ,ShitupSticky   / 20
+       ,ShitupSticky   / 50
        ,BumpOld        / 35
        ,CreateNew      / always]
 
@@ -179,8 +179,11 @@ unlocked = not . locked
 unpinned :: Thread -> Bool
 unpinned = not . pinned
 
-unlockedUnpinned :: Thread -> Bool
-unlockedUnpinned t = unlocked t && unpinned t
+bumpable :: Board -> Thread -> Bool
+bumpable board Thread{..} = postcount < ssachBumpLimit board
+
+unlockedUnpinnedBump :: Board -> Thread -> Bool
+unlockedUnpinnedBump board t = unlocked t && unpinned t && bumpable board t
 
 unlockedSticky :: Thread -> Bool
 unlockedSticky Thread{..} = not locked && pinned
@@ -198,9 +201,9 @@ tooFast s = s >= 200
 adjustStrategy :: Strategy -> Bool -> Page -> Strategy
 adjustStrategy strategy canmakethread Page{..}
     --inb4 >kokoko
-    | badst <- (\(st, _) -> any ($ st) $
-                                [(==CreateNew) | not canmakethread]
-                              ++[(==ShitupSticky) | not $ any unlockedSticky threads])
+    | goodStrategy <- \(st, _) -> notElem st $
+                                [CreateNew | not canmakethread]
+                              ++[ShitupSticky | not $ any unlockedSticky threads]
     , len <- fromIntegral $ length threads
     , if len==0 then error "adjustStrategy: no threads found" else True
     , new <- fromIntegral (length $ filter newThread threads) % len
@@ -215,39 +218,40 @@ adjustStrategy strategy canmakethread Page{..}
                 let y = r * if' (x `elem` nps) new 0
                     z = r * if' (x `elem` vps) vpop 0
                 in (x, r + y + z)
-    = map aux $ filter (not . badst) strategy
+    = map aux $ filter goodStrategy strategy
 
 chooseStrategy :: Board -> Bool -> Page -> Strategy
 chooseStrategy board =
     adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
 
 chooseModeStrategy :: MonadRandom m => Strategy -> m Mode
-chooseModeStrategy = fromList
+chooseModeStrategy [] = error "chooseModeStrategy: empty list"
+chooseModeStrategy a = fromList a
 
 chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
 chooseMode a b c = chooseModeStrategy $ chooseStrategy a b c
 
-chooseThread' :: MonadChoice m => Bool -> Mode -> Page -> m (Maybe Int)
-chooseThread' _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
-chooseThread' canfail mode Page{..}
+chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
+chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
+chooseThread' board canfail mode Page{..}
     --inb4 >kokoko
-    | thrds <- if mode == ShitupSticky
+    | thrds' <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
-                else let nost = filter unlockedUnpinned threads -- we don't include stickies
+                else let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
                      in if null nost then filter unlocked threads else nost -- what can we do if there are only stickies left?
+    , thrds <- if mode /= ShitupSticky && canfail
+                    then (Thread (-1) False False 50 [] : thrds') -- add the possibility of failure
+                                                 -- in that case we advance to the next/previous page
+                    else thrds'
     , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
                 then ((fromIntegral $ maximum $ map postcount thrds) -)
                 else id
-    , addfail <- if mode /= ShitupSticky && canfail
-                    then ((-1, inv 50) :) -- add the possibility of failure
-                                                 -- in that case we advance to the next/previous page
-                    else id
-    = justIf (>= 0) <$>
-        fromList (addfail $ map (threadId &&& inv . fromIntegral . postcount) thrds)
+     = justIf (> (-1)) <$> fromList
+            (map (threadId &&& inv . fromIntegral . postcount) thrds)
 
-chooseThread :: MonadChoice m => Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
-chooseThread CreateNew _ p0 = return (Nothing, p0)
-chooseThread mode getPage p0
+chooseThread :: MonadChoice m => Board -> Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
+chooseThread _ CreateNew _ p0 = return (Nothing, p0)
+chooseThread board mode getPage p0
     | iterpages <-
         if mode==BumpOld
             then map getPage $ reverse [pageId p0 .. lastpage p0] -- traverse from end
@@ -256,7 +260,7 @@ chooseThread mode getPage p0
     = untilJust $ flip findMapM iterpages $ \gp -> do
             pg <- gp
             maybe Nothing (Just . flip (,) pg . Just) <$>
-                chooseThread' True mode pg
+                chooseThread' board True mode pg
 
 choosePostToRepostFromPage :: MonadChoice m => Page -> m String
 choosePostToRepostFromPage p0 = do

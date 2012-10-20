@@ -51,9 +51,12 @@ killBoardUnitWipeUnits BoardUnit{..} = do
 
 cleanBoardUnitBadRecord :: BoardUnit -> E ()
 cleanBoardUnitBadRecord BoardUnit{..} = do
-    unlessM (null <$> get buBad) $ do
-        writeLog $ "Cleaning board unit " ++ renderBoard buBoard ++ " bad proxy records"
-        set buBad []
+    unlessM (null <$> get buBanned) $ do
+        writeLog $ "Cleaning board unit " ++ renderBoard buBoard ++ " banned proxy records"
+        set buBanned []
+    unlessM (null <$> get buDead) $ do
+        writeLog $ "Cleaning board unit " ++ renderBoard buBoard ++ " dead proxy records"
+        set buDead []
 
 killBoardUnit :: BoardUnit -> E ()
 killBoardUnit bu = do
@@ -77,7 +80,7 @@ regenerateExcluding board exc = do
                     return $ Just $ WipeUnit p threadid
         )
 
-maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe (Either (BlastProxy, Bool) WipeUnit))
+maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe (Either BlastProxy WipeUnit))
 maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
         E{..} <- ask
         st <- io $ threadStatus wuThreadId
@@ -85,36 +88,36 @@ maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
         if st == ThreadDied || st == ThreadFinished
             then do
                 writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
-                return $ Just $ Left (wuProxy, False)
+                return $ Just $ Left wuProxy
             else if not isActive || not hadWipeStarted || M.notMember wuProxy pxs
                     then killWipeUnit buBoard w >> return Nothing
                     else return $ Just $ Right w
     
-maintainBoardUnit :: (Int, Int, Int) -> BoardUnit -> E (Int, Int, Int)
-maintainBoardUnit (!activecount, !bannedcount, !deadcount) bu@BoardUnit{..} = do
+maintainBoardUnit :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])]) -> BoardUnit -> E (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
+maintainBoardUnit (!activecount, !pbanned, !pdead) bu@BoardUnit{..} = do
     E{..} <- ask
     isActive <- get buWidget
     hadWipeStarted <- get wipeStarted
     (newdead, old) <- partitionEithers . catMaybes <$> (mapM (maintainWipeUnit bu isActive hadWipeStarted) =<< get buWipeUnits)
-    mod buBad (newdead++)
-    blacklist <- get buBad
+    mod buDead (newdead++)
+    banned <- get buBanned
+    dead <- get buDead
     new <- if isActive && hadWipeStarted
             then do
-                regenerateExcluding buBoard $ map wuProxy old ++ map fst blacklist
+                regenerateExcluding buBoard $ map wuProxy old ++ banned ++ dead
             else return []
     let newwus = old ++ new
     set buWipeUnits newwus
-    pxs <- get proxies
-    let (banned, dead) = partition snd $ filter (flip M.member pxs . fst) blacklist
     return (activecount + if isActive then length newwus else 0
-           ,bannedcount + if isActive then length banned else 0
-           ,deadcount + if isActive then length dead else 0)
+           ,(if isActive then ((buBoard, banned) :) else id) pbanned
+           ,(if isActive then ((buBoard, dead) :) else id) pdead)
 
-maintainBoardUnits :: E ()
+maintainBoardUnits :: E [(Board, [BlastProxy])]
 maintainBoardUnits = do
     E{..} <- ask
-    ws@(active, banned, dead) <- foldM maintainBoardUnit (0,0,0) boardUnits
-    set wipeStats ws
+    (active, bannedl, deadl) <- foldM maintainBoardUnit (0,[],[]) boardUnits
+    let (banned, dead) = (length $ concatMap snd bannedl, length $ concatMap snd deadl)
+    set wipeStats (active, banned, dead)
     when (active == 0) $ do
         killWipe
         ifM (M.null <$> get proxies)
@@ -122,6 +125,7 @@ maintainBoardUnits = do
             (if banned > 0 || dead > 0
                 then redMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
                 else redMessage "Выберите доски для вайпа")
+    return (bannedl++deadl)
 
 startWipe :: E ()    
 startWipe = do
@@ -153,7 +157,12 @@ setBanned board proxy = do
             writeLog $ "Banning " ++ renderBoard board ++ " {" ++ show proxy ++ "}"
             killWipeUnit buBoard wu
             mod buWipeUnits $ delete wu
-            mod buBad ((wuProxy wu, True) :)
+            mod buBanned (wuProxy wu :)
+
+addPost :: E ()
+addPost = do
+    modi (+1) =<< asks postCount
+    writeLog =<< ("Updated post count: " ++) . show <$> (get =<< asks postCount)
 
 reactToMessage :: OutMessage -> E ()
 reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
@@ -164,8 +173,8 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 SuccessLongPost _ -> writeLog (show st ++ ": SuccessLongPost")
                 _ -> writeLog (show s)
             case o of
-                Success -> mod postCount (+1)
-                SuccessLongPost _ -> mod postCount (+1)
+                Success -> addPost
+                SuccessLongPost _ -> addPost
                 Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
                 SameMessage -> tempError 2 $ stamp $ "Запостил одно и то же сообщение"
                 SameImage -> tempError 2 $ stamp $ "Этот файл уже загружен"
@@ -207,11 +216,10 @@ mainloop :: E ()
 mainloop = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
-        maintainCaptcha
         regeneratePastaGen
         regenerateImages
         regenerateProxies
-        maintainBoardUnits
+        maintainBoardUnits >>= maintainCaptcha
     mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
     updWipeMessage
 
@@ -238,7 +246,7 @@ boardUnitsEnvPart b = EP
             when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
             G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
             boxPackStart wvboxboards wc PackNatural 0
-            BoardUnit board wc <$> newIORef [] <*> newIORef [])
+            BoardUnit board wc <$> newIORef [] <*> newIORef [] <*> newIORef [])
     (\v c -> do
         cab <- map buBoard <$>
             filterM (toggleButtonGetActive . buWidget) v
