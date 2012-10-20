@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, NondecreasingIndentation #-}
-module Main where
+module Main (main) where
 import Import
 import Updater.Manifest
 import BlastItWithPiss.MultipartFormData
@@ -21,6 +21,7 @@ import qualified Paths_blast_it_with_piss as Paths
 import Text.ParserCombinators.ReadP
 import Crypto.Classes hiding (encode)
 import Data.Version
+import Control.Concurrent
 
 username :: IsString a => a
 username = "exbb2"
@@ -31,6 +32,13 @@ reponame = "BlastItWithPiss"
 githubDownloadsUrl :: String -> URL
 githubDownloadsUrl filename =
     "https://github.com/downloads/" ++ username ++ "/" ++ reponame ++ "/" ++ filename
+
+getToVersion :: String -> Maybe String
+getToVersion s' =
+-- TODO update when no longer is BETA
+    let s = dropExtension s'
+    in stripPrefix "BlastItWithPiss-BETA-linux-x86-" s <|>
+       stripPrefix "BlastItWithPiss-BETA-windows-x86-" s
 
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
@@ -46,10 +54,22 @@ only201 s e =
         then Just $ toException $ StatusCodeException s e
         else Nothing
 
+deleteDownload :: Text -> Int -> IO ()
+deleteDownload pass id = do
+    void $ withManager $ http $ applyBasicAuth username (encodeUtf8 pass)
+        (fromJust $ parseUrl $
+            "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads/" ++ show id)
+                {method=methodDelete}
+
+fromJsonParser :: FromJSON a => LByteString -> (a -> Parser b) -> b
+fromJsonParser lbs m =
+    (either (\e -> error $ "Couldn't parse lbs: \"" ++ e ++ "\"\nLBS was {\n" ++ toString lbs ++ "\n}")
+           id $
+           flip parseEither (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) m)
+
 parseGithubDownloadsPart1Response :: LByteString -> ByteString -> FilePath -> LByteString -> (Request a, Int)
 parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
-    either (\e -> error $ "Couldn't parse lbs: \"" ++ e ++ "\"\nLBS was {\n" ++ toString lbs ++ "\n}")
-    id $ flip parseEither (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) $ \o -> do
+    fromJsonParser lbs $ \o -> do
     let corr s3 part1 = field s3 <$> o .: part1
     fields <- sequence
         [corr "key" "path"
@@ -97,26 +117,38 @@ uploadZip t pass arcfilename arcbytes desc = withManager $ \m -> do
     let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
     e <- try $ http req m
     case e of
-        Left (a::SomeException) -> do
+        Left (a::SomeException) -> liftIO $ do
             -- Oh well, if that's the only way...
             -- Randomly fails with
             -- hPutBuf: resource vanished (Broken pipe)
             -- or hPutBuf: resource vanished (Connection reset by peer)
-            liftIO $ putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
+            putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
             if t < 10
                 then do
-                    void $ flip http m $ applyBasicAuth username (encodeUtf8 pass)
-                        (fromJust $ parseUrl $
-                            "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads/" ++ show id)
-                                {method=methodDelete}
-                    liftIO $ uploadZip (t+1) pass arcfilename arcbytes desc
+                    deleteDownload pass id
+                    uploadZip (t+1) pass arcfilename arcbytes desc
                 else throwIO a
         Right _ -> do
             liftIO $ putStrLn "Success."
 
+deleteDownloads :: Text -> Version -> IO ()
+deleteDownloads pass v = do
+    lbs <- simpleHttp $ "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads"
+    let downs = fromJsonParser lbs $ mapM $ \o -> do
+            (,) <$> o .: "name" <*> o .: "id"
+    forM_ downs $ \(name, id) ->
+        case lastMay =<< readP_to_S parseVersion <$> getToVersion name of
+            Just (dv,_) -> when (dv < v) $ do
+                putStrLn $ "Deleting download " ++ show (name, id) ++ "\n  Version older than current " ++ showVersion dv ++ " < " ++ showVersion v
+                putStrLn $ "Waiting a bit so you can cancel..."
+                threadDelay $ 2000000
+                deleteDownload pass id
+            Nothing -> do
+                putStrLn $ "Passing by " ++ show (name, id)
+
 main :: IO ()
 main = do
-    [rv,la,wa,dogit] <- getArgs
+    [rv,la,wa,dogit,delold] <- getArgs
     putStrLn "Updating manifest..."
     let v = fst $ last $ readP_to_S parseVersion $ rv
     let lafilename = takeFileName la
@@ -156,3 +188,6 @@ main = do
         print =<< rawSystem "git" ["commit", "-am", chlog]
         putStrLn "git push"
         print =<< rawSystem "git" ["push"]
+    when (read delold) $ do
+        putStrLn "Deleting old downloads..."
+        deleteDownloads password v
