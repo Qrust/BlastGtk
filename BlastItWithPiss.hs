@@ -40,8 +40,8 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
-                             ,timages :: TVar [FilePath]
+data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
+                             ,timagegen :: TVar (Bool -> IO (Bool, Image))
                              ,tuseimages :: TVar Bool
                              ,tappendjunkimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
@@ -98,15 +98,20 @@ data OriginInfo = OriginInfo {gmode :: !Mode, gthread :: !(Maybe Int)}
 
 type BlastLog = ReaderT BlastLogData (StateT OriginInfo Blast)
 
+instance Show CaptchaAnswer where
+    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
+    show ReloadCaptcha = "ReloadCaptcha"
+    show AbortCaptcha = "AbortCaptcha"
+
+renderCompactStamp :: OriginStamp -> String
+renderCompactStamp (OriginStamp _ proxy board _ _) =
+    renderBoard board ++ " {" ++ show proxy ++ "}"
+
 instance Show OriginStamp where
     show (OriginStamp time proxy board mode thread) =
         "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
         " " ++ show mode ++ " [| " ++
         ssachThread board thread ++ " |]"
-
-renderCompactStamp :: OriginStamp -> String
-renderCompactStamp (OriginStamp _ proxy board _ _) =
-    renderBoard board ++ " {" ++ show proxy ++ "}"
 
 instance Show Message where
     show (OutcomeMessage o) = show o
@@ -114,11 +119,6 @@ instance Show Message where
     show SupplyCaptcha{} = "SupplyCaptcha"
     show NoPastas = "NoPastas"
     show NoImages = "NoImages"
-
-instance Show CaptchaAnswer where
-    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
-    show ReloadCaptcha = "ReloadCaptcha"
-    show AbortCaptcha = "AbortCaptcha"
 
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
@@ -130,8 +130,7 @@ instance NFData CaptchaType
 
 instance NFData CaptchaAnswer where
     rnf (Answer s r) = r `seq` rnf s
-    rnf ReloadCaptcha = ()
-    rnf AbortCaptcha = ()
+    rnf _ = ()
 
 instance NFData OriginStamp where
     rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
@@ -140,8 +139,7 @@ instance NFData Message where
     rnf (OutcomeMessage o) = rnf o
     rnf (LogMessage s) = rnf s
     rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
-    rnf NoPastas = ()
-    rnf NoImages = ()
+    rnf _ = ()
 
 instance NFData OutMessage where
     rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
@@ -175,6 +173,9 @@ runBlastLog d m = evalStateT (runReaderT m d) def
 
 runBlastLogSt :: BlastLogData -> OriginInfo -> BlastLog a -> Blast a
 runBlastLogSt d o m = evalStateT (runReaderT m d) o
+
+blast :: Blast a -> BlastLog a
+blast = lift . lift
 
 askProxy :: BlastLog BlastProxy
 askProxy = asks bldProxy
@@ -240,39 +241,41 @@ abortWithOutcome o = do
     throwIO (AbortOutcome o)
 -- /HACK
 
-blast :: Blast a -> BlastLog a
-blast = lift . lift
-
-blastImage :: Mode -> BlastLog (Maybe Image)
-blastImage mode = do
-    blastLog "Choosing image..."
+blastPostData :: Mode -> (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog PostData
+blastPostData mode getThread mpastapage thread = do
     ShSettings{..} <- askShS
-    use <- liftIO $ readTVarIO tuseimages
-    if not use && mode /= CreateNew || mode == SagePopular
-        then
+    blastLog "Choosing pasta..."
+    (nopastas, ((escinv, escwrd), pasta)) <- do
+        pastagen <- liftIO $ readTVarIO tpastagen
+        r <- ask
+        s <- lift get
+        liftIO $ pastagen (runBlast . runBlastLogSt r s . getThread) mpastapage thread
+    when nopastas $ do
+        blastOut NoPastas
+        blastLog "threw NoPastas"
+    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
+        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
+    blastLog "Choosing image"
+    (noimages, cleanImage) <- do
+        use <- liftIO $ readTVarIO tuseimages
+        if not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode
+            then return (False, Nothing)
+            else appsnd Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
+    when noimages $ do
+        blastOut NoImages
+        blastLog "threw NoImages"
+    junkImage <- case cleanImage of
+        Nothing -> do
+            blastLog "chose no image"
             return Nothing
-        else do
-            images <- liftIO $ if use then readTVarIO timages else return []
-            if null images
-                then do
-                    blastOut NoImages
-                    blastLog "threw NoImages"
-                    -- use recaptcha as a fallback
-                    Just . Image "haruhi.jpg" "image/jpeg" <$> blast
-                            (getCaptchaImage =<<
-                                    getChallengeKey ssachRecaptchaKey)
-                else do
-                    file <- chooseFromList images
-                    blastLog $ "chose image \"" ++ file ++ "\""
-                    Just <$> readImageWithoutJunk file
-
-blastPasta :: (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog ((Bool, Bool), String)
-blastPasta getThread p0 tid = do
-    ShSettings{..} <- askShS
-    pastagen <- liftIO $ readTVarIO tpastagen
-    r <- ask
-    s <- lift get
-    liftIO $ pastagen (runBlast . runBlastLogSt r s . getThread) p0 tid
+        Just i -> do
+            blastLog $ "chose image \"" ++ filename i ++ "\""
+            Just <$> flBoolModSTM tappendjunkimages
+                (\im -> do blastLog "appending junk to image"
+                           appendJunk im) i
+    watermark <- liftIO $ readTVarIO tmakewatermark
+    blastLog $ "Watermark: " ++ show watermark
+    return (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
 
 blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe (String, (OriginStamp -> IO ())))
 blastCaptcha wakabapl thread = do
@@ -460,19 +463,8 @@ blastLoop w lthreadtime lposttime = do
             (fromMaybe (error "Page is Nothing while thread specified") mp0)
     recThread thread
     blastLog $ "chose thread " ++ show thread
-    blastLog "Choosing pasta..."
-    ((escinv, escwrd), pasta) <- blastPasta getThread mpastapage thread
-    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
-        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
-    cleanImage <- blastImage mode
-    junkImage <- case cleanImage of
-        Nothing -> return Nothing
-        Just i -> Just <$> flBoolModSTM tappendjunkimages
-            (\im -> do blastLog "appending junk to image"
-                       appendJunk im) i
-    watermark <- liftIO $ readTVarIO tmakewatermark
-    (nthreadtime, nposttime) <- blastPost False lthreadtime lposttime w mode thread
-            (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
+    postdata <- blastPostData mode getThread mpastapage thread
+    (nthreadtime, nposttime) <- blastPost False lthreadtime lposttime w mode thread postdata
     blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.
@@ -491,7 +483,9 @@ entryPoint proxy board lgDetail shS muS prS output = do
         blastLog "Entry point"
         blast $ httpSetProxy proxy
         let hands =
-              [Handler $ \(a::AsyncException) -> throwIO a
+              [Handler $ \(a::AsyncException) -> do
+                blastLog $ "Got async " ++ show a
+                throwIO a
               {-,Handler $ \(a::HttpException) -> do
                 blastLog $ "Got http exception, restarting. Exception was: " ++ show a
                 start -- Dunno what to do except restart.-}

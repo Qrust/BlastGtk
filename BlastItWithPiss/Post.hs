@@ -112,13 +112,12 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                 [("name", "file")
                 ,("filename", maybe mempty (T.encodeUtf8 . T.pack . filename) image)]
                 [(hContentType, maybe defaultMimeType contentType image)]
-                (maybe mempty bytes image)]
-            ) ++
+                (maybe mempty bytes image)
+            ]) ++
             (if not $ null captcha
                 then
                     [field "recaptcha_challenge_field" (fromString chKey)
-                    ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)
-                    ]
+                    ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)]
                 else []
             ) ++
             (if sage
@@ -126,7 +125,9 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                      ,field "sage" "on"]
                 else [field "nabiki" mempty]
             ) ++
-            ([field "makewatermark" "on" | makewatermark]
+            (if makewatermark
+                then [field "makewatermark" "on"]
+                else []
             ))
             `union`
             (otherfields)

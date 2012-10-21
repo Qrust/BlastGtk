@@ -11,6 +11,7 @@ import GtkBlast.Type_PastaSet
 import GtkBlast.Type_CaptchaMode
 import GtkBlast.Environment
 import GtkBlast.Log
+import GtkBlast.Directory
 import "blast-it-with-piss" BlastItWithPiss.Board
 import Data.Version
 import System.FilePath
@@ -25,6 +26,7 @@ import Control.Monad.Trans.Class
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text as T
+import qualified System.IO.Unsafe as U
 
 -- Fields are made strict so it won't compile if anything is missing in default or fromjson instance
 data Conf = Conf {coActiveBoards :: ![Board]
@@ -52,6 +54,8 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coPastaFile :: !String
                  ,coEscapeInv :: !Bool
                  ,coEscapeWrd :: !Bool
+                 ,coPostAgitka :: !Bool
+                 ,coSortingByAlphabet :: !Bool
                  }
     deriving (Eq, Show, Ord, Generic)
 
@@ -85,9 +89,11 @@ instance Default Conf where
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
          ,coLastVersion = version
-         ,coPastaFile = "resources/mocha"
+         ,coPastaFile = U.unsafePerformIO $ getResourceFile "mocha"
          ,coEscapeInv = True
          ,coEscapeWrd = True
+         ,coPostAgitka = True
+         ,coSortingByAlphabet = False
          }
 
 -- HACK Those are quite dangerous orphans
@@ -161,6 +167,8 @@ instance FromJSON (Conf, String) where
         coPastaFile <- f "coPastaFile" coPastaFile
         coEscapeInv <- f "coEscapeInv" coEscapeInv
         coEscapeWrd <- f "coEscapeWrd" coEscapeWrd
+        coPostAgitka <- f "coPostAgitka" coPostAgitka
+        coSortingByAlphabet <- f "coSortingByAlphabet" coSortingByAlphabet
         return Conf{..}
     parseJSON _ = mzero
 

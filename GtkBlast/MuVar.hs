@@ -8,6 +8,7 @@ module GtkBlast.MuVar
     ,modi
     ,modM
     ,modiM
+    ,modget
     ) where
 import Import hiding (mod)
 import Graphics.UI.Gtk hiding (get, set)
@@ -68,3 +69,7 @@ modM v m = set v =<< m =<< get v
 {-# INLINE modiM #-}
 modiM :: (MonadIO m, MuVar v a) => (a -> m a) -> v -> m ()
 modiM = flip modM
+
+{-# INLINE modget #-}
+modget :: (Functor m, MonadIO m, MuVar v a) => v -> (a -> a) -> m a
+modget v f = f <$> get v >>= \a -> set v a >> return a

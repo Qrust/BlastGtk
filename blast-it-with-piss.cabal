@@ -19,6 +19,7 @@ data-files: build-production.sh
            ,resources/2ch.so.png
            ,resources/mocha
            ,resources/analniy-sadism
+           ,resources/agitka.png
            ,images/jew-swede.jpg
            ,images/sad-monkey.jpg
            ,images/newscreen.png
@@ -54,7 +55,7 @@ library
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.7
+                  ,http-conduit >= 1.8
 --                  ,http-conduit-browser >= 1.6.2
                   ,http-types
                   ,mime-types

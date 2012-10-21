@@ -33,29 +33,23 @@ import Data.Version
 -- So it'll lag anyway, unless we move workers to different process.
 -- FIXME We need a threadscope profile before we can decide on anything
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
+-- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 
 -- == 1.0 RELEASE ==
--- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
--- TODO реклама вайпалки в самом вайпе (в отдельном файле advertisement, постится и при садизме и при моче)
---      и соответствующая опция для отключения рекламы вайпалки
---      + реклама картинкой
--- TODO helpMessage, Выскакивать попап о том куда писать баг-репорты, о том что любой фидбек
---      , даже "я посрал" — приветствуется.
---      И о том что если вы забанены или кажется что что-то не так, то можно
---      перезапустить вайпалку (с BlastItWithPiss(.exe), а не blastgtk(.exe))
---      и посмотреть есть ли апдейты (Когда апдейтер будет готов)
--- TODO mochepasta resources/mocha, change default boards, newscreen.jpg, repo description, README, sane defaults
--- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
--- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
+-- TODO Откреплять/прикреплять лог
+-- TODO change default boards, newscreen.jpg, repo description, README, sane defaults
+-- TODO agitka.png, Охуенный ОП-пост + ОП-пикчи для разных борд.
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
+-- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
 -- TODO add blastcli
 -- TODO add zip file permissions to zip-archive
 -- TODO add multipart/form-data to http-conduit
@@ -69,30 +63,33 @@ import Data.Version
 -- TODO background mode
 -- TODO Support 2chnu, alterchan.
 
--- == CODE QUALITY ==
+-- == REFACTORING ==
+-- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
+-- TODO Add more modularity.(Any modularity?)
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules
--- FIXME Кажется за каждый reverse мне светит по ебалу
+-- FIXME Escaping.hs: Кажется за каждый reverse мне светит по ебалу
 -- TODO cleanup
 -- TODO document
 
-bugMessage :: String
-bugMessage = "If you experience crashes, bugs, or any kind strange or illogical behavior,"
-          ++ " file a bug report to the author(https://github.com/exbb2/BlastItWithPiss/issues)"
-          ++ " with attached file log.txt.\n"
-          ++ "Thanks, and have fun. Hopefully, it has been worth the weight."
-
 helpMessage :: String
-helpMessage = "No help message for now, sorry\n\n" ++ bugMessage
+helpMessage =
+    "Единственная в своем классе вайпалка сосача, с няшным гуи и автообновлением. Написано на хачкеле.\n" ++
+    "Справочный материал разбросан по тултипам, наводите мышку на интересующие вас элементы. Если вам нужна помощь обращайтесь в соответствующий тред на вашей доске, или в треды указанные на странице репозитория.\n" ++
+    "https://github.com/exbb2/BlastItWithPiss\n" ++
+    "Version: " ++ showVersion version
 
 main :: IO ()
 main = withSocketsDo $ do
     args <- getArgs
     when (any (`elem` args) ["--help", "-h", "-?"]) $ do
        putStrLn helpMessage
+       exitSuccess
+    when (any (`elem` args) ["-V", "--version"]) $ do
+       putStrLn $ showVersion version
        exitSuccess
 
      -- change workdir

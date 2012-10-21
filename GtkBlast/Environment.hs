@@ -42,7 +42,7 @@ data Env = E
     ,wipeStats :: IORef (Int, Int, Int)
     ,pastaSet :: IORef PastaSet
     ,pastaMod :: IORef ModificationTime
-    ,imagesLast :: IORef [String]
+    ,imagefolderLast :: IORef FilePath
     ,proxies :: IORef (M.Map BlastProxy ProxySettings)
     ,httpproxyMod :: IORef ModificationTime
     ,httpproxyLast :: IORef [BlastProxy]
@@ -70,6 +70,7 @@ data Env = E
     ,wprogresswipe :: ProgressBar
     ,wentryimagefolder :: Entry
     ,wcheckimages :: CheckButton
+    ,wcheckagitka :: CheckButton
     ,wcheckannoy :: CheckButton
     ,wcheckhideonsubmit :: CheckButton
     ,wcheckannoyerrors :: CheckButton
@@ -96,7 +97,7 @@ instance NFData Env where
         `seq` wipeStats
         `seq` pastaSet
         `seq` pastaMod
-        `seq` imagesLast
+        `seq` imagefolderLast
         `seq` proxies
         `seq` httpproxyMod
         `seq` httpproxyLast
@@ -118,6 +119,7 @@ instance NFData Env where
         `seq` wvboxcaptcha
         `seq` wimagecaptcha
         `seq` wentrycaptcha
+        `seq` wcheckagitka
         `seq` wbuttoncaptchaok
         `seq` wprogressalignment
         `seq` wbuttonwipe

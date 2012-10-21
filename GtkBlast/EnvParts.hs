@@ -9,6 +9,7 @@ import GtkBlast.Directory
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Pasta
+import GtkBlast.Image
 import GtkBlast.GuiCaptcha (guiCaptchaEnvPart)
 import GtkBlast.AntigateCaptcha (antigateCaptchaEnvPart)
 import GtkBlast.Captcha (captchaModeEnvPart)
@@ -38,6 +39,7 @@ envParts b =
     ,wipebuttonEnvPart b
     ,boardUnitsEnvPart b
     ,pastaEnvPart b
+    ,imageEnvPart b
     ,EP
         (rec coSettingsShown $ build castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})
@@ -55,32 +57,42 @@ envParts b =
             wlabelmessage <- build castToLabel "labelmessage"
             wprogressalignment <- build castToAlignment "progressalignment"
             wprogresswipe <- build castToProgressBar "wipeprogress"
-
+            
+            return (wlabelmessage, wprogressalignment, wprogresswipe))
+        (const return)
+        (\(wlm, wpa, wpw) e -> e{wlabelmessage=wlm
+                                ,wprogressalignment=wpa
+                                ,wprogresswipe=wpw
+                                })
+    ,EP
+        (\_ _ -> do
             wlog <- build castToTextView "log"
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog
 
-            previousPageSize <- newIORef =<< adjustmentGetPageSize wad
-            previousUpper <- newIORef =<< adjustmentGetUpper wad
+            iupper <- adjustmentGetPageSize wad
+            isize <- adjustmentGetUpper wad
+
+            previousPageSize <- newIORef iupper
+            previousUpper <- newIORef isize
 
             onAdjChanged wad $ do
                 v <- adjustmentGetValue wad
                 ps <- readIORef previousPageSize
                 pu <- subtract ps <$> readIORef previousUpper
-                when (v >= pu) $ do
-                    s <- adjustmentGetPageSize wad
-                    u <- adjustmentGetUpper wad
-                    adjustmentSetValue wad $ subtract s u
-                    writeIORef previousPageSize s
-                    writeIORef previousUpper u
-            
-            return (wlabelmessage, wprogressalignment, wprogresswipe, wbuf))
+                size <- adjustmentGetPageSize wad
+                when (v >= (pu - size)) $ do
+                    upper <- adjustmentGetUpper wad
+                    adjustmentSetValue wad $ upper - size
+                    writeIORef previousPageSize size
+                    writeIORef previousUpper upper
+                    adjustmentValueChanged wad
+
+            adjustmentSetValue wad (iupper - isize)
+
+            return wbuf)
         (const return)
-        (\(wlm, wpa, wpw, wbuf) e -> e {wlabelmessage=wlm
-                                       ,wprogressalignment=wpa
-                                       ,wprogresswipe=wpw
-                                       ,wbuf = wbuf
-                                       })
+        (\wbuf e -> e{wbuf=wbuf})
     ,EP
         (\e c -> do
             wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
@@ -89,8 +101,8 @@ envParts b =
 
             tqOut <- atomically $ newTQueue
 
-            tpastagen <- atomically $ newTVar $ \_ _ _ -> return ((True, True), "Генератор не запущен. Осторожно, двери закрываются.")
-            timages <- atomically $ newTVar []
+            tpastagen <- atomically $ newTVar $ \_ _ _ -> return (True, ((True, True), "Генератор не запущен. Осторожно, двери закрываются."))
+            timagegen <- atomically $ newTVar $ imageGen [] False
             tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
             tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
             tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
@@ -114,10 +126,10 @@ envParts b =
                     ,coAttachImages=ci
                     ,coWatermark=cw}
             )
-        (\(tqOut, shS, _, wcheckimages, _) e -> e {tqOut=tqOut
-                                                  ,shS=shS
-                                                  ,wcheckimages=wcheckimages
-                                                  })
+        (\(tqOut, shS, _, wcheckimages, _) e -> e{tqOut=tqOut
+                                                 ,shS=shS
+                                                 ,wcheckimages=wcheckimages
+                                                 })
     ,EP
         (rec coAnnoy $ build castToCheckButton "check-annoy")
         (\v c -> get v ? \a -> c{coAnnoy=a})
@@ -134,30 +146,6 @@ envParts b =
         (rec coTray $ build castToCheckButton "check-tray")
         (\v c -> get v ? \a -> c{coTray=a})
         (\v e -> e{wchecktray=v})
-    ,EP
-        (\e c -> do
-            wentryimagefolder <- (rec coImageFolder $ build castToEntry "entryimagefolder") e c
-            wbuttonimagefolder <- build castToButton "buttonimagefolder"
-            
-            onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder (runE e . writeLog) (return ())
-
-            return wentryimagefolder)
-        (\v c -> get v ? \a -> c{coImageFolder=a})
-        (\v e -> e{wentryimagefolder=v})
-    ,EP
-        (\env _ -> do
-            wbuttonselectall <- build castToButton "buttonselectall"
-            wbuttonselectnone <- build castToButton "buttonselectnone"
-
-            on wbuttonselectall buttonActivated $ do
-                forM_ (boardUnits env) $
-                    (`toggleButtonSetActive` True) . buWidget
-        
-            on wbuttonselectnone buttonActivated $ do
-                forM_ (boardUnits env) $
-                    (`toggleButtonSetActive` False) . buWidget)
-        (const return)
-        (const id)
     ,EP
         (\e c -> do
             wcheckhttpproxy <- (rec coUseHttpProxy $ build castToCheckButton "checkhttpproxy") e c
@@ -281,8 +269,6 @@ createWidgetsAndFillEnv builder conf = do
   
     postCount <- newIORef 0
     wipeStats <- newIORef (0, 0, 0)
-
-    imagesLast <- newIORef []
 
     proxies <- newIORef M.empty
 

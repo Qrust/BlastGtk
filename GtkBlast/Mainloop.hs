@@ -5,6 +5,7 @@ module GtkBlast.Mainloop
     ,setMainLoop
     ) where
 import Import hiding (on, mod)
+import qualified Data.Function as F (on)
 import GtkBlast.Achievement
 import GtkBlast.IO
 import GtkBlast.MuVar
@@ -47,7 +48,8 @@ killWipeUnit board WipeUnit{..} = do
 
 killBoardUnitWipeUnits :: BoardUnit -> E ()
 killBoardUnitWipeUnits BoardUnit{..} = do
-    modM buWipeUnits $ \wus -> mapM_ (killWipeUnit buBoard) wus >> return []
+    mapM_ (killWipeUnit buBoard) =<< get buWipeUnits
+    set buWipeUnits []
 
 cleanBoardUnitBadRecord :: BoardUnit -> E ()
 cleanBoardUnitBadRecord BoardUnit{..} = do
@@ -90,7 +92,8 @@ maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
                 writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
                 return $ Just $ Left wuProxy
             else if not isActive || not hadWipeStarted || M.notMember wuProxy pxs
-                    then killWipeUnit buBoard w >> return Nothing
+                    then do writeLog $ "Removing unneded {" ++ show wuProxy ++ "} " ++ renderBoard buBoard
+                            killWipeUnit buBoard w >> return Nothing
                     else return $ Just $ Right w
     
 maintainBoardUnit :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])]) -> BoardUnit -> E (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
@@ -141,7 +144,9 @@ killWipe = do
     E{..} <- ask
     writeLog "Stopping wipe..."
     set wipeStarted False
+    processMessages
     mapM_ killBoardUnit boardUnits
+    processMessages
     killAllCaptcha
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0
@@ -168,6 +173,7 @@ reactToMessage :: OutMessage -> E ()
 reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
     E{..} <- ask
     case m of
+        LogMessage _ -> writeLog (show s)
         OutcomeMessage o -> do
             case o of
                 SuccessLongPost _ -> writeLog (show st ++ ": SuccessLongPost")
@@ -205,12 +211,16 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                     setBanned board proxy
                 UnknownError -> tempError 4 $ stamp $ "Неизвестная ошибка, что-то пошло не так"
         c@SupplyCaptcha{} -> addCaptcha (st, c)
-        LogMessage _ -> writeLog (show s)
         NoPastas -> do writeLog (show s)
-                       tempError 3 "Невозможно прочитать пасты, постим повторяющуюся строку \"NOPASTA\""
+                       tempError 3 "Невозможно прочитать пасты, постим нихуя"
         NoImages -> do writeLog (show s)
                        tempError 3 "Невозможно прочитать пикчи, постим капчу"
-  where stamp s = renderCompactStamp st ++ ": " ++ s
+  where stamp msg = renderCompactStamp st ++ ": " ++ msg
+
+processMessages :: E ()
+processMessages = do
+    E{..} <- ask
+    mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
 
 mainloop :: E ()
 mainloop = do
@@ -220,13 +230,13 @@ mainloop = do
         regenerateImages
         regenerateProxies
         maintainBoardUnits >>= maintainCaptcha
-    mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
+    processMessages
     updWipeMessage
 
 setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
 setMainLoop env configfile setConf = do
     void $ timeoutAddFull (do
-        whenM (get $ wipeStarted env) $
+        whenM (get $ wipeStarted env) $ do
             progressBarPulse $ wprogresswipe env
         return True) priorityDefaultIdle 10
     void $ timeoutAddFull (do
@@ -238,21 +248,48 @@ setMainLoop env configfile setConf = do
 
 boardUnitsEnvPart :: Builder -> EnvPart
 boardUnitsEnvPart b = EP
-    (\_ c -> do
-        wvboxboards <- builderGetObject b castToVBox "vbox-boards"
+    (\e c -> do
+        let ssachBoardsWithSpeed =
+                if coSortingByAlphabet c
+                    then sortBy (compare `F.on` fst) ssachBoardsSortedByPostRate
+                    else ssachBoardsSortedByPostRate
 
-        forM ssachBoardsSortedByPostRate $ \(board, sp) -> do
+        wvboxboards <- builderGetObject b castToVBox "vbox-boards"
+        
+        boardUnits <- forM ssachBoardsWithSpeed $ \(board, sp) -> do
             wc <- checkButtonNewWithLabel $ renderBoard board
             when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
             G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
             boxPackStart wvboxboards wc PackNatural 0
-            BoardUnit board wc <$> newIORef [] <*> newIORef [] <*> newIORef [])
-    (\v c -> do
+            BoardUnit board wc <$> newIORef [] <*> newIORef [] <*> newIORef []
+
+        wbuttonselectall <- builderGetObject b castToButton "buttonselectall"
+        wbuttonselectnone <- builderGetObject b castToButton "buttonselectnone"
+        wchecksort <- (rec coSortingByAlphabet $ builderGetObject b castToCheckButton "checksort") e c
+
+        void $ on wbuttonselectall buttonActivated $ do
+            forM_ boardUnits $
+                (`toggleButtonSetActive` True) . buWidget
+    
+        void $ on wbuttonselectnone buttonActivated $ do
+            forM_ boardUnits $
+                (`toggleButtonSetActive` False) . buWidget
+
+        void $ on wchecksort buttonActivated $ do
+            spd <- get wchecksort
+            foldM_ (\ !i bu -> i+1 <$ boxReorderChild wvboxboards (buWidget bu) i) 0 $
+                if spd
+                    then sortBy (compare `F.on` buBoard) boardUnits
+                    else sortBy (compare `F.on` buBoard >>> \brd -> fromJustNote ("Board not in ssachBoardsSortedByPostRate, report bug: " ++ show brd) $
+                            findIndex ((==brd) . fst) ssachBoardsSortedByPostRate) boardUnits
+
+        return (boardUnits, wchecksort))
+    (\(v,wcs) c -> do
         cab <- map buBoard <$>
             filterM (toggleButtonGetActive . buWidget) v
-        return c{coActiveBoards=cab})
-    (\v e -> e{boardUnits=v})
-
+        csbs <- get wcs
+        return c{coActiveBoards=cab, coSortingByAlphabet=csbs})
+    (\(v,_) e -> e{boardUnits=v})
 wipebuttonEnvPart :: Builder -> EnvPart
 wipebuttonEnvPart b = EP
     (\env _ -> do

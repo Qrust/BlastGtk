@@ -172,16 +172,18 @@ goodEnd executablePath = do
 
 main :: IO ()
 main = withSocketsDo $ do
+    args <- getArgs
+    when (any (`elem` args) ["--help", "-h", "-?"]) $ do
+       putStrLn helpMessage
+       exitSuccess
+    when (any (`elem` args) ["-V", "--version"]) $ do
+       putStrLn $ showVersion Paths.version
+       exitSuccess
 #ifndef BINDIST
     mainNoBindist
 #else
     (executablePath, _) <- splitExecutablePath
     setCurrentDirectory executablePath
-
-    args <- getArgs
-    when (any (`elem` args) ["--help", "-h", "-?", "--version", "-v", "-V"]) $ do
-       putStrLn helpMessage
-       exitSuccess
 
     commvar <- newEmptyMVar
 

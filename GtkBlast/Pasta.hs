@@ -24,6 +24,7 @@ import System.Directory
 import Control.Concurrent.STM
 import System.IO.UTF8 (readFile)
 import Graphics.UI.Gtk hiding (get,set)
+import qualified Graphics.UI.Gtk as G (get)
 
 readPasta :: FilePath -> IO [String]
 readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f
@@ -33,20 +34,22 @@ generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
     take len <$> getRandomRs charBounds
 
-pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
+pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 pastaChooser pastas = do
     E{..} <- ask
     e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
-    return $ \_ _ _ -> (,) e <$> mchooseFromList pastas
+    return $ \_ _ _ -> do
+        let b = null pastas
+        (,) b . (,) e <$> mchooseFromList pastas
 
-generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, Bool), String))
+generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 generatePastaGen PastaFile =
     pastaChooser =<< appFile [] readPasta =<< get =<< asks wentrypastafile
-generatePastaGen Char = return $ \_ _ _ -> (,) (False, False) <$>
+generatePastaGen Char = return $ \_ _ _ -> (,) False . (,) (False, False) <$>
                             generateRandomString (100, 5000) ('a','z')
-generatePastaGen Num = return $ \_ _ _ -> (,) (False , False)<$>
+generatePastaGen Num = return $ \_ _ _ -> (,) False . (,) (False , False)<$>
                             generateRandomString (100, 5000) ('0', '9')
-generatePastaGen FromThread = return $ \a b c -> (,) (False, False) <$> choosePostToRepost a b c
+generatePastaGen FromThread = return $ \a b c -> (,) False . (,) (False, False) <$> choosePostToRepost a b c
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
@@ -67,40 +70,8 @@ regeneratePastaGen = do
 pastaEnvPart :: Builder -> EnvPart
 pastaEnvPart b = EP
     (\e c -> do
-        wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
-        wradionum <- builderGetObject b castToRadioButton "radio-num"
-        wradiochar <- builderGetObject b castToRadioButton "radio-char"
-        wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
-    
-        let pastaradio =
-                [(FromThread, wradiofromthread)
-                ,(Num, wradionum)
-                ,(Char, wradiochar)
-                ,(PastaFile, wradiopastafile)
-                ]
-    
-        fromMaybe (return ()) $ (`findMap` pastaradio) $ \(p, w) ->
-            if p == coPastaSet c
-                then Just $ toggleButtonSetActive w True
-                else Nothing
-
         pastaMod <- newIORef nullTime
         pastaSet <- newIORef $ coPastaSet c
-
-        forM_ pastaradio $ \(p, w) -> do
-            void $ on w toggled $
-                whenM (toggleButtonGetActive w) $ do
-                    writeIORef pastaSet p
-                    writeIORef pastaMod nullTime -- force update
-                    runE e $ regeneratePastaGen
-
-        wentrypastafile <- (rec coPastaFile $ builderGetObject b castToEntry "entrypastafile") e c
-        wbuttonpastafile <- builderGetObject b castToButton "buttonpastafile"
-
-        onFileChooserEntryButton False wbuttonpastafile wentrypastafile (runE e . writeLog) $ do
-            whenM ((==PastaFile) <$> readIORef pastaSet) $ do
-                writeIORef pastaMod nullTime -- force update
-                runE e $ regeneratePastaGen
 
         wcheckescapeinv <- (rec coEscapeInv $ builderGetObject b castToCheckButton "checkescapeinv") e c
         wcheckescapewrd <- (rec coEscapeWrd $ builderGetObject b castToCheckButton "checkescapewrd") e c
@@ -125,6 +96,57 @@ pastaEnvPart b = EP
                     Nothing -> do
                         toggleButtonSetInconsistent wcheckescapeall True
 
+        wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
+        wradionum <- builderGetObject b castToRadioButton "radio-num"
+        wradiochar <- builderGetObject b castToRadioButton "radio-char"
+        wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
+    
+        let pastaradio =
+                [(FromThread, wradiofromthread)
+                ,(Num, wradionum)
+                ,(Char, wradiochar)
+                ,(PastaFile, wradiopastafile)
+                ]
+
+        pwcei <- newIORef =<< get wcheckescapeinv
+        pwcew <- newIORef =<< get wcheckescapewrd
+        let assoc = [(wcheckescapeinv, pwcei), (wcheckescapewrd, pwcew)]
+
+        let setSensitive t = do
+                if t
+                    then
+                        mapM_ (\(w,p) -> toggleButtonSetActive w =<< get p) assoc
+                    else do
+                        forM_ assoc $ \(w,p) -> do
+                            whenM (G.get w widgetSensitive) $
+                                set p =<< get w
+                            toggleButtonSetActive w False
+                mapM_ (`widgetSetSensitive` t) [wcheckescapeall, wcheckescapeinv, wcheckescapewrd]
+
+        void $ flip anyM pastaradio $ \(p, w) ->
+            if (p == coPastaSet c)
+                then True <$ do
+                    toggleButtonSetActive w True
+                    setSensitive (p==PastaFile)
+                else return False
+
+        forM_ pastaradio $ \(p, w) -> do
+            let s = p == PastaFile
+            void $ on w toggled $
+                whenM (toggleButtonGetActive w) $ do
+                    writeIORef pastaSet p
+                    writeIORef pastaMod nullTime -- force update
+                    runE e $ regeneratePastaGen
+                    setSensitive s
+
+        wentrypastafile <- (rec coPastaFile $ builderGetObject b castToEntry "entrypastafile") e c
+        wbuttonpastafile <- builderGetObject b castToButton "buttonpastafile"
+
+        onFileChooserEntryButton False wbuttonpastafile wentrypastafile (runE e . writeLog) $ do
+            whenM ((==PastaFile) <$> readIORef pastaSet) $ do
+                writeIORef pastaMod nullTime -- force update
+                runE e $ regeneratePastaGen
+
         let updAll = do
                 signalBlock wceas
                 maybe (toggleButtonSetInconsistent wcheckescapeall True)
@@ -146,17 +168,18 @@ pastaEnvPart b = EP
 
         updAll
 
-        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd)
+        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew)
         )
-    (\(v1,_,v2,v3,v4) c -> do
-        ps <- get v1
-        pf <- get v2
-        ei <- get v3
-        ew <- get v4
+    (\(ps',_,wepf,wei,wew,pwei,pwew) c -> do
+        ps <- get ps'
+        pf <- get wepf
+        ei <- ifM (G.get wei widgetSensitive) (get wei) (get pwei)
+        ew <- ifM (G.get wew widgetSensitive) (get wew) (get pwew)
         return c{coPastaSet=ps, coPastaFile=pf, coEscapeInv=ei, coEscapeWrd=ew})
-    (\(ps,pm,wepf,wcei,wcew) e -> e{pastaSet=ps
-                                   ,pastaMod=pm
-                                   ,wentrypastafile=wepf
-                                   ,wcheckescapeinv=wcei
-                                   ,wcheckescapewrd=wcew
-                                   })
+    (\(ps,pm,wepf,wcei,wcew,_,_) e ->
+        e{pastaSet=ps
+         ,pastaMod=pm
+         ,wentrypastafile=wepf
+         ,wcheckescapeinv=wcei
+         ,wcheckescapewrd=wcew
+         })

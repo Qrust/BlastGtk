@@ -32,8 +32,8 @@ import BlastItWithPiss.MultipartFormData
 data Board = A
            | AA
            | ABU
-           | APP
-           | ASYLUM
+           | APP -- temp/hid
+           | ASYLUM -- temp/hid
            | AU
            | B
            | BB
@@ -48,6 +48,8 @@ data Board = A
            | DEV
            | DI
            | DIY
+           | DOM -- temp/hid
+           | DR -- temp/hid
            | EM
            | EW
            | F
@@ -57,17 +59,20 @@ data Board = A
            | FG
            | FIZ
            | FL
+           | FTB -- temp/hid
            | FUR
            | G
            | GA
            | GB
            | GD
            | H
+           | HH -- temp/hid
            | HI
            | HO
            | HW
            | I
            | INT
+           | IZD -- temp/hid
            | JA
            | LS
            | MA
@@ -88,6 +93,7 @@ data Board = A
            | PO
            | PR
            | PSY
+           | PVC -- temp/hid
            | R
            | RA
            | RE
@@ -105,24 +111,17 @@ data Board = A
            | TD
            | TES
            | TO
+           | TRV -- temp/hid
            | TV
            | UN
            | VG
            | VN
            | W
+           | WEB -- temp/hid
            | WH
            | WM
            | WP
            | WR
-        -- temporary boards
-           | PVC
-           | TRV
-           | IZD
-           | WEB
-           | HH
-           | DOM
-           | FTB
-           | DR
     deriving (Eq, Read, Show, Enum, Bounded, Ord)
 
 instance NFData Board

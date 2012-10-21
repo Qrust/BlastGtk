@@ -2,6 +2,8 @@ module BlastItWithPiss.Choice
     (Mode(..)
     ,Strategy
     ,sageMode
+    ,obligatoryImageMode
+    ,obligatoryNoImageMode
     ,unlockedSticky
     ,newThread
     ,veryPopularThread
@@ -43,6 +45,14 @@ instance NFData Mode
 sageMode :: Mode -> Bool
 sageMode SagePopular = True
 sageMode _ = False
+
+obligatoryImageMode :: Mode -> Bool
+obligatoryImageMode CreateNew = True
+obligatoryImageMode _ = False
+
+obligatoryNoImageMode :: Mode -> Bool
+obligatoryNoImageMode SagePopular = True
+obligatoryNoImageMode _ = False
 
 -- | Different strategies for different boards.
 strategies :: M.Map Board Strategy
