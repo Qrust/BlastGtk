@@ -3,20 +3,32 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-linux-x86-0.9.0.1.zip",
-                "88cfe614bcdc4fc944a0072518cc03d9"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-0.99.0.1.zip",
+                "3b8f7924f0000bdcb1f3e8466307fe37"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-BETA-windows-x86-0.9.0.1.zip",
-                "1b6d8cdc842e4db0230a6933134c6d5f"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-0.99.0.1.zip",
+                "f3eeb1963ee856924aefa63946eee90e"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "0.99.0.1",
+            "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
+        ],
+        [
+            "0.9.0.2",
+            "oololo"
+        ],
+        [
+            "0.9.0.2",
+            "ololo"
+        ],
         [
             "0.9.0.1",
             "."
@@ -190,5 +202,5 @@
             "Я в Апдейтере и это мой6 первый ченжлог!"
         ]
     ],
-    "version": "0.9.0.1"
+    "version": "0.99.0.1"
 }

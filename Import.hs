@@ -37,7 +37,10 @@ module Import
     ,fromTrySome
     ,modifyIORefM
     ) where
+#ifdef TEST
 import Debug.Trace as A
+#endif
+import Safe as A
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
 import System.IO as A hiding (readFile, writeFile, appendFile)
 import Data.Monoid as A
@@ -48,13 +51,11 @@ import Control.Applicative as A hiding (empty)
 import Control.Monad as A
 import Data.String as A
 import Data.Either as A
-import Data.Data as A
 import Data.Typeable as A
 import Control.Arrow as A
 import Data.Function as A
 import Data.Default as A
 import Data.IORef as A
-import Safe as A
 import Data.Time as A
 import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
@@ -244,5 +245,5 @@ modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
 modifyIORefM r m = writeIORef r =<< m =<< readIORef r
 
 anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
-anyM m [] = return False
+anyM _ [] = return False
 anyM m (x:xs) = ifM (m x) (return True) (anyM m xs)

@@ -35,10 +35,9 @@ githubDownloadsUrl filename =
 
 getToVersion :: String -> Maybe String
 getToVersion s' =
--- TODO update when no longer is BETA
     let s = dropExtension s'
-    in stripPrefix "BlastItWithPiss-BETA-linux-x86-" s <|>
-       stripPrefix "BlastItWithPiss-BETA-windows-x86-" s
+    in stripPrefix "BlastItWithPiss-linux-x86-" s <|>
+       stripPrefix "BlastItWithPiss-windows-x86-" s
 
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
