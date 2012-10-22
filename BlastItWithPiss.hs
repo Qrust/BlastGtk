@@ -281,15 +281,19 @@ blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe (String, (OriginS
 blastCaptcha wakabapl thread = do
     board <- askBoard
     chKey <- blast $ getChallengeKey ssachRecaptchaKey
+    blastLog "Downloading captcha"
     mbbytes <- blast $ ssachGetCaptcha board thread ssachRecaptchaKey chKey
     case mbbytes of
-        Nothing -> return (chKey, Just ("", const $ return ()))
+        Nothing -> do
+            blastLog "Couldn't download captcha"
+            return (chKey, Just ("", const $ return ()))
         Just bytes -> do
+            blastLog "Got captcha image, sending captcha mvar"
             m <- newEmptyMVar
             blastOut $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!)
             blastLog "blocking on captcha mvar"
             a <- takeMVar m
-            blastLog "got captcha mvar"
+            blastLog $ "got captcha mvar, answer is... " ++ show a
             case a of
                 Answer s r -> return (chKey, Just (s, r))
                 ReloadCaptcha -> blastCaptcha wakabapl thread
@@ -410,18 +414,21 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
                                 (PostData "" rest Nothing (sageMode mode) False (escapeInv postdata) (escapeWrd postdata))
                         else ret
                 TooFastPost -> do
-                        blastLog "TooFastPost, retrying in 0.5 seconds"
-                        return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
+                    blastLog "TooFastPost, retrying in 0.5 seconds"
+                    return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
                 TooFastThread -> do
-                        blastLog "TooFastThread, retrying in 15 minutes"
-                        return (beforePost - (ssachThreadTimeout board / 2), lposttime)
+                    blastLog "TooFastThread, retrying in 15 minutes"
+                    return (beforePost - (ssachThreadTimeout board / 2), lposttime)
+                PostRejected -> do
+                    blastLog "PostRejected, retrying later..."
+                    return (lthreadtime, lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
-                        blastLog $ show o ++ ", requerying"
-                        liftIO . reportbad =<< genOriginStamp
-                        blastPost True lthreadtime lposttime w mode thread postdata
+                    blastLog $ show o ++ ", requerying"
+                    liftIO . reportbad =<< genOriginStamp
+                    blastPost True lthreadtime lposttime w mode thread postdata
                   | otherwise -> do
-                        blastLog "post failed"
-                        ret
+                    blastLog "post failed"
+                    ret
 
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
@@ -449,7 +456,7 @@ blastLoop w lthreadtime lposttime = do
                    "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
                    "speed: " ++ show (speed p0) ++ "\n" ++
                    "threads: " ++ show (length $ threads p0) ++ "\n" ++
-                   "max replies: " ++ show (maximum $ map postcount $ threads p0)
+                   "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
     mode <- flMaybeSTM mmode return $
         maybe (do blastLog "No page, choosing from SagePopular/BumpUnpopular"
                   chooseFromList [SagePopular, BumpUnpopular])

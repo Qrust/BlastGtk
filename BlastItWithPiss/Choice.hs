@@ -254,7 +254,7 @@ chooseThread' board canfail mode Page{..}
                                                  -- in that case we advance to the next/previous page
                     else thrds'
     , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
-                then ((fromIntegral $ maximum $ map postcount thrds) -)
+                then ((fromIntegral $ maximumNote "Couldn't parse threads" $ map postcount thrds) -)
                 else id
      = justIf (> (-1)) <$> fromList
             (map (threadId &&& inv . fromIntegral . postcount) thrds)

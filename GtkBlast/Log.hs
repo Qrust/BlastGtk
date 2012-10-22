@@ -10,6 +10,7 @@ module GtkBlast.Log
     ,updMessage
     ,uncMessage
     ,redMessage
+    ,uncAnnoyMessage
     ,appFile
     ) where
 import Import
@@ -97,6 +98,14 @@ redMessage s = do
     E{..} <- ask
     writeLog $ "blastgtk, Red message: " ++ s
     io $ labelSetMarkup wlabelmessage $ red s
+
+uncAnnoyMessage :: String -> E ()
+uncAnnoyMessage s = do
+    E{..} <- ask
+    writeLog $ "blastgtk, Unconditional annoying message: " ++ s
+    io $ labelSetMarkup wlabelmessage $ red s
+    io $ whenM ((||) <$> toggleButtonGetActive wcheckannoy <*> toggleButtonGetActive wcheckannoyerrors) $
+        windowPopup window
 
 appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
 appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""

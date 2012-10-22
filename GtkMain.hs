@@ -36,12 +36,12 @@ import Data.Version
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 
 -- == 1.0 RELEASE ==
--- TODO Откреплять/прикреплять лог
 -- TODO change default boards, newscreen.jpg, repo description, README, sane defaults
 -- TODO agitka.png, Охуенный ОП-пост + ОП-пикчи для разных борд.
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.
 -- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
@@ -49,7 +49,6 @@ import Data.Version
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
--- TODO better exceptions for 404/cloudflare ban, 403, mochan down.
 -- TODO add blastcli
 -- TODO add zip file permissions to zip-archive
 -- TODO add multipart/form-data to http-conduit

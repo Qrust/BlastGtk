@@ -160,10 +160,13 @@ post (req, success) = do
     catches
         (do Response st _ heads ~tags <- httpReqStrTags req
             case()of
-             _ | (statusCode st >= 300 && statusCode st < 400) &&
-                 (maybe False (T.isInfixOf "res/" . T.decodeASCII) $
-                        lookup "Location" heads)
-                -> return (success, Nothing)
+             _ | statusCode st == 303
+               , Just loc <- T.decodeASCII <$> lookup "Location" heads
+               -> if loc == "wakaba.html"
+                    then return (PostRejected, Nothing)
+                    else if T.isInfixOf "res/" loc
+                            then return (success, Nothing)
+                            else throwIO (StatusCodeException st heads)
                | statusCode st == 403
                 -> maybe (throwIO $ StatusCodeException st heads)
                     (return . flip (,) (Just tags)) $ detectCloudflare tags

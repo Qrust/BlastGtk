@@ -19,13 +19,18 @@ import GtkBlast.GtkUtils
 import GtkBlast.Mainloop (wipebuttonEnvPart, boardUnitsEnvPart)
 import GtkBlast.EnvPart
 import "blast-it-with-piss" BlastItWithPiss
-import Graphics.UI.Gtk hiding (get, set)
+import Graphics.UI.Gtk hiding (get, set, after)
 import GHC.Conc
 import Control.Concurrent.STM
 import Paths_blast_it_with_piss
 import Data.Version (showVersion)
 import qualified Data.Map as M
 import Control.Monad.Fix
+
+import Foreign.Ptr
+import Foreign.C.String
+import System.Glib.GError
+import System.Glib.UTFString
 
 envParts :: Builder -> [EnvPart]
 envParts b =
@@ -49,10 +54,6 @@ envParts b =
         (\v c -> get v ? \a -> c{coAdditionalShown=a})
         (const id)
     ,EP
-        (rec coLogShown $ build castToExpander "expanderlog")
-        (\v c -> get v ? \a -> c{coLogShown=a})
-        (const id)
-    ,EP
         (\_ _ -> do
             wlabelmessage <- build castToLabel "labelmessage"
             wprogressalignment <- build castToAlignment "progressalignment"
@@ -65,7 +66,17 @@ envParts b =
                                 ,wprogresswipe=wpw
                                 })
     ,EP
-        (\_ _ -> do
+        (\e c -> do
+            walignmentlog <- build castToAlignment "alignmentlog"
+
+            wexpanderlog <- (rec coLogShown $ build castToExpander "expanderlog") e c
+
+            wlabeldetachlog <- build castToLabel "labeldetachlog"
+            wlabelattachlog <- build castToLabel "labelattachlog"
+
+            windowlog <- build castToWindow "windowlog"
+
+            wvboxlog <- build castToVBox "wvboxlog"
             wlog <- build castToTextView "log"
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog
@@ -90,9 +101,61 @@ envParts b =
 
             adjustmentSetValue wad (iupper - isize)
 
-            return wbuf)
-        (const return)
-        (\wbuf e -> e{wbuf=wbuf})
+            let attachedmark = "<a href=\"#\">Открепить лог</a>"
+
+            let detachedmark = "<a href=\"#\">Закрепить лог</a>"
+
+            let detachLog = do
+                    containerRemove walignmentlog wexpanderlog
+                    containerRemove windowlog wlabelattachlog
+                    containerAdd windowlog wexpanderlog
+                    containerAdd walignmentlog wlabelattachlog
+                    labelSetMarkup wlabeldetachlog detachedmark
+                    widgetShow windowlog
+
+            let attachLog = do
+                    containerRemove windowlog wexpanderlog
+                    containerRemove walignmentlog wlabelattachlog
+                    containerAdd walignmentlog wexpanderlog
+                    containerAdd windowlog wlabelattachlog
+                    labelSetMarkup wlabeldetachlog attachedmark
+                    widgetHide windowlog
+
+            detached <- newIORef False
+
+            labelSetMarkup wlabeldetachlog attachedmark
+
+            -- Fucking faggots, why won't they just export these low-level functions?
+            let connect_STRING__BOOL :: 
+                  GObjectClass obj => SignalName ->
+                  ConnectAfter -> obj ->
+                  (String -> IO Bool) ->
+                  IO (ConnectId obj)
+                connect_STRING__BOOL signal after obj user =
+                  connectGeneric signal after obj action
+                  where action :: Ptr GObject -> CString -> IO Bool
+                        action _ str1 =
+                          failOnGError $
+                          peekUTFString str1 >>= \str1' ->
+                          user str1'
+
+            on wlabeldetachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
+                ifM (get detached)
+                    (attachLog)
+                    (detachLog)
+                mod detached not
+
+            on wlabelattachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
+                attachLog
+                set detached False
+
+            onDelete windowlog $ \_ -> True <$ do
+                attachLog
+                set detached False
+
+            return (wbuf,wexpanderlog))
+        (\(_,wel) c -> get wel ? \a -> c{coLogShown=a})
+        (\(wbuf,_) e -> e{wbuf=wbuf})
     ,EP
         (\e c -> do
             wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
@@ -238,6 +301,8 @@ envParts b =
             on wtray statusIconPopupMenu $ \(Just mb) t -> menuPopup wmenu $ Just (mb, t)
             wmenushowConnId <- on wmenushow menuItemActivate $ windowToggle window
             on wmenuexit menuItemActivate $ widgetDestroy window
+
+            -- window signals
 
             onDelete window $ \_ -> do
                 noTray <- not <$> statusIconIsEmbedded wtray

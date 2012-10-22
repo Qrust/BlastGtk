@@ -8,13 +8,6 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkImage" id="image1">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="xpad">2</property>
-    <property name="ypad">2</property>
-    <property name="pixbuf">2ch.so.png</property>
-  </object>
   <object class="GtkImage" id="image3">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -25,6 +18,13 @@
     <property name="can_focus">False</property>
     <property name="icon_name">edit-clear</property>
   </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="xpad">2</property>
+    <property name="ypad">2</property>
+    <property name="pixbuf">2ch.so.png</property>
+  </object>
   <object class="GtkImage" id="image8">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -34,32 +34,6 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-sort-ascending</property>
-  </object>
-  <object class="GtkListStore" id="liststore1">
-    <columns>
-      <!-- column-name item -->
-      <column type="gchararray"/>
-    </columns>
-    <data>
-      <row>
-        <col id="0" translatable="yes">Всё подряд</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Только сагать оф.треды</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Только бампать вайп</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Только бампать с последней страницы</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Только вайпать прикреплённый тред</col>
-      </row>
-      <row>
-        <col id="0" translatable="yes">Только создавать треды</col>
-      </row>
-    </data>
   </object>
   <object class="GtkVBox" id="vboxcaptcha">
     <property name="visible">True</property>
@@ -1723,61 +1697,66 @@
               </packing>
             </child>
             <child>
-              <object class="GtkExpander" id="expanderlog">
+              <object class="GtkAlignment" id="alignmentlog">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkVBox" id="vbox28">
+                  <object class="GtkExpander" id="expanderlog">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
+                    <property name="can_focus">True</property>
                     <child>
-                      <object class="GtkLabel" id="label18">
+                      <object class="GtkVBox" id="wvboxlog">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
-                        <property name="label" translatable="yes">&lt;a href="#"&gt;Открепить лог&lt;/a&gt;</property>
-                        <property name="use_markup">True</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkScrolledWindow" id="scrolledwindow2">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="hscrollbar_policy">automatic</property>
-                        <property name="shadow_type">in</property>
                         <child>
-                          <object class="GtkTextView" id="log">
-                            <property name="height_request">100</property>
+                          <object class="GtkLabel" id="labeldetachlog">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="xalign">0</property>
+                            <property name="label" translatable="yes">&lt;a href="#"&gt;Соснуть хуйца&lt;/a&gt;</property>
+                            <property name="use_markup">True</property>
+                            <property name="track_visited_links">False</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkScrolledWindow" id="scrolledwindow2">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="editable">False</property>
-                            <property name="left_margin">3</property>
-                            <property name="right_margin">3</property>
-                            <property name="cursor_visible">False</property>
+                            <property name="hscrollbar_policy">automatic</property>
+                            <property name="shadow_type">in</property>
+                            <child>
+                              <object class="GtkTextView" id="log">
+                                <property name="height_request">100</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="editable">False</property>
+                                <property name="left_margin">3</property>
+                                <property name="right_margin">3</property>
+                                <property name="cursor_visible">False</property>
+                              </object>
+                            </child>
                           </object>
+                          <packing>
+                            <property name="expand">True</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
                         </child>
                       </object>
-                      <packing>
-                        <property name="expand">True</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
                     </child>
-                  </object>
-                </child>
-                <child type="label">
-                  <object class="GtkLabel" id="label7">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="tooltip_text" translatable="yes">Если вам неудобно смотреть лог в таком маленьком окне, откройте его текстовым редактором. Файл: log.txt в папке вайпалки.
-Или запустите вайпалку из консоли.</property>
-                    <property name="label" translatable="yes">_Лог</property>
-                    <property name="use_underline">True</property>
+                    <child type="label">
+                      <object class="GtkLabel" id="label7">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">_Лог</property>
+                        <property name="use_underline">True</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -1804,6 +1783,26 @@
             </child>
           </object>
         </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkWindow" id="windowlog">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Лог</property>
+    <property name="role">wipe-log</property>
+    <property name="default_width">440</property>
+    <property name="default_height">250</property>
+    <property name="destroy_with_parent">True</property>
+    <property name="icon">2ch.so.png</property>
+    <property name="transient_for">window1</property>
+    <child>
+      <object class="GtkLabel" id="labelattachlog">
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="xalign">0</property>
+        <property name="label" translatable="yes">&lt;a href="#"&gt;Закрепить лог&lt;/a&gt;</property>
+        <property name="use_markup">True</property>
+        <property name="track_visited_links">False</property>
       </object>
     </child>
   </object>

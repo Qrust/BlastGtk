@@ -126,7 +126,7 @@ maintainBoardUnits = do
         ifM (M.null <$> get proxies)
             (redMessage "Нет проксей, выберите прокси для вайпа или вайпайте без прокси")
             (if banned > 0 || dead > 0
-                then redMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
+                then uncAnnoyMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
                 else redMessage "Выберите доски для вайпа")
     return (bannedl++deadl)
 
@@ -190,6 +190,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 WrongCaptcha -> writeLog $ stamp $ "WrongCaptcha"
                 LongPost -> tempError 1 $ stamp $ "Запостил слишком длинный пост"
                 CorruptedImage -> tempError 2 $ stamp $ "Запостил поврежденное изображение"
+                PostRejected -> writeLog $ stamp $ "PostRejected"
                 OtherError x -> tempError 4 $ stamp $ "" ++ show x
                 InternalError x -> tempError 4 $ stamp $ "" ++ show x
                 Banned x -> do

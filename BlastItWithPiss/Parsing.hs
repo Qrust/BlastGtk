@@ -247,6 +247,7 @@ data Outcome = Success
              | RecaptchaBan
              | LongPost
              | CorruptedImage
+             | PostRejected
              | CloudflareCaptcha
              | CloudflareBan
              | Four'o'FourBan
