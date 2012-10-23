@@ -48,7 +48,7 @@ impureAnnotatedCmdargsConfig =
         ,cloudflare_ban = "cloudflare-ban" &= name "cb" &= help "Файл куда писать забаненные по клаудфлеру прокси, по дефолту \"cloudflare-ban\"" &= typFile
         ,bad = "bad" &= name "d" &= help "Файл куда писать прокси с которыми не удалось связаться по каким-то причинам" &= typFile
         }
-        &= program "blastchecker"
+        &= program "proxychecker"
         &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
         &= versionArg [ignore]
         &= summary "Проксичекер для ссача"
