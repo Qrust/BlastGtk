@@ -76,7 +76,6 @@ envParts b =
 
             windowlog <- build castToWindow "windowlog"
 
-            wvboxlog <- build castToVBox "wvboxlog"
             wlog <- build castToTextView "log"
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog

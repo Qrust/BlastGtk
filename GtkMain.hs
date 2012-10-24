@@ -34,6 +34,7 @@ import Data.Version
 -- FIXME We need a threadscope profile before we can decide on anything
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
+-- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.0 RELEASE ==
 -- TODO change default boards, newscreen.jpg, repo description, README, sane defaults
@@ -52,9 +53,8 @@ import Data.Version
 -- TODO add blastcli
 -- TODO add zip file permissions to zip-archive
 -- TODO add multipart/form-data to http-conduit
--- TODO get a hackage account and release antigate
+-- TODO migrate to new tls when it'll work on windows
 -- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
--- TODO drop dependency on custom http-conduit when http-conduit-browser will be released(never?)
 -- TODO i18n (represent messages by types + typeclass?)
 -- TODO configurable timeout
 -- TODO config last thread time
@@ -98,7 +98,7 @@ main = withSocketsDo $ do
 #endif
     -- read configuration
 
-    rawPutLog =<< (("Starting blastgtk. Version " ++ showVersion version ++ ". Current POSIX time is ") ++) . show <$> getPOSIXTime
+    rawPutLog =<< (("Starting blastgtk. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
 
     configfile <- (</> "config.json") <$> configDir
 
@@ -109,8 +109,9 @@ main = withSocketsDo $ do
     -- start
 
     handle (\(a::SomeException) -> do
-              rawPutLog $ "Uncaught exception terminated program, sorry: " ++ show a
-              exitFailure) $ do
+            t <- getZonedTime
+            rawPutLog $ "Uncaught exception terminated program. Current time is " ++ show t ++ "\nException was: " ++ show a
+            exitFailure) $ do
 
         -- init
 
@@ -147,7 +148,7 @@ main = withSocketsDo $ do
 
         -- say good bye
 
-        rawPutLog =<< ("Finished wipe session, current POSIX time is " ++) . show <$> getPOSIXTime
+        rawPutLog =<< ("Finished wipe session, current time is " ++) . show <$> getZonedTime
 
 mochanNames :: [String]
 mochanNames =

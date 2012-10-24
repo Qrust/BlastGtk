@@ -57,7 +57,6 @@ import Data.Function as A
 import Data.Default as A
 import Data.IORef as A
 import Data.Time as A
-import Data.Time.Clock.POSIX as A
 import Control.Monad.IO.Class as A
 import Control.DeepSeq as A
 import Control.Monad.Trans.Control as A

@@ -2,12 +2,17 @@
 set -m
 sh compile-script.sh VersionIncrementerMain
 sh compile-script.sh DownloadsUploader
-case $1 in
-    nobump);;
+delete=False
+case "$@" in
+    *nobump*)
+        echo "Nobump";;
+    *delete*)
+        delete=True;;
     *)
         echo "Bumping package version..."
         ./VersionIncrementerMain;;
 esac
+echo "Delete: " $delete
 currentversion=`./VersionIncrementerMain --get`
 echo "Current version: \"$currentversion\""
 echo "Removing all previous dist packages..."
@@ -28,7 +33,7 @@ echo "DOS archive will be \"$windowszip\""
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then
         echo "Updating manifest and uploading archives..."
-        ./DownloadsUploader $currentversion $linuxzip $windowszip "True" "True"
+        ./DownloadsUploader $currentversion $linuxzip $windowszip "True" delete
     else
         echo "Something bad happened. Scroll up for error messages."
 fi

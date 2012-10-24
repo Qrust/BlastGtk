@@ -4,7 +4,6 @@ import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Parsing
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.MultipartFormData
 import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
 import System.Environment
@@ -120,10 +119,11 @@ mainloop board Config{..} ips mvs = do
             maybe (error $ "Couldn't parse as a proxy \"" ++ ip ++ "\"")
                 httpSetProxy (readBlastProxy socks ip)
             unless quiet $ liftIO $ putStrLn $ ip ++ ": Поcтим"
+            let (a, b) = ssachLastRecordedWakabaplAndFields (ssachBoard board)
             liftIO . putMVar m . fst =<<
                 post =<< prepare board (Just thread)
                     (PostData "САЖА" txt Nothing True False False False) "03AHJ_VutW6y0VOt928pITpHtSRO6mM4Vk-iou_VVxKkC5MCxKKU-rSCdQT-yqaGxHg0y-YZNKDD_n_-bUNFSVDB-G_db5J4RbLIvI-ysf8fd2dXj4Xt6bwG0CRLRgmDrc-NmKQBn89GXVTpEZa2iTJF3Hny3F8e5aNw" "reading speed"
-                    (ssachBoard board ++ "wakaba.pl") ssachLastRecordedWakabaplAndFields ssachLengthLimit
+                    a b ssachLengthLimit
         return (ip, m)
     unless quiet $ putStrLn $ "Передышка: " ++ show timeout ++ " секунд..., Ещё не запущено: " ++ show (length ni) ++ " проксей."
     threadDelay $ timeout * 1000000

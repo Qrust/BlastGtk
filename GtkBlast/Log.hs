@@ -45,7 +45,7 @@ rawPutLog s = do
 
 writeLogIO :: TextBuffer -> String -> IO ()
 writeLogIO wbuf raws = do
-    st <- show <$> getPOSIXTime
+    st <- show <$> getZonedTime
     let s = ("[" ++ st ++ "]:\n  " ++ raws) 
     rawPutLog s
     e <- textBufferGetEndIter wbuf
@@ -59,7 +59,7 @@ showMessage getCheck msgname mUnlockT mkRed msg = do
     E{wlabelmessage=wlabel, ..} <- ask
     wcheck <- asks getCheck
     io $ modifyIORef messageLocks (+1)
-    n <- io getPOSIXTime
+    n <- io getZonedTime
     writeLog $ "blastgtk, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
     if mkRed
         then io $ labelSetMarkup wlabel $ red msg

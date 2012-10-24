@@ -30,6 +30,7 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 import qualified Text.Show as Show
 import Text.HTML.TagSoup(Tag)
+import Data.Time.Clock.POSIX
 
 {-
 import Control.Concurrent (forkIO)
@@ -58,7 +59,7 @@ data CaptchaAnswer = Answer !String !(OriginStamp -> IO ())
                    | ReloadCaptcha
                    | AbortCaptcha
 
-data OriginStamp = OriginStamp {oTime :: !POSIXTime
+data OriginStamp = OriginStamp {oTime :: !ZonedTime
                                ,oProxy :: !BlastProxy
                                ,oBoard :: !Board
                                ,oMode :: !Mode
@@ -212,7 +213,7 @@ genOriginStamp = do
     proxy <- askProxy
     board <- askBoard
     OriginInfo{..} <- askOrI
-    now <- liftIO getPOSIXTime
+    now <- liftIO getZonedTime
     return $ OriginStamp now proxy board gmode gthread
 
 blastOut :: Message -> BlastLog ()

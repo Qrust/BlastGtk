@@ -13,3 +13,5 @@
 
 #Как сконпелять из сорцов
 + См. [COMPILEGUIDE.md](https://github.com/exbb2/BlastItWithPiss/blob/master/COMPILEGUIDE.md)
+
+Контакты в кабал файле
