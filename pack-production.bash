@@ -33,7 +33,7 @@ echo "DOS archive will be \"$windowszip\""
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then
         echo "Updating manifest and uploading archives..."
-        ./DownloadsUploader $currentversion $linuxzip $windowszip "True" delete
+        ./DownloadsUploader $currentversion $linuxzip $windowszip "True" $delete
     else
         echo "Something bad happened. Scroll up for error messages."
 fi
