@@ -9,7 +9,7 @@
 + Ну охуеть теперь
 
 #Обсуждение вайпа сосача:
-**TODO** пеар
+http://1chan.ru/news/res/1462355/
 
 #Как сконпелять из сорцов
 + См. [COMPILEGUIDE.md](https://github.com/exbb2/BlastItWithPiss/blob/master/COMPILEGUIDE.md)
