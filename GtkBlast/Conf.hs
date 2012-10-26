@@ -61,10 +61,9 @@ data Conf = Conf {coActiveBoards :: ![Board]
 
 instance Default Conf where
     def = Conf
-         { -- FIXME coActiveBoards = [B, BB, ABU, D, VG, PR, DEV]
-           -- coActiveBoards = [NE, MDK]
-          coActiveBoards = [B, VG]
-         ,coPastaSet = PastaFile
+         {
+          coActiveBoards = [B, BB, VN, SOC, MMO, FA]
+         ,coPastaSet = FromThread
          ,coCreateThreads = True
          ,coImageFolder = "images"
          ,coAttachImages = True
@@ -93,7 +92,7 @@ instance Default Conf where
          ,coEscapeInv = True
          ,coEscapeWrd = True
          ,coPostAgitka = True
-         ,coSortingByAlphabet = False
+         ,coSortingByAlphabet = True
          }
 
 -- HACK Those are quite dangerous orphans

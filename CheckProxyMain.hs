@@ -4,12 +4,15 @@ import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Parsing
 import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Board
+import Data.Version
 import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
 import System.Environment
+import System.Exit
 import Network.Socket
 import System.IO.UTF8 (readFile, writeFile, appendFile)
 import System.IO (print, putStrLn)
+import Paths_blast_it_with_piss
 
 data Config = Config
     {socks :: Bool
@@ -55,6 +58,10 @@ impureAnnotatedCmdargsConfig =
 
 main :: IO ()
 main = withSocketsDo $ do
+    args <- getArgs
+    when (any (`elem` args) ["-V", "--version"]) $ do
+        putStrLn $ showVersion version
+        exitSuccess
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
     ifM (null <$> getArgs)
         (print md)

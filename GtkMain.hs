@@ -37,8 +37,7 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.0 RELEASE ==
--- TODO change default boards, newscreen.jpg, repo description, README, sane defaults
--- TODO agitka.png, Охуенный ОП-пост + ОП-пикчи для разных борд.
+-- TODO change default boards, sane defaults
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ

@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-0.99.0.101.zip",
-                "ca81dbfe1f320b62f92e0525ce3702da"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.0.0.zip",
+                "39b1d7d1a7112def32092cbdadc22e9d"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-0.99.0.101.zip",
-                "51cbcf8a8c97525622bfc9f8f4e302e8"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.0.0.zip",
+                "1234aa421619632c201b85b06adab029"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.0.0",
+            "Поехали"
+        ],
         [
             "0.99.0.101",
             "ВНИМАНИЕ ВНИМАНИЕ blastgtk переименован в gtkblast, но я обосрался поэтому вам нужно будет удалить старый blastgtk(.exe) и запустить апдейтер опять."
@@ -30,5 +34,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "0.99.0.101"
+    "version": "1.0.0"
 }

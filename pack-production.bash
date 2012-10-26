@@ -6,11 +6,13 @@ delete=False
 case "$@" in
     *nobump*)
         echo "Nobump";;
-    *delete*)
-        delete=True;;
     *)
         echo "Bumping package version..."
         ./VersionIncrementerMain;;
+esac
+case "$@" in
+    *delete*)
+        delete=True;;
 esac
 echo "Delete: " $delete
 currentversion=`./VersionIncrementerMain --get`

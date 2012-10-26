@@ -177,7 +177,7 @@ postInstall executablePath = do
     mainQuit
 
 postInstallHooks :: FilePath -> Version -> IO ()
-postInstallHooks executablePath oldv = return ()
+postInstallHooks _ _ = return ()
 
 launchGtkblast :: FilePath -> IO ()
 launchGtkblast executablePath = do
