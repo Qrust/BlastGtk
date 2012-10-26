@@ -117,7 +117,7 @@ uniqueDirectoryName str = do
                 (go rfn $ n+1)
                 (return fn)
 
-updateWorker :: MVar Message -> UpdateManifest -> IO (Maybe String)
+updateWorker :: MVar Message -> UpdateManifest -> IO String
 updateWorker mv UpdateManifest{..} = do
     void $ tryPutMVar mv $ ChangeMessage $ "Ищем версию для " ++ show currentPlatform ++ "..."
     (url, md5) <- maybe (throwIO NoBuildAvailable) return $
@@ -134,7 +134,7 @@ updateWorker mv UpdateManifest{..} = do
             restoreFromBackup backupdir "." -- ? implying that . is the executable path
             throwIO x
         Right _ -> do
-            return $ justIf (not . null) $ renderChangelog changelog
+            return $ fromMaybe "Обновление успешно" $ justIf (not . null) $ renderChangelog changelog
 
 mainWorker :: MVar Message -> IO ()
 mainWorker mv = finalizeWork $ do
@@ -143,7 +143,7 @@ mainWorker mv = finalizeWork $ do
     void $ tryPutMVar mv $ ChangeMessage "Обрабатываем манифест..."
     let update = needUpdate manifest
     if update
-        then updateWorker mv manifest
+        then Just <$> updateWorker mv manifest
         else do
             args <- getArgs
             void $ tryPutMVar mv $ ChangeMessage "Проверяем целостность вайпалки..."
@@ -152,7 +152,7 @@ mainWorker mv = finalizeWork $ do
                     then return True
                     else needRepair
             if repair
-                then updateWorker mv manifest
+                then Just <$> updateWorker mv manifest
                 else return Nothing
   where finalizeWork m = do
             e <- try m
@@ -169,7 +169,7 @@ helpMessage =
 
 postInstall :: FilePath -> IO ()
 postInstall executablePath = do
-    let updater = executablePath </> "BlastItWithPiss"
+    let updater = executablePath </> blastItWithPissBinary
     p <- getPermissions updater
     when (not $ executable p) $ do
         setPermissions updater p{executable=True}
@@ -254,7 +254,7 @@ main = withSocketsDo $ do
                 return False
             GoodEnd mmarkup ->
                 case mmarkup of
-                    Nothing -> False <$ postInstall executablePath
+                    Nothing -> False <$ launchGtkblast executablePath
                     Just markup -> do
                         widgetHide updaterwindow
                         widgetShow changelogwindow

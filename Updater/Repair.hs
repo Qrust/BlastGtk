@@ -1,6 +1,7 @@
 module Updater.Repair
     (needRepair
     ,gtkblastBinary
+    ,blastItWithPissBinary
     ,binaries
     ,distribFiles
     ) where
@@ -15,12 +16,20 @@ gtkblastBinary =
     "gtkblast"
 #endif
 
+blastItWithPissBinary :: FilePath
+blastItWithPissBinary =
+#ifdef mingw32_HOST_OS
+    "BlastItWithPiss.exe"
+#else
+    "BlastItWithPiss"
+#endif
+
 binaries :: [FilePath]
 binaries =
 #ifdef mingw32_HOST_OS
-    [gtkblastBinary, "BlastItWithPiss.exe", "proxychecker.exe"] -- ++ ["cliblast.exe"]
+    [gtkblastBinary, blastItWithPissBinary, "proxychecker.exe"] -- ++ ["cliblast.exe"]
 #else
-    [gtkblastBinary, "BlastItWithPiss", "proxychecker"] -- ++ ["cliblast"]
+    [gtkblastBinary, blastItWithPissBinary, "proxychecker"] -- ++ ["cliblast"]
 #endif
 
 distribFiles :: [FilePath]
