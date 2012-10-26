@@ -60,7 +60,7 @@ showMessage getCheck msgname mUnlockT mkRed msg = do
     wcheck <- asks getCheck
     io $ modifyIORef messageLocks (+1)
     n <- io getZonedTime
-    writeLog $ "blastgtk, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
+    writeLog $ "gtkblast, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
     if mkRed
         then io $ labelSetMarkup wlabel $ red msg
         else io $ labelSetText wlabel msg
@@ -90,19 +90,19 @@ updMessage s = do
 uncMessage :: String -> E ()
 uncMessage s = do
     E{..} <- ask
-    writeLog $ "blastgtk, Unconditinal message: " ++ s
+    writeLog $ "gtkblast, Unconditinal message: " ++ s
     io $ labelSetText wlabelmessage s
 
 redMessage :: String -> E ()
 redMessage s = do
     E{..} <- ask
-    writeLog $ "blastgtk, Red message: " ++ s
+    writeLog $ "gtkblast, Red message: " ++ s
     io $ labelSetMarkup wlabelmessage $ red s
 
 uncAnnoyMessage :: String -> E ()
 uncAnnoyMessage s = do
     E{..} <- ask
-    writeLog $ "blastgtk, Unconditional annoying message: " ++ s
+    writeLog $ "gtkblast, Unconditional annoying message: " ++ s
     io $ labelSetMarkup wlabelmessage $ red s
     io $ whenM ((||) <$> toggleButtonGetActive wcheckannoy <*> toggleButtonGetActive wcheckannoyerrors) $
         windowPopup window

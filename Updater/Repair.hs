@@ -1,30 +1,32 @@
 module Updater.Repair
     (needRepair
-    ,blastgtkBinary
+    ,gtkblastBinary
     ,binaries
     ,distribFiles
     ) where
 import Import
 import System.Directory
 
-blastgtkBinary :: FilePath
-blastgtkBinary =
+gtkblastBinary :: FilePath
+gtkblastBinary =
 #ifdef mingw32_HOST_OS
-    "blastgtk.exe"
+    "gtkblast.exe"
 #else
-    "blastgtk"
+    "gtkblast"
 #endif
 
 binaries :: [FilePath]
 binaries =
 #ifdef mingw32_HOST_OS
-    [blastgtkBinary, "BlastItWithPiss.exe", "proxychecker.exe"] -- ++ ["blastcli.exe"]
+    [gtkblastBinary, "BlastItWithPiss.exe", "proxychecker.exe"] -- ++ ["cliblast.exe"]
 #else
-    [blastgtkBinary, "BlastItWithPiss", "proxychecker"] -- ++ ["blastcli"]
+    [gtkblastBinary, "BlastItWithPiss", "proxychecker"] -- ++ ["cliblast"]
 #endif
 
 distribFiles :: [FilePath]
-distribFiles = binaries ++ ["resources/2ch.so.png", "resources/blast.glade"]
+distribFiles = binaries ++ ["resources/2ch.so.png"
+                           ,"resources/blast.glade"
+                           ,"resources/agitka.png"]
 
 needRepair :: IO Bool
 needRepair = do

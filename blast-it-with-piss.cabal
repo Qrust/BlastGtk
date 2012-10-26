@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 0.99.0.2
+version: 0.99.0.101
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -99,7 +99,7 @@ library
                ,FlexibleContexts
                ,DeriveDataTypeable
 
-executable blastgtk
+executable gtkblast
     main-is: GtkMain.hs
 
     other-modules: Import
@@ -232,7 +232,7 @@ executable proxychecker
                ,FlexibleInstances
                ,TypeSynonymInstances
 
---~executable blastcli
+--~executable cliblast
 --~    main-is: CliMain.hs
 --~    build-depends: base
 --~                  ,process
@@ -258,7 +258,7 @@ executable proxychecker
 --~               ,ScopedTypeVariables
 --~               ,PackageImports
 
--- updater app. Checks and installs updates, then runs blastgtk
+-- updater app. Checks and installs updates, then runs gtkblast
 executable BlastItWithPiss
     main-is: UpdaterMain.hs
 
@@ -295,10 +295,10 @@ executable BlastItWithPiss
                   ,crypto-api
                   ,cereal
                   ,tls-extra >= 0.4.7.1
+                  ,executable-path
 
     if flag(bindist)
         cpp-options: -DBINDIST
-        build-depends: executable-path
         if os(windows)
             ghc-options: -optl-mwindows
         else

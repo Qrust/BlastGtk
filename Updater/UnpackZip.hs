@@ -8,6 +8,7 @@ module Updater.UnpackZip
     ,restoreFromBackup
     ) where
 import Import
+import Updater.Repair
 import System.Directory
 import System.FilePath
 import Codec.Archive.Zip
@@ -20,9 +21,9 @@ import qualified Data.ByteString.Lazy as L
 ourExecutables :: [String]
 ourExecutables =
     ["BlastItWithPiss"
-    ,"blastgtk"
+    ,gtkblastBinary
     ,"proxychecker"
-    ,"blastcli"
+    ,"cliblast"
     ]
 
 setExecutableBitForOurBinaries :: FilePath -> IO ()

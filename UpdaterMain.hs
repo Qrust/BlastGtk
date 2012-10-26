@@ -19,6 +19,7 @@ import Data.Aeson
 import Network.HTTP.Conduit
 import Graphics.UI.Gtk
 import qualified Text.Show
+import Text.ParserCombinators.ReadP
 
 currentPlatform :: Platform
 #if defined(linux_HOST_OS)
@@ -52,11 +53,11 @@ data UpdaterConf = UpdaterConf
 mainNoBindist :: IO ()
 mainNoBindist = do
     (path, _) <- splitExecutablePath
-    let blastgtk = path </> blastgtkBinary
+    let gtkblast = path </> gtkblastBinary
     void $ ifM
-        (doesFileExist blastgtk)
-        (createProcess $ proc blastgtk [])
-        (createProcess $ proc "blastgtk" [])
+        (doesFileExist gtkblast)
+        (createProcess $ proc gtkblast [])
+        (createProcess $ proc gtkblastBinary [])
 
 data BadEnd = ChecksumMismatch URL MD5Sum
             | NoBuildAvailable
@@ -71,7 +72,7 @@ instance Show BadEnd where
     show NoBuildAvailable = errorNoBuildAvailable currentPlatform
       where errorNoBuildAvailable Linux = "Случилось абсолютно невозможное, не обнаружено версии вайпалки для единственной операционной системы!"
             errorNoBuildAvailable Windows = "Не обнаружено версии вайпалки для утятницы \"Пекач\"\nРешение:\n1. Соснуть хуйцов\n2.Сделать бочку."
-            errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(через тред, жаббер kudah@jabber.ru, скайп kudahkukarek или через гитхаб)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
+            errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(контакты в .cabal файле или через тред)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
     show UnparseableManifest =
         "Не удалось распарсить манифест из " ++ manifestUrl
 
@@ -125,10 +126,11 @@ updateWorker mv UpdateManifest{..} = do
     lbs <- maybe (throwIO $ ChecksumMismatch url md5) return =<< downloadWithMD5 url md5
     putMVar mv $ ChangeMessage $ "Распаковываем..."
     -- FIXME dangerous, we can get mixed versions if we restore from backup when unpacking fails and we updated before.
-    backupdir <- uniqueDirectoryName $ ".BlastItWithPiss-update-backup"
+    backupdir <- return $ ".BlastItWithPiss-update-backup"
     e <- try $ unpackBlastItWithPissUpdateZipFromLBS backupdir lbs
     case e of
         Left (x::SomeException) -> do
+            void $ tryPutMVar mv $ ChangeMessage $ "Случился пиздец, восстанавливаем"
             restoreFromBackup backupdir "." -- ? implying that . is the executable path
             throwIO x
         Right _ -> do
@@ -161,28 +163,53 @@ mainWorker mv = finalizeWork $ do
 helpMessage :: String
 helpMessage =
     "Version: " ++ showVersion Paths.version ++ ", " ++ "Platform: " ++ show currentPlatform ++ "\n" ++
-    "Autoupdater for BlastItWithPiss, checks for updates then calls blastgtk\n" ++
-    "Use --repair to force update."
+    "Autoupdater for BlastItWithPiss, checks for updates then calls gtkblast\n" ++
+    "Use --repair to force update.\n" ++
+    "Use --postinstall <version> to execute post install hooks"
 
-goodEnd :: FilePath -> IO ()
-goodEnd executablePath = do
-    let blastgtk = executablePath </> blastgtkBinary
-    void $ createProcess $ proc blastgtk []
+postInstall :: FilePath -> IO ()
+postInstall executablePath = do
+    let updater = executablePath </> "BlastItWithPiss"
+    p <- getPermissions updater
+    when (not $ executable p) $ do
+        setPermissions updater p{executable=True}
+    void $ createProcess $ proc updater ["--postinstall", showVersion Paths.version]
+    mainQuit
+
+postInstallHooks :: FilePath -> Version -> IO ()
+postInstallHooks executablePath oldv = return ()
+
+launchGtkblast :: FilePath -> IO ()
+launchGtkblast executablePath = do
+    let gtkblast = executablePath </> gtkblastBinary
+    p <- getPermissions gtkblast
+    when (not $ executable p) $ do
+        setPermissions gtkblast p{executable=True}
+    void $ createProcess $ proc gtkblast []
     mainQuit
 
 main :: IO ()
 main = withSocketsDo $ do
+    (executablePath, _) <- splitExecutablePath
     args <- getArgs
     when (any (`elem` args) ["--help", "-h", "-?"]) $ do
-       putStrLn helpMessage
-       exitSuccess
+        putStrLn helpMessage
+        exitSuccess
     when (any (`elem` args) ["-V", "--version"]) $ do
-       putStrLn $ showVersion Paths.version
-       exitSuccess
+        putStrLn $ showVersion Paths.version
+        exitSuccess
+    case args of
+        ["--postinstall", rawv] -> do
+            let moldv = fst <$> lastMay (readP_to_S parseVersion rawv)
+            case moldv of
+                Nothing -> return ()
+                Just oldv -> postInstallHooks executablePath oldv
+            launchGtkblast executablePath
+            exitSuccess
+        _ -> return ()
 #ifndef BINDIST
     mainNoBindist
 #else
-    (executablePath, _) <- splitExecutablePath
     setCurrentDirectory executablePath
 
     commvar <- newEmptyMVar
@@ -207,7 +234,7 @@ main = withSocketsDo $ do
     wbuttonerror <- builderGetObject b castToButton "buttonerror"
 
     -- FIXME (graceful exit)
-    void $ onDestroy updaterwindow $ goodEnd executablePath
+    void $ onDestroy updaterwindow $ launchGtkblast executablePath
 
     widgetShowAll updaterwindow
 
@@ -222,18 +249,18 @@ main = withSocketsDo $ do
                 widgetHide updaterwindow
                 widgetShow errorwindow
                 labelSetText wlabelerror $ show ex
-                void $ on wbuttonerror buttonActivated $ goodEnd executablePath
-                void $ onDestroy errorwindow $ goodEnd executablePath
+                void $ on wbuttonerror buttonActivated $ launchGtkblast executablePath
+                void $ onDestroy errorwindow $ launchGtkblast executablePath
                 return False
             GoodEnd mmarkup ->
                 case mmarkup of
-                    Nothing -> False <$ goodEnd executablePath
+                    Nothing -> False <$ postInstall executablePath
                     Just markup -> do
                         widgetHide updaterwindow
                         widgetShow changelogwindow
                         labelSetMarkup wlabelchangelog markup
-                        void $ on wbuttonchangelog buttonActivated $ goodEnd executablePath
-                        void $ onDestroy changelogwindow $ goodEnd executablePath
+                        void $ on wbuttonchangelog buttonActivated $ postInstall executablePath
+                        void $ onDestroy changelogwindow $ postInstall executablePath
                         return False
         ) priorityDefaultIdle 20
 

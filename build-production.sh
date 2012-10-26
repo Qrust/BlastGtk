@@ -43,6 +43,7 @@ $cbl configure --builddir=builddir/$foldr -f bindist --verbose\
  --enable-executable-stripping --disable-split-objs\
  --disable-library-profiling\
  --disable-executable-profiling\
+ --ghc-options=-rtsopts\
  $optimi\
  --prefix=$cr/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss &&\
  if $cbl build --builddir=builddir/$foldr --verbose

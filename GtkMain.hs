@@ -37,7 +37,6 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.0 RELEASE ==
--- TODO Переименовать blastgtk, blastgtk сейчас идет впереди BlastItWithPiss по-алфавиту, пидорнуть пониже на gtkblast чтобы запускали через BlastItWithPiss.
 -- TODO change default boards, newscreen.jpg, repo description, README, sane defaults
 -- TODO agitka.png, Охуенный ОП-пост + ОП-пикчи для разных борд.
 
@@ -99,7 +98,7 @@ main = withSocketsDo $ do
 #endif
     -- read configuration
 
-    rawPutLog =<< (("Starting blastgtk. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
+    rawPutLog =<< (("Starting gtkblast. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
 
     configfile <- (</> "config.json") <$> configDir
 

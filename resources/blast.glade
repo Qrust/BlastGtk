@@ -8,6 +8,13 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="xpad">2</property>
+    <property name="ypad">2</property>
+    <property name="pixbuf">2ch.so.png</property>
+  </object>
   <object class="GtkImage" id="image3">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -17,13 +24,6 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="icon_name">edit-clear</property>
-  </object>
-  <object class="GtkImage" id="image1">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="xpad">2</property>
-    <property name="ypad">2</property>
-    <property name="pixbuf">2ch.so.png</property>
   </object>
   <object class="GtkImage" id="image8">
     <property name="visible">True</property>
@@ -459,9 +459,8 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Сортировать по скорости/алфавиту</property>
+                                    <property name="tooltip_text" translatable="yes">Сортировать по алфавиту</property>
                                     <property name="image">image9</property>
-                                    <property name="active">True</property>
                                     <property name="draw_indicator">False</property>
                                   </object>
                                   <packing>
