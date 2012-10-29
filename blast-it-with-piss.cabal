@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 1.0.2
+version: 1.0.3
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -98,6 +98,7 @@ flag test
 --~               ,ScopedTypeVariables
 --~               ,FlexibleContexts
 --~               ,DeriveDataTypeable
+--~               ,BangPatterns
 
 executable gtkblast
     main-is: GtkMain.hs
@@ -274,6 +275,7 @@ executable proxychecker
                ,FlexibleContexts
                ,DeriveDataTypeable
                ,PackageImports
+               ,BangPatterns
 
     other-extensions:
                 ExistentialQuantification
@@ -307,6 +309,7 @@ executable proxychecker
 --~               ,RecordWildCards
 --~               ,ScopedTypeVariables
 --~               ,PackageImports
+--~               ,BangPatterns
 
 -- updater app. Checks and installs updates, then runs gtkblast
 executable BlastItWithPiss
@@ -369,3 +372,4 @@ executable BlastItWithPiss
                ,ScopedTypeVariables
                ,FlexibleContexts
                ,DeriveDataTypeable
+               ,BangPatterns

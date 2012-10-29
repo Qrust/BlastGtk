@@ -277,7 +277,8 @@ blastPostData mode getThread mpastapage thread = do
                            appendJunk im) i
     watermark <- liftIO $ readTVarIO tmakewatermark
     blastLog $ "Watermark: " ++ show watermark
-    return (PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd)
+    let final = PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd
+    final `deepseq` return final
 
 blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe (String, (OriginStamp -> IO ())))
 blastCaptcha wakabapl thread = do
@@ -380,11 +381,14 @@ blastCloudflare md whatrsp url = do
 blastPost :: POSIXTime -> Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
-    (chKey, mcap) <- if cap || mode==CreateNew || not ssachAdaptivity
-                        then do blastLog "querying captcha"
-                                blastCaptcha wakabapl thread
-                        else do blastLog "skipping captcha"
-                                return ("", Just ("", const $ return ()))
+    (chKey, mcap) <-
+        if cap || mode==CreateNew || not ssachAdaptivity
+            then do
+                blastLog "querying captcha"
+                blastCaptcha wakabapl thread
+            else do
+                blastLog "skipping captcha"
+                return ("", Just ("", const $ return ()))
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
         Just (captcha, reportbad) -> do

@@ -33,6 +33,9 @@ data PostData = PostData
         ,escapeWrd :: !Bool
         }
 
+instance NFData PostData where
+    rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
+
 -- | Query adaptive captcha state
 doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
 doWeNeedCaptcha board thread usercode = do
@@ -69,9 +72,10 @@ ssachGetCaptcha board thread key chKey =
         (return Nothing)
 
 instance NFData (RequestBody a) where
-    rnf (RequestBodyBS b) = b `deepseq` ()
-    rnf (RequestBodyLBS b) = b `deepseq` ()
-    rnf a = a `seq` ()
+    rnf (RequestBodyBS b) = rnf b
+    rnf (RequestBodyLBS b) = rnf b
+    rnf (RequestBodyBuilder i b) = i `seq` b `seq` ()
+    rnf _ = ()
 
 instance NFData (Request a) where
     rnf r =
@@ -152,8 +156,9 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                    ,redirectCount = 0
                    ,checkStatus = \_ _ -> Nothing
                    }
+    let final = (req, if null rest then Success else SuccessLongPost rest)
     --liftIO $ print =<< getCurrentTime
-    req `deepseq` return (req, if null rest then Success else SuccessLongPost rest)
+    final `deepseq` return final
 
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do

@@ -65,6 +65,7 @@ data Board = A
            | GA
            | GB
            | GD
+           | GIF -- temp/hid
            | H
            | HH -- temp/hid
            | HI
@@ -83,6 +84,7 @@ data Board = A
            | MLP
            | MMO
            | MO
+           | MOV -- temp/hid
            | MU
            | MUS
            | NE

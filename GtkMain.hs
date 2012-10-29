@@ -41,9 +41,8 @@ import Data.Version
 -- TODO показывать причину последнего бана когда все забанены
 -- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегии
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
-
+-- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
 -- FIXME FIXME FIXME Скорость постинга не должна быть глобальной, переместить в настройки борд
--- TODO log-unchi-bad-thread-time.txt TooFastThread -- вроде пофикшено
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.
