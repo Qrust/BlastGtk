@@ -4,7 +4,6 @@ module GtkBlast.Type_PastaSet
 import Prelude
 
 data PastaSet = PastaFile
-              | Num
-              | Char
+              | Symbol
               | FromThread
     deriving (Eq, Show, Ord, Read, Enum, Bounded)

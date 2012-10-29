@@ -41,6 +41,7 @@ antigateThread (st, SupplyCaptcha{..}) tq key =
         (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes
         lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
         captchaSend $ Answer str (handle errex . report cid)
+        lg $ "Antigate thread finished for " ++ renderCompactStamp st
   where lg = atomically . writeTQueue tq . Right
         err = atomically . writeTQueue tq . Left
         report cid nst = do

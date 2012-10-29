@@ -29,8 +29,6 @@ module Import
     ,slice
     ,findWithSurroundings
     ,findWithSurroundingsLE
-    ,appfst
-    ,appsnd
     ,justIf
     ,untilJust
     ,untilNothing
@@ -209,14 +207,6 @@ findWithSurroundingsLE = find' []
             | Just ts <- stripPrefix pr l =
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
-
-{-# INLINE appfst #-}
-appfst :: (a -> c) -> (a, b) -> (c, b)
-appfst a = a *** id
-
-{-# INLINE appsnd #-}
-appsnd :: (b -> d) -> (a, b) -> (a, d)
-appsnd a = id *** a
 
 {-# INLINE justIf #-}
 justIf :: (a -> Bool) -> a -> Maybe a

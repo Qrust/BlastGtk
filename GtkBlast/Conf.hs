@@ -56,6 +56,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coEscapeWrd :: !Bool
                  ,coPostAgitka :: !Bool
                  ,coSortingByAlphabet :: !Bool
+                 ,coShuffleReposts :: !Bool
                  }
     deriving (Eq, Show, Ord, Generic)
 
@@ -93,6 +94,7 @@ instance Default Conf where
          ,coEscapeWrd = True
          ,coPostAgitka = True
          ,coSortingByAlphabet = True
+         ,coShuffleReposts = True
          }
 
 -- HACK Those are quite dangerous orphans
@@ -134,7 +136,8 @@ instance ToJSON Board where
 -- snd contains warnings, we don't fail if some of the fields are missing.
 instance FromJSON (Conf, String) where
     parseJSON (Object obj) = runWriterT $ do
-        let f name getDef = do
+        let f :: (FromJSON a, Show a) => Text -> (Conf -> a) -> WriterT String Parser a
+            f name getDef = do
                 x <- lift $ obj .:? name
                 case x of
                     Just v -> return v
@@ -168,6 +171,7 @@ instance FromJSON (Conf, String) where
         coEscapeWrd <- f "coEscapeWrd" coEscapeWrd
         coPostAgitka <- f "coPostAgitka" coPostAgitka
         coSortingByAlphabet <- f "coSortingByAlphabet" coSortingByAlphabet
+        coShuffleReposts <- f "coShuffleReposts" coShuffleReposts
         return Conf{..}
     parseJSON _ = mzero
 

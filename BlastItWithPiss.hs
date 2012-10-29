@@ -261,7 +261,7 @@ blastPostData mode getThread mpastapage thread = do
         use <- liftIO $ readTVarIO tuseimages
         if not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode
             then return (False, Nothing)
-            else appsnd Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
+            else second Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
     when noimages $ do
         blastOut NoImages
         blastLog "threw NoImages"
@@ -467,7 +467,7 @@ blastLoop w lthreadtime lposttime = do
     blastLog $ "chose mode " ++ show mode
     (thread, mpastapage) <- flMaybeSTM mthread (\t -> return (Just t, Nothing)) $ do
         blastLog "Choosing thread..."
-        appsnd Just <$> chooseThread board mode getPage
+        second Just <$> chooseThread board mode getPage
             (fromMaybe (error "Page is Nothing while thread specified") mp0)
     recThread thread
     blastLog $ "chose thread " ++ show thread
@@ -537,4 +537,4 @@ sortSsachBoardsByPopularity boards = runBlast $ do
                 return (b, spd)
     let (got, failed) = partition (isJust . snd) maybeb
         sorted = reverse $ sortBy (\(_,a) (_,b) -> compare (fromJust a) (fromJust b)) got
-    return (map (appsnd fromJust) sorted, fst $ unzip $ failed)
+    return (map (second fromJust) sorted, fst $ unzip $ failed)

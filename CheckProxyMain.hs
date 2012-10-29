@@ -1,9 +1,9 @@
 module Main where
 import Import
-import "blast-it-with-piss" BlastItWithPiss.Post
-import "blast-it-with-piss" BlastItWithPiss.Parsing
-import "blast-it-with-piss" BlastItWithPiss.Blast
-import "blast-it-with-piss" BlastItWithPiss.Board
+import BlastItWithPiss.Post
+import BlastItWithPiss.Parsing
+import BlastItWithPiss.Blast
+import BlastItWithPiss.Board
 import Data.Version
 import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
@@ -40,8 +40,8 @@ impureAnnotatedCmdargsConfig =
         ,quiet = False &= help "Не писать лог в консоль"
         ,atatime = 30 &= name "e" &= help "Сколько проксей тестить за подход, по дефолту 30"
         ,timeout = 10 &= help "Передышка между подходами, программа не дожидается конца предыдущего подхода, так что если вы выставите таймаут на 0, то все прокси будут запущены одновременно вне зависимости от atatime. По дефолту 10." &= typ "SECONDS"
-        ,strBoard = [] &= argPos 0 &= typ "/board/"
-        ,thread = 0 &= argPos 1 &= typ "THREADNUM"
+        ,strBoard = [] &= argPos 0 &= typ "/Доска/"
+        ,thread = 0 &= argPos 1 &= typ "Номер_треда"
         ,input = [] &= argPos 2 &= typ "Файл_с_проксями"
         ,output = "output" &= help "Файл куда писать отчеканные хорошие прокси, по дефолту \"output\"" &= typFile
         ,banned = "banned" &= help "Файл куда писать забаненные прокси, по дефолту \"banned\"" &= typFile

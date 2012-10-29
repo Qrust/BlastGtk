@@ -36,14 +36,18 @@ import Data.Version
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
--- == 1.0 RELEASE ==
--- TODO change default boards, sane defaults
+-- == 1.1 RELEASE ==
+-- TODO перемешивать слова в репостах
+-- TODO log-unchi-bad-thread-time.txt TooFastThread
+-- TODO показывать причину последнего бана когда все забанены
+-- TODO контролировать скорость постинга (!!! slptime not (-))
+-- TODO cliblast, убрать тормоза
+-- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
+-- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 
 -- == FUTURE IMPROVEMENTS ==
--- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.
 -- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
--- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)

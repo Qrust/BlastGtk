@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 1.0.1
+version: 1.0.3
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -38,66 +38,66 @@ flag test
     description: Build DEBUG version, otherwise build release.
     default: False
 
-library
-    build-depends: base
-                  ,lifted-base
-                  ,stm >= 2.4
-                  ,data-default
-                  ,random
-                  ,containers
-                  ,time
-                  ,bytestring
-                  ,text
-                  ,safe
-                  ,filepath
-                  ,MonadRandom
-                  ,monad-control
-                  ,transformers
-                  ,network
-                  ,http-conduit == 1.7.0
-                  ,http-conduit-browser >= 1.6.3
-                  ,tls-extra == 0.4.7.1
-                  ,http-types
-                  ,mime-types
-                  ,socks
-                  ,resourcet
-                  ,case-insensitive
-                  ,deepseq
-                  ,tagsoup
-                  ,fast-tagsoup
-
-    exposed-modules:
-                   BlastItWithPiss
-                  ,BlastItWithPiss.Blast
-                  ,BlastItWithPiss.Post
-                  ,BlastItWithPiss.Parsing
-                  ,BlastItWithPiss.Escaping
-                  ,BlastItWithPiss.MultipartFormData
-                  ,BlastItWithPiss.Image
-                  ,BlastItWithPiss.Board
-                  ,BlastItWithPiss.Choice
-                  ,BlastItWithPiss.MonadChoice
-
-    other-modules: Import
-
-    if flag(bindist)
-        cpp-options: -DBINDIST
-
-    if flag(test)
-        cpp-options: -DTEST
-
-    ghc-options: -Wall -threaded 
-
-    default-language: Haskell2010
-
-    default-extensions:
-                NoImplicitPrelude
-               ,CPP
-               ,OverloadedStrings
-               ,RecordWildCards
-               ,ScopedTypeVariables
-               ,FlexibleContexts
-               ,DeriveDataTypeable
+--~library
+--~    build-depends: base
+--~                  ,lifted-base
+--~                  ,stm >= 2.4
+--~                  ,data-default
+--~                  ,random
+--~                  ,containers
+--~                  ,time
+--~                  ,bytestring
+--~                  ,text
+--~                  ,safe
+--~                  ,filepath
+--~                  ,MonadRandom
+--~                  ,monad-control
+--~                  ,transformers
+--~                  ,network
+--~                  ,http-conduit == 1.7.0
+--~                  ,http-conduit-browser >= 1.6.3
+--~                  ,tls-extra == 0.4.7.1
+--~                  ,http-types
+--~                  ,mime-types
+--~                  ,socks
+--~                  ,resourcet
+--~                  ,case-insensitive
+--~                  ,deepseq
+--~                  ,tagsoup
+--~                  ,fast-tagsoup
+--~
+--~    exposed-modules:
+--~                   BlastItWithPiss
+--~                  ,BlastItWithPiss.Blast
+--~                  ,BlastItWithPiss.Post
+--~                  ,BlastItWithPiss.Parsing
+--~                  ,BlastItWithPiss.Escaping
+--~                  ,BlastItWithPiss.MultipartFormData
+--~                  ,BlastItWithPiss.Image
+--~                  ,BlastItWithPiss.Board
+--~                  ,BlastItWithPiss.Choice
+--~                  ,BlastItWithPiss.MonadChoice
+--~
+--~    other-modules: Import
+--~
+--~    if flag(bindist)
+--~        cpp-options: -DBINDIST
+--~
+--~    if flag(test)
+--~        cpp-options: -DTEST
+--~
+--~    ghc-options: -Wall -threaded 
+--~
+--~    default-language: Haskell2010
+--~
+--~    default-extensions:
+--~                NoImplicitPrelude
+--~               ,CPP
+--~               ,OverloadedStrings
+--~               ,RecordWildCards
+--~               ,ScopedTypeVariables
+--~               ,FlexibleContexts
+--~               ,DeriveDataTypeable
 
 executable gtkblast
     main-is: GtkMain.hs
@@ -127,7 +127,6 @@ executable gtkblast
                   ,Paths_blast_it_with_piss
     
     build-depends: base
-                  ,blast-it-with-piss
                   ,antigate
                   ,filepath
                   ,directory
@@ -151,6 +150,33 @@ executable gtkblast
                   ,aeson
                   ,aeson-pretty
                   ,ghc-prim
+                  ,random-shuffle
+
+                  ,lifted-base
+                  ,stm >= 2.4
+                  ,data-default
+                  ,random
+                  ,containers
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,safe
+                  ,filepath
+                  ,MonadRandom
+                  ,monad-control
+                  ,transformers
+                  ,network
+                  ,http-conduit == 1.7.0
+                  ,http-conduit-browser >= 1.6.3
+                  ,tls-extra == 0.4.7.1
+                  ,http-types
+                  ,mime-types
+                  ,socks
+                  ,resourcet
+                  ,case-insensitive
+                  ,deepseq
+                  ,tagsoup
+                  ,fast-tagsoup
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -188,7 +214,6 @@ executable proxychecker
     other-modules: Import
     
     build-depends: base
-                  ,blast-it-with-piss
                   ,cmdargs
                   ,network
 
@@ -203,6 +228,31 @@ executable proxychecker
                   ,deepseq
                   ,data-default
 
+                  ,lifted-base
+                  ,stm >= 2.4
+                  ,data-default
+                  ,random
+                  ,containers
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,safe
+                  ,filepath
+                  ,MonadRandom
+                  ,monad-control
+                  ,transformers
+                  ,network
+                  ,http-conduit == 1.7.0
+                  ,http-conduit-browser >= 1.6.3
+                  ,tls-extra == 0.4.7.1
+                  ,http-types
+                  ,mime-types
+                  ,socks
+                  ,resourcet
+                  ,case-insensitive
+                  ,deepseq
+                  ,tagsoup
+                  ,fast-tagsoup
     if flag(bindist)
         cpp-options: -DBINDIST
         if !os(windows)

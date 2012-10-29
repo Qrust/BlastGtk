@@ -69,5 +69,9 @@ imageEnvPart b = EP
         imagefolderLast <- newIORef []
 
         return (wentryimagefolder, imagefolderLast, wcheckagitka))
-    (\(v,_,_) c -> get v ? \a -> c{coImageFolder=a})
+    (\(weif,_,wca) c -> do
+        cif <- get weif
+        cpa <- get wca
+        return $ c {coImageFolder=cif
+                   ,coPostAgitka=cpa})
     (\(weif,ifl,wca) e -> e{wentryimagefolder=weif, imagefolderLast=ifl, wcheckagitka=wca})

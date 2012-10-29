@@ -21,6 +21,7 @@ import GtkBlast.Type_PastaSet
 import GtkBlast.GtkUtils
 import Control.Monad.Fix
 import System.Directory
+import System.Random.Shuffle
 import Control.Concurrent.STM
 import System.IO.UTF8 (readFile)
 import Graphics.UI.Gtk hiding (get,set)
@@ -29,10 +30,22 @@ import qualified Graphics.UI.Gtk as G (get)
 readPasta :: FilePath -> IO [String]
 readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f
 
+{-# INLINE generateRandomString #-}
 generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String
 generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
     take len <$> getRandomRs charBounds
+
+generateSymbolString :: MonadChoice m => Int -> m String
+generateSymbolString maxlength = do
+    let plength = maxlength `div` 6
+    num <- generateRandomString (0, plength) ('0', '9')
+    beng <- generateRandomString (0, plength) ('A', 'Z')
+    seng <- generateRandomString (0, plength) ('a', 'z')
+    brus <- generateRandomString (0, plength) ('А', 'Я')
+    srus <- generateRandomString (0, plength) ('а', 'я')
+    spc <- generateRandomString (0, plength) (' ', ' ')
+    shuffleM (num++beng++seng++brus++srus++spc)
 
 pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 pastaChooser pastas = do
@@ -45,11 +58,12 @@ pastaChooser pastas = do
 generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 generatePastaGen PastaFile =
     pastaChooser =<< appFile [] readPasta =<< get =<< asks wentrypastafile
-generatePastaGen Char = return $ \_ _ _ -> (,) False . (,) (False, False) <$>
-                            generateRandomString (100, 5000) ('a','z')
-generatePastaGen Num = return $ \_ _ _ -> (,) False . (,) (False , False)<$>
-                            generateRandomString (100, 5000) ('0', '9')
-generatePastaGen FromThread = return $ \a b c -> (,) False . (,) (False, False) <$> choosePostToRepost a b c
+generatePastaGen Symbol = return $ \_ _ _ -> (,) False . (,) (False, False) <$> generateSymbolString 5000
+generatePastaGen FromThread = do
+    shuf <- ifM (get =<< asks wcheckshufflereposts)
+                (fmap unwords . shuffleM . words)
+                return
+    return $ \a b c -> (,) False . (,) (False, False) <$> (shuf =<< choosePostToRepost a b c)
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
@@ -75,6 +89,7 @@ pastaEnvPart b = EP
 
         wcheckescapeinv <- (rec coEscapeInv $ builderGetObject b castToCheckButton "checkescapeinv") e c
         wcheckescapewrd <- (rec coEscapeWrd $ builderGetObject b castToCheckButton "checkescapewrd") e c
+        wcheckshufflereposts <- (rec coShuffleReposts $ builderGetObject b castToCheckButton "checkshufflereposts") e c
 
         let bolall w1 w2 = do
                 (x1,x2) <- (,) <$> getIO w1 <*> getIO w2
@@ -97,22 +112,25 @@ pastaEnvPart b = EP
                         toggleButtonSetInconsistent wcheckescapeall True
 
         wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
-        wradionum <- builderGetObject b castToRadioButton "radio-num"
-        wradiochar <- builderGetObject b castToRadioButton "radio-char"
+        wradiosym <- builderGetObject b castToRadioButton "radio-symbol"
         wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
     
         let pastaradio =
                 [(FromThread, wradiofromthread)
-                ,(Num, wradionum)
-                ,(Char, wradiochar)
+                ,(Symbol, wradiosym)
                 ,(PastaFile, wradiopastafile)
                 ]
 
         pwcei <- newIORef =<< get wcheckescapeinv
         pwcew <- newIORef =<< get wcheckescapewrd
-        let assoc = [(wcheckescapeinv, pwcei), (wcheckescapewrd, pwcew)]
+        let pastafileassoc = [(wcheckescapeinv, pwcei), (wcheckescapewrd, pwcew)]
+        let pastafilewidgets = [wcheckescapeall, wcheckescapeinv, wcheckescapewrd]
 
-        let setSensitive t = do
+        pwcsr <- newIORef =<< get wcheckshufflereposts
+        let fromthreadassoc = [(wcheckshufflereposts, pwcsr)]
+        let fromthreadwidgets = [wcheckshufflereposts]
+
+        let setSensitive t assoc senswidgets = do
                 if t
                     then
                         mapM_ (\(w,p) -> toggleButtonSetActive w =<< get p) assoc
@@ -121,23 +139,24 @@ pastaEnvPart b = EP
                             whenM (G.get w widgetSensitive) $
                                 set p =<< get w
                             toggleButtonSetActive w False
-                mapM_ (`widgetSetSensitive` t) [wcheckescapeall, wcheckescapeinv, wcheckescapewrd]
+                mapM_ (`widgetSetSensitive` t) senswidgets
 
         void $ flip anyM pastaradio $ \(p, w) ->
             if (p == coPastaSet c)
                 then True <$ do
                     toggleButtonSetActive w True
-                    setSensitive (p==PastaFile)
+                    setSensitive (p==PastaFile) pastafileassoc pastafilewidgets
+                    setSensitive (p==FromThread) fromthreadassoc fromthreadwidgets
                 else return False
 
         forM_ pastaradio $ \(p, w) -> do
-            let s = p == PastaFile
             void $ on w toggled $
                 whenM (toggleButtonGetActive w) $ do
                     writeIORef pastaSet p
                     writeIORef pastaMod nullTime -- force update
                     runE e $ regeneratePastaGen
-                    setSensitive s
+                    setSensitive (p==PastaFile) pastafileassoc pastafilewidgets
+                    setSensitive (p==FromThread) fromthreadassoc fromthreadwidgets
 
         wentrypastafile <- (rec coPastaFile $ builderGetObject b castToEntry "entrypastafile") e c
         wbuttonpastafile <- builderGetObject b castToButton "buttonpastafile"
@@ -166,20 +185,30 @@ pastaEnvPart b = EP
             writeIORef pastaMod nullTime -- force update
             runE e $ regeneratePastaGen
 
+        void $ on wcheckshufflereposts buttonActivated $ do
+            writeIORef pastaMod nullTime -- force update
+            runE e $ regeneratePastaGen
+
         updAll
 
-        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew)
+        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew, wcheckshufflereposts, pwcsr)
         )
-    (\(ps',_,wepf,wei,wew,pwei,pwew) c -> do
+    (\(ps',_,wepf,wei,wew,pwei,pwew,wsr,pwsr) c -> do
         ps <- get ps'
         pf <- get wepf
         ei <- ifM (G.get wei widgetSensitive) (get wei) (get pwei)
         ew <- ifM (G.get wew widgetSensitive) (get wew) (get pwew)
-        return c{coPastaSet=ps, coPastaFile=pf, coEscapeInv=ei, coEscapeWrd=ew})
-    (\(ps,pm,wepf,wcei,wcew,_,_) e ->
+        sr <- ifM (G.get wsr widgetSensitive) (get wsr) (get pwsr)
+        return c{coPastaSet=ps
+                ,coPastaFile=pf
+                ,coEscapeInv=ei
+                ,coEscapeWrd=ew
+                ,coShuffleReposts=sr})
+    (\(ps,pm,wepf,wcei,wcew,_,_,wcsr,_) e ->
         e{pastaSet=ps
          ,pastaMod=pm
          ,wentrypastafile=wepf
          ,wcheckescapeinv=wcei
          ,wcheckescapewrd=wcew
+         ,wcheckshufflereposts=wcsr
          })

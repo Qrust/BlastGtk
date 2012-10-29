@@ -114,7 +114,7 @@ parseOpPost i ts =
     in (Post i $ innerTextWithBr postcont, tailSafe rest)
 
 parsePosts :: [Tag Text] -> ([Post], [Tag Text])
-parsePosts = appfst reverse . go []
+parsePosts = first reverse . go []
   where strip'm' ('m':a) = Just a
         strip'm' _ = Nothing
         go posts (TagOpen "blockquote" (("id", mpostid):_):ts) =
@@ -148,7 +148,7 @@ parseIcons (pin,lck) (_:ts) = parseIcons (pin,lck) ts
 parseIcons (pin,lck) [] = parseIcons (pin,lck) []
 
 parseThreads :: [Tag Text] -> ([Thread], [Tag Text])
-parseThreads = appfst reverse . go []
+parseThreads = first reverse . go []
   where go tds (TagOpen "div" (("id", postid):_):ts)
             | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
              ,((pin,lck),rest1) <- parseIcons (False, False) ts
