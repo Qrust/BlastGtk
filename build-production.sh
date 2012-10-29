@@ -45,22 +45,16 @@ $cbl configure --builddir=builddir/$foldr -f bindist --verbose\
  --disable-executable-profiling\
  --ghc-options=-rtsopts\
  $optimi\
- --prefix=$cr/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss &&\
+ --prefix=$cr/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss --datadir=$foldr/BlastItWithPiss --datasubdir=. --docdir=$foldr/BlastItWithPiss &&\
  if $cbl build --builddir=builddir/$foldr --verbose
  then
   $cbl copy --builddir=builddir/$foldr --verbose
   echo "Removing ${foldr}/tempprefixdir"
   rm -rfv $foldr/tempprefixdir
-  echo "Copying images"
-  cp -rv images $foldr/BlastItWithPiss/images
-  echo "Copying resources and pastas"
-  cp -rv resources $foldr/BlastItWithPiss/resources
   echo "Copying libraries"
   cp -rv libs/$lbdir/. $foldr/BlastItWithPiss
-  echo "Copying license, source dist and music recommendations"
-  cp -v LICENSE $foldr/BlastItWithPiss
+  echo "source dist"
   $cbl sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
-  cp -v music $foldr/BlastItWithPiss
   echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
   echo "\n"
  else
