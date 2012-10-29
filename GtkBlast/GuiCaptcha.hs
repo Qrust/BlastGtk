@@ -12,9 +12,9 @@ import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.EnvPart
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.Blast
+import BlastItWithPiss
+import BlastItWithPiss.Board
+import BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
 import Control.Concurrent.STM
 import System.IO.Temp

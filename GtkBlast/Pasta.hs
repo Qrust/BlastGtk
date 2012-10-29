@@ -6,10 +6,10 @@ module GtkBlast.Pasta
     ,pastaEnvPart
     ) where
 import Import hiding (on)
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Parsing
-import "blast-it-with-piss" BlastItWithPiss.Choice
-import "blast-it-with-piss" BlastItWithPiss.MonadChoice
+import BlastItWithPiss
+import BlastItWithPiss.Parsing
+import BlastItWithPiss.Choice
+import BlastItWithPiss.MonadChoice
 import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Directory
@@ -61,8 +61,8 @@ generatePastaGen PastaFile =
 generatePastaGen Symbol = return $ \_ _ _ -> (,) False . (,) (False, False) <$> generateSymbolString 5000
 generatePastaGen FromThread = do
     shuf <- ifM (get =<< asks wcheckshufflereposts)
-                (fmap unwords . shuffleM . words)
-                return
+                (pure $ fmap unwords . shuffleM . words)
+                (pure return)
     return $ \a b c -> (,) False . (,) (False, False) <$> (shuf =<< choosePostToRepost a b c)
 
 pastaDate :: PastaSet -> E ModificationTime

@@ -37,17 +37,17 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.1 RELEASE ==
--- TODO перемешивать слова в репостах
--- TODO log-unchi-bad-thread-time.txt TooFastThread
--- TODO показывать причину последнего бана когда все забанены
--- TODO контролировать скорость постинга (!!! slptime not (-))
 -- TODO cliblast, убрать тормоза
--- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегий
+-- TODO показывать причину последнего бана когда все забанены
+-- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегии
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+
+-- FIXME FIXME FIXME Скорость постинга не должна быть глобальной, переместить в настройки борд
+-- TODO log-unchi-bad-thread-time.txt TooFastThread -- вроде пофикшено
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.
--- TODO Фотожабы на тему ссания в жопу из Kuso Miso Technique.
+-- TODO Пикчи на тему ссания в жопу из Kuso Miso Technique.
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)

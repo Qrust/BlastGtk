@@ -18,7 +18,7 @@ import GtkBlast.Conf
 import GtkBlast.GtkUtils
 import GtkBlast.Mainloop (wipebuttonEnvPart, boardUnitsEnvPart)
 import GtkBlast.EnvPart
-import "blast-it-with-piss" BlastItWithPiss
+import BlastItWithPiss
 import Graphics.UI.Gtk hiding (get, set, after)
 import GHC.Conc
 import Control.Concurrent.STM
@@ -192,6 +192,55 @@ envParts b =
                                                  ,shS=shS
                                                  ,wcheckimages=wcheckimages
                                                  })
+    ,EP
+        (\e c -> do
+            emposttimeout <- atomically $ newTVar Nothing
+            emthreadtimeout <- atomically $ newTVar Nothing
+
+            wcheckposttimeout <- (rec coUsePostTimeout $ build castToCheckButton "checkposttimeout") e c
+            wspinposttimeout <- (rec coPostTimeout $ build castToSpinButton "spinposttimeout") e c
+            wcheckthreadtimeout <- (rec coUseThreadTimeout $ build castToCheckButton "checkthreadtimeout") e c
+            wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
+
+            on wcheckposttimeout buttonActivated $ do
+                ifM (get wcheckposttimeout)
+                    (atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout)
+                    (atomically $ writeTVar emposttimeout Nothing)
+
+            on wcheckthreadtimeout buttonActivated $ do
+                ifM (get wcheckthreadtimeout)
+                    (atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout)
+                    (atomically $ writeTVar emthreadtimeout Nothing)
+
+            onValueSpinned wspinposttimeout $ whenM (get wcheckposttimeout) $ do
+                atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout
+
+            onValueSpinned wspinthreadtimeout $ whenM (get wcheckthreadtimeout) $ do
+                atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout
+
+            whenM (get wcheckposttimeout) $ do
+                atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout
+
+            whenM (get wcheckthreadtimeout) $ do
+                atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout
+
+            return (emposttimeout, emthreadtimeout, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout))
+        (\(_,_,wcpt,wspt,wctt,wstt) c -> do
+            cupt <- get wcpt
+            cpt <- get wspt
+            cutt <- get wctt
+            ctt <- get wstt
+            return $ c{coUsePostTimeout=cupt
+                      ,coPostTimeout=cpt
+                      ,coUseThreadTimeout=cutt
+                      ,coThreadTimeout=ctt})
+        (\(ept,ett,wcpt,wspt,wctt,wstt) e ->
+            e{emposttimeout=ept
+             ,emthreadtimeout=ett
+             ,wcheckposttimeout=wcpt
+             ,wspinposttimeout=wspt
+             ,wcheckthreadtimeout=wctt
+             ,wspinthreadtimeout=wstt})
     ,EP
         (rec coAnnoy $ build castToCheckButton "check-annoy")
         (\v c -> get v ? \a -> c{coAnnoy=a})

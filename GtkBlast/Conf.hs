@@ -12,7 +12,7 @@ import GtkBlast.Type_CaptchaMode
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Directory
-import "blast-it-with-piss" BlastItWithPiss.Board
+import BlastItWithPiss.Board
 import Data.Version
 import System.FilePath
 import Paths_blast_it_with_piss
@@ -57,6 +57,10 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coPostAgitka :: !Bool
                  ,coSortingByAlphabet :: !Bool
                  ,coShuffleReposts :: !Bool
+                 ,coUsePostTimeout :: !Bool
+                 ,coPostTimeout :: !Double
+                 ,coUseThreadTimeout :: !Bool
+                 ,coThreadTimeout :: !Double
                  }
     deriving (Eq, Show, Ord, Generic)
 
@@ -95,6 +99,10 @@ instance Default Conf where
          ,coPostAgitka = True
          ,coSortingByAlphabet = True
          ,coShuffleReposts = True
+         ,coUsePostTimeout = False
+         ,coPostTimeout = 10
+         ,coUseThreadTimeout = False
+         ,coThreadTimeout = 1800
          }
 
 -- HACK Those are quite dangerous orphans
@@ -172,6 +180,10 @@ instance FromJSON (Conf, String) where
         coPostAgitka <- f "coPostAgitka" coPostAgitka
         coSortingByAlphabet <- f "coSortingByAlphabet" coSortingByAlphabet
         coShuffleReposts <- f "coShuffleReposts" coShuffleReposts
+        coUsePostTimeout <- f "coUsePostTimeout" coUsePostTimeout
+        coPostTimeout <- f "coPostTimeout" coPostTimeout
+        coUseThreadTimeout <- f "coUseThreadTimeout" coUseThreadTimeout
+        coThreadTimeout <- f "coThreadTimeout" coThreadTimeout
         return Conf{..}
     parseJSON _ = mzero
 

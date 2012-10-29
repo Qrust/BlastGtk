@@ -9,7 +9,6 @@ module BlastItWithPiss
     ,OutMessage(..)
     ,LogDetail(..)
     ,ProxySettings(..)
-    ,defMuS
     ,defPrS
     ,entryPoint
     ,sortSsachBoardsByPopularity
@@ -51,6 +50,8 @@ data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Pag
 
 data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
                              ,mmode :: TVar (Maybe Mode)
+                             ,mposttimeout :: TVar (Maybe Double)
+                             ,mthreadtimeout :: TVar (Maybe Double)
                              }
 
 data CaptchaType = CaptchaPosting | CaptchaCloudflare
@@ -151,17 +152,17 @@ instance MonadRandom m => MonadRandom (StateT s m) where
     getRandomR = lift . getRandomR
     getRandomRs = lift . getRandomRs
 
+{-# INLINE maybeSTM #-}
+maybeSTM :: (Functor m, MonadIO m) => TVar (Maybe a) -> (a -> b) -> b -> m b
+maybeSTM t d m = maybe m d <$> liftIO (readTVarIO t)
+
+{-# INLINE flMaybeSTM #-}
 flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
 flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
 
+{-# INLINE flBoolModSTM #-}
 flBoolModSTM :: MonadIO m => TVar Bool -> (a -> m a) -> a -> m a
 flBoolModSTM t f v = ifM (liftIO $ readTVarIO t) (f v) (return v)
-
-defMuS :: IO MuSettings
-defMuS = atomically $ do
-    mthread <- newTVar Nothing
-    mmode <- newTVar Nothing
-    return MuSettings{..}
 
 defPrS :: IO ProxySettings
 defPrS = atomically $ do
@@ -376,9 +377,9 @@ blastCloudflare md whatrsp url = do
                                 putTMVar pcloudflareCaptchaLock ()
                             md =<< whatrsp
 
-blastPost :: Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
-blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
-    (board, ShSettings{..}, _) <- askBSM
+blastPost :: POSIXTime -> Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
+blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
+    (board, ShSettings{..}, MuSettings{..}) <- askBSM
     (chKey, mcap) <- if cap || mode==CreateNew || not ssachAdaptivity
                         then do blastLog "querying captcha"
                                 blastCaptcha wakabapl thread
@@ -387,46 +388,49 @@ blastPost cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postda
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
         Just (captcha, reportbad) -> do
-            -- TODO post reposts
             p <- blast $ prepare board thread postdata chKey captcha wakabapl
                                  otherfields ssachLengthLimit
+            posttimeout <- maybeSTM mposttimeout realToFrac (ssachPostTimeout board)
+            blastLog $ "Post timeout: " ++ show posttimeout
+            blastLog $ "Thread timeout: " ++ show threadtimeout
             beforeSleep <- liftIO getPOSIXTime
-            let canPost = beforeSleep - lposttime >= ssachPostTimeout board
+            let canPost = beforeSleep - lposttime >= posttimeout
             when (mode /= CreateNew && not canPost) $ do
-                let slptime = (lposttime + ssachPostTimeout board) - beforeSleep
+                let slptime = (lposttime + posttimeout) - beforeSleep
                 blastLog $ "sleeping " ++ show slptime ++ " seconds before post. FIXME using threadDelay for sleeping, instead of a more precise timer"
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
-            beforePost <- liftIO $ getPOSIXTime
+            beforePost <- liftIO $ getPOSIXTime --optimistic
             (out, _) <- blast $ post p
-            -- FIXME afterPost <- liftIO $ getPOSIXTime
+            afterPost <- liftIO $ getPOSIXTime --pessimistic
             blastOut (OutcomeMessage out)
             when (successOutcome out) $ blastLog "post succeded"
             let (nthreadtime, nposttime) =
                     if mode == CreateNew
-                        then (beforePost, lposttime)
-                        else (lthreadtime, beforePost)
+                        then (afterPost, lposttime) --pessimistic
+                        else (lthreadtime, beforePost) --optimistic
                 ret = return (nthreadtime, nposttime)
             case out of
                 Success -> ret
                 SuccessLongPost rest ->
                     if mode /= CreateNew
-                        then blastPost cap nthreadtime nposttime w mode thread
+                        then blastPost threadtimeout cap nthreadtime nposttime w mode thread
                                 (PostData "" rest Nothing (sageMode mode) False (escapeInv postdata) (escapeWrd postdata))
                         else ret
                 TooFastPost -> do
                     blastLog "TooFastPost, retrying in 0.5 seconds"
-                    return (lthreadtime, beforePost - (ssachPostTimeout board - 0.5))
+                    return (lthreadtime, beforePost - (posttimeout - 0.5))
                 TooFastThread -> do
-                    blastLog "TooFastThread, retrying in 15 minutes"
-                    return (beforePost - (ssachThreadTimeout board / 2), lposttime)
+                    let m = threadtimeout / 2
+                    blastLog $ "TooFastThread, retrying in " ++ show (m/60) ++ " minutes"
+                    return (beforePost - m, lposttime)
                 PostRejected -> do
                     blastLog "PostRejected, retrying later..."
                     return (lthreadtime, lposttime)
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                     blastLog $ show o ++ ", requerying"
                     liftIO . reportbad =<< genOriginStamp
-                    blastPost True lthreadtime lposttime w mode thread postdata
+                    blastPost threadtimeout True lthreadtime lposttime w mode thread postdata
                   | otherwise -> do
                     blastLog "post failed"
                     ret
@@ -445,8 +449,9 @@ blastLoop w lthreadtime lposttime = do
             blastLog $ "Going into " ++ show i ++ " thread for pasta"
             blast $ headNote "PastaHead fail" . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
     now <- liftIO $ getPOSIXTime
+    threadtimeout <- maybeSTM mthreadtimeout realToFrac (ssachThreadTimeout board)
     canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
-                        (return $ now - lthreadtime >= ssachThreadTimeout board)
+                        (return $ now - lthreadtime >= threadtimeout)
                         (return False)
     mp0 <- flMaybeSTM mthread (const $ return Nothing) $ do
                 blastLog "mp0: Getting first page."
@@ -472,7 +477,7 @@ blastLoop w lthreadtime lposttime = do
     recThread thread
     blastLog $ "chose thread " ++ show thread
     postdata <- blastPostData mode getThread mpastapage thread
-    (nthreadtime, nposttime) <- blastPost False lthreadtime lposttime w mode thread postdata
+    (nthreadtime, nposttime) <- blastPost threadtimeout False lthreadtime lposttime w mode thread postdata
     blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.

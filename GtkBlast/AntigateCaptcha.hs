@@ -13,9 +13,9 @@ import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvPart
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.Blast
+import BlastItWithPiss
+import BlastItWithPiss.Board
+import BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
 import GHC.Conc
 import Control.Concurrent.STM

@@ -17,10 +17,10 @@ import GtkBlast.Captcha
 import GtkBlast.Pasta
 import GtkBlast.Image
 import GtkBlast.Proxy
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Blast
-import "blast-it-with-piss" BlastItWithPiss.Parsing
-import "blast-it-with-piss" BlastItWithPiss.Board
+import BlastItWithPiss
+import BlastItWithPiss.Blast
+import BlastItWithPiss.Parsing
+import BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (set)
 import Control.Concurrent
@@ -75,6 +75,8 @@ regenerateExcluding board exc = do
             else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
                     mthread <- io $ atomically $ newTVar Nothing
                     mmode <- io $ atomically $ newTVar Nothing
+                    let mposttimeout = emposttimeout
+                    let mthreadtimeout = emthreadtimeout
                     threadid <- io $ forkIO $ runBlast $ do
                         --entryPoint p board Log shS MuSettings{..} s (putStrLn . show)
                         entryPoint p board Log shS MuSettings{..} s $ atomically . writeTQueue tqOut

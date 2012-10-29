@@ -7,8 +7,8 @@ import GtkBlast.Directory
 import GtkBlast.MuVar
 import GtkBlast.Log
 import GtkBlast.Environment
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Blast
+import BlastItWithPiss
+import BlastItWithPiss.Blast
 import qualified Data.Map as M
 import Graphics.UI.Gtk hiding (get, set)
 import System.Directory

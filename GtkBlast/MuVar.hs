@@ -42,6 +42,12 @@ instance MuVar Expander Bool where
     {-# INLINE setIO #-}
     setIO = expanderSetExpanded
 
+instance MuVar SpinButton Double where
+    {-# INLINE getIO #-}
+    getIO = spinButtonGetValue
+    {-# INLINE setIO #-}
+    setIO = spinButtonSetValue
+
 {-# INLINE get #-}
 get :: (MonadIO m, MuVar v a) => v -> m a
 get v = liftIO (getIO v)

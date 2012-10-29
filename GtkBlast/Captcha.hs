@@ -14,9 +14,9 @@ import GtkBlast.EnvPart
 import GtkBlast.GuiCaptcha
 import GtkBlast.AntigateCaptcha
 import GtkBlast.Type_CaptchaMode
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.Blast
+import BlastItWithPiss
+import BlastItWithPiss.Board
+import BlastItWithPiss.Blast
 import Graphics.UI.Gtk hiding (get, set)
 
 cmToBool :: CaptchaMode -> Bool

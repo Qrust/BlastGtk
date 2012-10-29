@@ -12,12 +12,12 @@ import GtkBlast.Conf
 import GtkBlast.EnvPart
 import GtkBlast.GtkUtils
 import GtkBlast.Directory
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Blast
-import "blast-it-with-piss" BlastItWithPiss.Post
-import "blast-it-with-piss" BlastItWithPiss.Image
-import "blast-it-with-piss" BlastItWithPiss.Board
-import "blast-it-with-piss" BlastItWithPiss.MonadChoice
+import BlastItWithPiss
+import BlastItWithPiss.Blast
+import BlastItWithPiss.Post
+import BlastItWithPiss.Image
+import BlastItWithPiss.Board
+import BlastItWithPiss.MonadChoice
 import System.FilePath
 import System.Directory
 import Control.Concurrent.STM

@@ -10,9 +10,9 @@ import Import
 import GtkBlast.Directory
 import GtkBlast.Type_PastaSet
 import GtkBlast.Type_CaptchaMode
-import "blast-it-with-piss" BlastItWithPiss
-import "blast-it-with-piss" BlastItWithPiss.Blast
-import "blast-it-with-piss" BlastItWithPiss.Board
+import BlastItWithPiss
+import BlastItWithPiss.Blast
+import BlastItWithPiss.Board
 import Graphics.UI.Gtk
 import GHC.Conc
 import Control.Concurrent.STM
@@ -85,6 +85,12 @@ data Env = E
     ,wcheckescapeinv :: CheckButton
     ,wcheckescapewrd :: CheckButton
     ,wcheckshufflereposts :: CheckButton
+    ,emposttimeout :: TVar (Maybe Double)
+    ,emthreadtimeout :: TVar (Maybe Double)
+    ,wcheckposttimeout :: CheckButton
+    ,wspinposttimeout :: SpinButton
+    ,wcheckthreadtimeout :: CheckButton
+    ,wspinthreadtimeout :: SpinButton
     }
 
 type E = ReaderT Env IO
@@ -141,6 +147,12 @@ instance NFData Env where
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd
         `seq` wcheckshufflereposts
+        `seq` emposttimeout
+        `seq` emthreadtimeout
+        `seq` wcheckposttimeout
+        `seq` wspinposttimeout
+        `seq` wcheckthreadtimeout
+        `seq` wspinthreadtimeout
         `seq` ()
 
 runE :: Env -> E a -> IO a
