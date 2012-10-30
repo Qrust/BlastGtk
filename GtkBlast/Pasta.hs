@@ -97,19 +97,20 @@ pastaEnvPart b = EP
 
         wcheckescapeall <- builderGetObject b castToCheckButton "checkescapeall"
 
-        wceas <- mfix $ \ ~wceas -> do
-            on wcheckescapeall buttonActivated $ do
-                x <- bolall wcheckescapeinv wcheckescapewrd
-                case x of
-                    Just a -> do
-                        toggleButtonSetInconsistent wcheckescapeall False
-                        signalBlock wceas
-                        setIO wcheckescapeinv $ not a
-                        setIO wcheckescapewrd $ not a
-                        setIO wcheckescapeall $ not a
-                        signalUnblock wceas
-                    Nothing -> do
-                        toggleButtonSetInconsistent wcheckescapeall True
+        ignore <- newIORef False
+
+        on wcheckescapeall buttonActivated $ unlessM (get ignore) $ do
+            x <- bolall wcheckescapeinv wcheckescapewrd
+            case x of
+                Just a -> do
+                    toggleButtonSetInconsistent wcheckescapeall False
+                    set ignore True
+                    setIO wcheckescapeinv $ not a
+                    setIO wcheckescapewrd $ not a
+                    setIO wcheckescapeall $ not a
+                    set ignore False
+                Nothing -> do
+                    toggleButtonSetInconsistent wcheckescapeall True
 
         wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
         wradiosym <- builderGetObject b castToRadioButton "radio-symbol"
@@ -166,14 +167,14 @@ pastaEnvPart b = EP
                 writeIORef pastaMod nullTime -- force update
                 runE e $ regeneratePastaGen
 
-        let updAll = do
-                signalBlock wceas
+        let updAll = unlessM (get ignore) $ do
+                set ignore True
                 maybe (toggleButtonSetInconsistent wcheckescapeall True)
                       (\a -> do
                         toggleButtonSetInconsistent wcheckescapeall False
                         setIO wcheckescapeall a) =<<
                     bolall wcheckescapeinv wcheckescapewrd
-                signalUnblock wceas
+                set ignore False
 
         void $ on wcheckescapeinv buttonActivated $ do
             updAll
