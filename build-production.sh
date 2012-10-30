@@ -55,8 +55,8 @@ $cbl configure --builddir=builddir/$foldr -f bindist --verbose\
   cp -rv libs/$lbdir/. $foldr/BlastItWithPiss
   echo "source dist"
   $cbl sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
-  echo "Finished building, don't forget to check the contents of distrib, and get rid of any unwanted dependencies/GLIBC symbols" &&\
-  echo "\n"
+  echo "Finished building"
  else
+  echo "Build failed"
   exit 1
  fi
