@@ -871,13 +871,14 @@
                                 </child>
                                 <child>
                                   <object class="GtkCheckButton" id="checkrandomquote">
-                                    <property name="label" translatable="yes">Рандомно цитировать</property>
+                                    <property name="label" translatable="yes">Рандомно _цитировать</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
                                     <property name="tooltip_text" translatable="yes">Цитировать рандомные посты.
 Модерам сложнее детектировать вайп.</property>
+                                    <property name="use_underline">True</property>
                                     <property name="active">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
