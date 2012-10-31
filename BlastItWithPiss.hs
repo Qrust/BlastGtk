@@ -512,7 +512,7 @@ entryPoint proxy board lgDetail shS muS prS output = do
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException a
               ]
             start = flip catches hands $
-                blastLoop (ssachLastRecordedWakabaplAndFields (ssachBoard board)) 0 0
+                blastLoop (ssachLastRecordedWakabaplAndFields board) 0 0
         start{-
         let url = ssachBoard board
         let chkStatus st@Status{statusCode=c} heads

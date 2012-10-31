@@ -91,6 +91,7 @@ data Env = E
     ,wspinposttimeout :: SpinButton
     ,wcheckthreadtimeout :: CheckButton
     ,wspinthreadtimeout :: SpinButton
+    ,wcheckrandomquote :: CheckButton
     }
 
 type E = ReaderT Env IO

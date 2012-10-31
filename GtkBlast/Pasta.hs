@@ -19,7 +19,6 @@ import GtkBlast.EnvPart
 import GtkBlast.Log
 import GtkBlast.Type_PastaSet
 import GtkBlast.GtkUtils
-import Control.Monad.Fix
 import System.Directory
 import System.Random.Shuffle
 import Control.Concurrent.STM
@@ -50,20 +49,27 @@ generateSymbolString maxlength = do
 pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 pastaChooser pastas = do
     E{..} <- ask
+    rquoter <- ifM (get wcheckrandomquote) (return $ genPastaRandomQuote 100 0) (return $ \_ _ _ -> return)
     e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
-    return $ \_ _ _ -> do
-        let b = null pastas
-        (,) b . (,) e <$> mchooseFromList pastas
+    return $ \a b c -> do
+        let nogaems = null pastas
+        (,) nogaems . (,) e <$> (rquoter a b c =<< mchooseFromList pastas)
 
 generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 generatePastaGen PastaFile =
     pastaChooser =<< appFile [] readPasta =<< get =<< asks wentrypastafile
-generatePastaGen Symbol = return $ \_ _ _ -> (,) False . (,) (False, False) <$> generateSymbolString 5000
+generatePastaGen Symbol = do
+    E{..} <- ask
+    rquoter <- ifM (get wcheckrandomquote) (return $ genPastaRandomQuote 100 0) (return $ \_ _ _ -> return)
+    return $ \a b c -> (,) False . (,) (False, False) <$>
+        (rquoter a b c =<< generateSymbolString 5000)
 generatePastaGen FromThread = do
-    shuf <- ifM (get =<< asks wcheckshufflereposts)
+    E{..} <- ask
+    shuf <- ifM (get wcheckshufflereposts)
                 (pure $ fmap unwords . shuffleM . words)
                 (pure return)
-    return $ \a b c -> (,) False . (,) (False, False) <$> (shuf =<< choosePostToRepost a b c)
+    quote <- get wcheckrandomquote
+    return $ \a b c -> (,) False . (,) (False, False) <$> (shuf =<< genPastaFromReposts quote a b c)
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
@@ -90,6 +96,7 @@ pastaEnvPart b = EP
         wcheckescapeinv <- (rec coEscapeInv $ builderGetObject b castToCheckButton "checkescapeinv") e c
         wcheckescapewrd <- (rec coEscapeWrd $ builderGetObject b castToCheckButton "checkescapewrd") e c
         wcheckshufflereposts <- (rec coShuffleReposts $ builderGetObject b castToCheckButton "checkshufflereposts") e c
+        wcheckrandomquote <- (rec coRandomQuote $ builderGetObject b castToCheckButton "checkrandomquote") e c
 
         let bolall w1 w2 = do
                 (x1,x2) <- (,) <$> getIO w1 <*> getIO w2
@@ -99,7 +106,7 @@ pastaEnvPart b = EP
 
         ignore <- newIORef False
 
-        on wcheckescapeall buttonActivated $ unlessM (get ignore) $ do
+        void $ on wcheckescapeall buttonActivated $ unlessM (get ignore) $ do
             x <- bolall wcheckescapeinv wcheckescapewrd
             case x of
                 Just a -> do
@@ -190,26 +197,33 @@ pastaEnvPart b = EP
             writeIORef pastaMod nullTime -- force update
             runE e $ regeneratePastaGen
 
+        void $ on wcheckrandomquote buttonActivated $ do
+            writeIORef pastaMod nullTime -- force update
+            runE e $ regeneratePastaGen
+
         updAll
 
-        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew, wcheckshufflereposts, pwcsr)
+        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew, wcheckshufflereposts, pwcsr, wcheckrandomquote)
         )
-    (\(ps',_,wepf,wei,wew,pwei,pwew,wsr,pwsr) c -> do
+    (\(ps',_,wepf,wei,wew,pwei,pwew,wsr,pwsr,wcrq) c -> do
         ps <- get ps'
         pf <- get wepf
         ei <- ifM (G.get wei widgetSensitive) (get wei) (get pwei)
         ew <- ifM (G.get wew widgetSensitive) (get wew) (get pwew)
         sr <- ifM (G.get wsr widgetSensitive) (get wsr) (get pwsr)
+        rq <- get wcrq
         return c{coPastaSet=ps
                 ,coPastaFile=pf
                 ,coEscapeInv=ei
                 ,coEscapeWrd=ew
-                ,coShuffleReposts=sr})
-    (\(ps,pm,wepf,wcei,wcew,_,_,wcsr,_) e ->
+                ,coShuffleReposts=sr
+                ,coRandomQuote=rq})
+    (\(ps,pm,wepf,wcei,wcew,_,_,wcsr,_,wcrq) e ->
         e{pastaSet=ps
          ,pastaMod=pm
          ,wentrypastafile=wepf
          ,wcheckescapeinv=wcei
          ,wcheckescapewrd=wcew
          ,wcheckshufflereposts=wcsr
+         ,wcheckrandomquote=wcrq
          })

@@ -279,9 +279,9 @@ ssachBumpLimit :: Num a => Board -> a
 ssachBumpLimit B = 513
 ssachBumpLimit _ = 1000 -- TODO ssachbumplimit
 
-ssachLastRecordedWakabaplAndFields :: String -> (String, [Field])
-ssachLastRecordedWakabaplAndFields hostAndBoard =
-    (hostAndBoard ++ "wakaba.pl",
+ssachLastRecordedWakabaplAndFields :: Board -> (String, [Field])
+ssachLastRecordedWakabaplAndFields board =
+    (ssachBoard board ++ "wakaba.pl",
         [field "task" "\209\128\208\190st"
         ,field "name" ""
         ,field "link" ""
@@ -289,7 +289,7 @@ ssachLastRecordedWakabaplAndFields hostAndBoard =
         ,field "sage" ""
         ,field "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
         ,field "video" ""
-        ])
+        ] ++ [field "anon_icon" "-1"|board==PO])
 
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"

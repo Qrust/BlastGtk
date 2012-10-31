@@ -80,25 +80,19 @@ envParts b =
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog
 
-            iupper <- adjustmentGetPageSize wad
-            isize <- adjustmentGetUpper wad
-
-            previousPageSize <- newIORef iupper
-            previousUpper <- newIORef isize
+            previousPageSize <- newIORef =<< adjustmentGetPageSize wad
+            previousUpper <- newIORef =<< adjustmentGetUpper wad
 
             onAdjChanged wad $ do
+                ps <- get previousPageSize
+                pu <- get previousUpper
                 v <- adjustmentGetValue wad
-                ps <- readIORef previousPageSize
-                pu <- subtract ps <$> readIORef previousUpper
-                size <- adjustmentGetPageSize wad
-                when (v >= (pu - size)) $ do
+                when (v >= (pu - ps) || ps <= 0) $ do
+                    size <- adjustmentGetPageSize wad
                     upper <- adjustmentGetUpper wad
+                    set previousPageSize size
+                    set previousUpper upper
                     adjustmentSetValue wad $ upper - size
-                    writeIORef previousPageSize size
-                    writeIORef previousUpper upper
-                    adjustmentValueChanged wad
-
-            adjustmentSetValue wad (iupper - isize)
 
             let attachedmark = "<a href=\"#\">Открепить лог</a>"
 
@@ -332,7 +326,7 @@ envParts b =
         
             -- setup tray
         
-            wtray <- statusIconNewFromFile =<< getResourceFile "2ch.so.png"
+            wtray <- statusIconNewFromFile $ resourceFile "2ch.so.png"
             statusIconSetTooltip wtray "Вайпалка мочана"
             statusIconSetName wtray "blast-it-with-piss"
         

@@ -4,6 +4,8 @@ module BlastItWithPiss.Parsing
     ,Post(..)
     ,Thread(..)
     ,Page(..)
+    ,postsFromPage
+
     ,parseOpPost
     ,parsePosts
     ,parseThreads
@@ -102,6 +104,9 @@ instance NFData Thread where
 
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
+
+postsFromPage :: Page -> [Post]
+postsFromPage = concatMap visibleposts . threads
 
 innerTextWithBr :: [Tag Text] -> String
 innerTextWithBr = concat . mapMaybe aux

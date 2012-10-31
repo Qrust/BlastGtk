@@ -1,6 +1,6 @@
 module GtkBlast.Directory
     (ModificationTime
-    ,getResourceFile
+    ,resourceFile
     ,configDir
     ,nullTime
     ,timeRightNow
@@ -14,6 +14,9 @@ import Paths_blast_it_with_piss
 #if !MIN_VERSION_directory(1,2,0)
 import System.Time
 #endif
+#if !defined(BINDIST)||!defined(TEST)
+import qualified System.IO.Unsafe as U
+#endif
 
 #if MIN_VERSION_directory(1,2,0)
 type ModificationTime = UTCTime
@@ -21,11 +24,11 @@ type ModificationTime = UTCTime
 type ModificationTime = ClockTime
 #endif
 
-getResourceFile :: MonadIO m => String -> m String
+resourceFile :: String -> String
 #if defined(BINDIST)||defined(TEST)
-getResourceFile x = return $ "resources" </> x
+resourceFile x = "resources" </> x
 #else
-getResourceFile x = io $ getDataFileName $ "resources" </> x
+resourceFile x = U.unsafePerformIO $ getDataFileName $ "resources" </> x
 #endif
 
 configDir :: IO String
@@ -51,6 +54,7 @@ timeRightNow = io getCurrentTime
 timeRightNow = io getClockTime
 #endif
 
+-- HACK timeJustAfterNullTime'ie'forceUpdateJustOnce
 timeJustAfterNullTime'ie'forceUpdateJustOnce :: ModificationTime
 #if MIN_VERSION_directory(1,2,0)
 timeJustAfterNullTime'ie'forceUpdateJustOnce = UTCTime (ModifiedJulianDay 0) 1

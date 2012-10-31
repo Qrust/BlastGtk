@@ -42,13 +42,13 @@ imageGen imagefolder agitka use = do
         if use
             then fromIOEM (return []) $ filterImages . map (imagefolder </>) <$> getDirectoryContents imagefolder
             else return []
-    agitkafile <- getResourceFile "agitka.png"
+    let agitkafile = resourceFile "agitka.png"
     ifM ((agitka &&) <$> doesFileExist agitkafile)
         (do let eq = 100 / (fromIntegral $ length images + 1)
             (,) False <$> (readImageWithoutJunk =<< fromList ((agitkafile, 15) : map (\i -> (i, eq)) images)))
         (if null images
-            then (,) True . Image "haruhi.jpg" "image/jpeg" <$> runBlast -- use recaptcha as a fallback
-                    (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
+            then (,) True . Image "haruhi.jpg" "image/jpeg" <$> -- use recaptcha as a fallback
+                    runBlast (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
             else (,) False <$> (readImageWithoutJunk =<< chooseFromList images))
 
 imageEnvPart :: Builder -> EnvPart

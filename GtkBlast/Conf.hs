@@ -26,7 +26,6 @@ import Control.Monad.Trans.Class
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text as T
-import qualified System.IO.Unsafe as U
 
 -- Fields are made strict so it won't compile if anything is missing in default or fromjson instance
 data Conf = Conf {coActiveBoards :: ![Board]
@@ -57,6 +56,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coPostAgitka :: !Bool
                  ,coSortingByAlphabet :: !Bool
                  ,coShuffleReposts :: !Bool
+                 ,coRandomQuote :: !Bool
                  ,coUsePostTimeout :: !Bool
                  ,coPostTimeout :: !Double
                  ,coUseThreadTimeout :: !Bool
@@ -93,12 +93,13 @@ instance Default Conf where
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
          ,coLastVersion = version
-         ,coPastaFile = U.unsafePerformIO $ getResourceFile "mocha"
+         ,coPastaFile = resourceFile "mocha"
          ,coEscapeInv = True
          ,coEscapeWrd = True
          ,coPostAgitka = True
          ,coSortingByAlphabet = True
          ,coShuffleReposts = True
+         ,coRandomQuote = True
          ,coUsePostTimeout = False
          ,coPostTimeout = 10
          ,coUseThreadTimeout = False
@@ -180,6 +181,7 @@ instance FromJSON (Conf, String) where
         coPostAgitka <- f "coPostAgitka" coPostAgitka
         coSortingByAlphabet <- f "coSortingByAlphabet" coSortingByAlphabet
         coShuffleReposts <- f "coShuffleReposts" coShuffleReposts
+        coRandomQuote <- f "coRandomQuote" coRandomQuote
         coUsePostTimeout <- f "coUsePostTimeout" coUsePostTimeout
         coPostTimeout <- f "coPostTimeout" coPostTimeout
         coUseThreadTimeout <- f "coUseThreadTimeout" coUseThreadTimeout

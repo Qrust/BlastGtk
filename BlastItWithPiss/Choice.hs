@@ -20,9 +20,12 @@ module BlastItWithPiss.Choice
     ,chooseMode
     ,chooseThread
 
-    ,choosePostToRepostFromPage
-    ,choosePostToRepostFromThread
+    ,randomQuote
+    ,genPastaRandomQuote
+
     ,choosePostToRepost
+    ,probablyDescendAndGetPosts
+    ,genPastaFromReposts
     ) where
 import Import
 import BlastItWithPiss.Board
@@ -272,28 +275,38 @@ chooseThread board mode getPage p0
             maybe Nothing (Just . flip (,) pg . Just) <$>
                 chooseThread' board True mode pg
 
-choosePostToRepostFromPage :: MonadChoice m => Page -> m String
-choosePostToRepostFromPage p0 = do
-    mchooseFromList $ filter (not . null) $ map postContents $
-        concatMap visibleposts $ threads p0
-
-choosePostToRepostFromThread :: MonadChoice m => Thread -> m String
-choosePostToRepostFromThread trd = do
-    mchooseFromList $ filter (not . null) $ map postContents $ visibleposts trd
-
--- | Randomly choose a post to repost from page or from thread
-choosePostToRepost :: MonadChoice m => (Int -> m Thread) -> Maybe Page -> Maybe Int -> m String
-choosePostToRepost _ Nothing Nothing = error "choosePostToRepost Nothing Nothing"
-choosePostToRepost _ (Just p0) Nothing =
-    choosePostToRepostFromPage p0
-choosePostToRepost getThread Nothing (Just tid) =
-    choosePostToRepostFromThread =<< getThread tid
-choosePostToRepost getThread (Just p0) (Just tid) = do
-    fromThread <- fromList [(False, 10), (True, 90)]
+probablyDescendAndGetPosts :: MonadChoice m => Rational -> Rational -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> m [Post]
+probablyDescendAndGetPosts _ _ _ Nothing Nothing = return []
+probablyDescendAndGetPosts _ _ _ (Just p0) Nothing = return $ postsFromPage p0
+probablyDescendAndGetPosts _ _ getThread Nothing (Just tid) = visibleposts <$> getThread tid
+probablyDescendAndGetPosts pprob tprob getThread (Just p0) (Just tid) = do
+    fromThread <- fromList [(False, pprob), (True, tprob)]
     if fromThread
         then do
-            trd <- getThread tid
-            choosePostToRepostFromThread trd
+            visibleposts <$> getThread tid
         else do
-            choosePostToRepostFromPage p0
+            return $ postsFromPage p0
+
+randomQuote :: MonadChoice m => [Post] -> String -> m String
+randomQuote [] msg = return msg
+randomQuote posts msg = do
+    let removequotes = filter (fromMaybe True . fmap (/='>') . headMay)
+    let puremsg = initSafe $ unlines $ removequotes $ lines msg -- initSafe removes trailing newline
+    Post{..} <- chooseFromList posts
+    let lns = (">>" ++ show postId) : map ('>' :) (removequotes $ lines postContents)
+    return $ unlines lns ++ puremsg
+
+choosePostToRepost :: MonadChoice m => Bool -> [Post] -> m String
+choosePostToRepost randomquote posts = do
+    (if randomquote then (randomQuote posts =<<) else id) $
+        mchooseFromList $ filter (not . null) $ map postContents posts
+
+genPastaRandomQuote :: MonadChoice m => Rational -> Rational -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> String -> m String
+genPastaRandomQuote pprob tprob getThread mp0 mtid msg = do
+    flip randomQuote msg =<< probablyDescendAndGetPosts pprob tprob getThread mp0 mtid
+
+-- | Randomly choose a post to repost from page or from thread
+genPastaFromReposts :: MonadChoice m => Bool -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> m String
+genPastaFromReposts q getThread mp0 mtid = do
+    choosePostToRepost q =<< probablyDescendAndGetPosts 10 90 getThread mp0 mtid
     

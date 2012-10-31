@@ -53,14 +53,11 @@ import Data.Version
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
--- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
--- TODO add blastcli
--- TODO add zip file permissions to zip-archive
 -- TODO add multipart/form-data to http-conduit
--- TODO migrate to new tls when it'll work on windows
+-- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
+-- TODO add zip file permissions to zip-archive
 -- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
 -- TODO i18n (represent messages by types + typeclass?)
--- TODO configurable timeout
 -- TODO config last thread time
 -- TODO Показывать несколько капч одновременно
 -- TODO background mode
@@ -121,7 +118,7 @@ main = withSocketsDo $ do
 
         void $ initGUI
         builder <- builderNew
-        builderAddFromFile builder =<< getResourceFile "blast.glade"
+        builderAddFromFile builder $ resourceFile "blast.glade"
 
         (env, setConf) <- createWidgetsAndFillEnv builder conf
 

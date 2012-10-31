@@ -5,6 +5,7 @@ module Import
     ,LText
     ,show
     ,(>$>)
+    ,bool
     ,if'
     ,ifM
     ,whenM
@@ -87,10 +88,16 @@ toLBS x = LB.fromChunks [x]
 show :: (Show a, IsString b) => a -> b
 show = fromString . S.show
 
+-- * CONTROL STRUCTURES
+
 {-# INLINE (>$>) #-}
 infixl 0 >$>
 (>$>) :: a -> (a -> b) -> b
 a >$> b = b a
+
+{-# INLINE bool #-}
+bool :: a -> a -> Bool -> a
+bool e t b = if b then t else e
 
 {-# INLINE if' #-}
 if' :: Bool -> a -> a -> a
@@ -123,6 +130,37 @@ fromLeft = either id (error "fromLeft failed")
 {-# INLINE fromRight #-}
 fromRight :: Either a b -> b
 fromRight = either (error "fromRight failed") id
+
+{-# INLINE justIf #-}
+justIf :: (a -> Bool) -> a -> Maybe a
+justIf p a = if p a then Just a else Nothing
+
+untilJust :: Monad m => m (Maybe a) -> m a
+untilJust m = maybe (untilJust m) return =<< m
+
+untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
+untilNothing m = do x <- m
+                    case x of
+                        Just a -> (a :) <$> untilNothing m
+                        Nothing -> return []
+
+-- * LISTS
+
+{-# INLINABLE fromTrySome #-}
+fromTrySome :: MonadBaseControl IO m => m a -> m a -> m a
+fromTrySome e m = do
+    a <- try m
+    case a of
+        Left (_::SomeException) -> e
+        Right z -> return z
+
+{-# INLINE modifyIORefM #-}
+modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
+modifyIORefM r m = writeIORef r =<< m =<< readIORef r
+
+anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
+anyM _ [] = return False
+anyM m (x:xs) = ifM (m x) (return True) (anyM m xs)
 
 {-# INLINE takeUntil #-}
 takeUntil :: (a -> Bool) -> [a] -> [a]
@@ -207,32 +245,3 @@ findWithSurroundingsLE = find' []
             | Just ts <- stripPrefix pr l =
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
-
-{-# INLINE justIf #-}
-justIf :: (a -> Bool) -> a -> Maybe a
-justIf p a = if p a then Just a else Nothing
-
-untilJust :: Monad m => m (Maybe a) -> m a
-untilJust m = maybe (untilJust m) return =<< m
-
-untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
-untilNothing m = do x <- m
-                    case x of
-                        Just a -> (a :) <$> untilNothing m
-                        Nothing -> return []
-
-{-# INLINABLE fromTrySome #-}
-fromTrySome :: MonadBaseControl IO m => m a -> m a -> m a
-fromTrySome e m = do
-    a <- try m
-    case a of
-        Left (_::SomeException) -> e
-        Right z -> return z
-
-{-# INLINE modifyIORefM #-}
-modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
-modifyIORefM r m = writeIORef r =<< m =<< readIORef r
-
-anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
-anyM _ [] = return False
-anyM m (x:xs) = ifM (m x) (return True) (anyM m xs)

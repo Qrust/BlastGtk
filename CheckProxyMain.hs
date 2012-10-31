@@ -126,7 +126,7 @@ mainloop board Config{..} ips mvs = do
             maybe (error $ "Couldn't parse as a proxy \"" ++ ip ++ "\"")
                 httpSetProxy (readBlastProxy socks ip)
             unless quiet $ liftIO $ putStrLn $ ip ++ ": Поcтим"
-            let (a, b) = ssachLastRecordedWakabaplAndFields (ssachBoard board)
+            let (a, b) = ssachLastRecordedWakabaplAndFields board
             liftIO . putMVar m . fst =<<
                 post =<< prepare board (Just thread)
                     (PostData "САЖА" txt Nothing True False False False) "03AHJ_VutW6y0VOt928pITpHtSRO6mM4Vk-iou_VVxKkC5MCxKKU-rSCdQT-yqaGxHg0y-YZNKDD_n_-bUNFSVDB-G_db5J4RbLIvI-ysf8fd2dXj4Xt6bwG0CRLRgmDrc-NmKQBn89GXVTpEZa2iTJF3Hny3F8e5aNw" "reading speed"

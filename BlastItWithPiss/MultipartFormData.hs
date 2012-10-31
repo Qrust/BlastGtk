@@ -48,7 +48,7 @@ randomBoundary = do
     dashcount <- getRandomR (9, 50)
     charcount <- getRandomR (30, 50)
     fromString . (replicate dashcount '-' <>)
-               . take charcount <$> getRandomRs ('0', 'Z') --wireshark complains about < and > in boundary, it works however.
+               . take charcount . filter (/=';') <$> getRandomRs ('0', 'Z')
 
 field :: ByteString -> ByteString -> Field
 field n v = Field [("name", n)] [] (toLBS v)
