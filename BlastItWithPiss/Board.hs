@@ -255,7 +255,7 @@ ssachThread b Nothing = ssachBoard b
 ssachThread b (Just t) = ssachBoard b <> "res/" <> show t <> ".html"
 
 ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
-ssachPage b 0 = ssachBoard b
+ssachPage b 0 = ssachBoard b <> "wakaba.html"
 ssachPage b i = ssachBoard b <> show i <> ".html"
 
 ssachRecaptchaKey :: String

@@ -139,10 +139,11 @@ untilJust :: Monad m => m (Maybe a) -> m a
 untilJust m = maybe (untilJust m) return =<< m
 
 untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
-untilNothing m = do x <- m
-                    case x of
-                        Just a -> (a :) <$> untilNothing m
-                        Nothing -> return []
+untilNothing m = do
+    x <- m
+    case x of
+        Just a -> (a :) <$> untilNothing m
+        Nothing -> return []
 
 -- * LISTS
 

@@ -514,7 +514,7 @@ entryPoint proxy board lgDetail shS muS prS output = do
             start = flip catches hands $
                 blastLoop (ssachLastRecordedWakabaplAndFields board) 0 0
         start{-
-        let url = ssachBoard board
+        let url = ssachPage board 0
         let chkStatus st@Status{statusCode=c} heads
                 | c /= 200 && c /= 403 = Just $ toException $ StatusCodeException st heads Nothing
                 | otherwise = Nothing
@@ -541,7 +541,7 @@ sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
 sortSsachBoardsByPopularity boards = runBlast $ do
     maybeb <- forM boards $ \b -> do
                 liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
-                spd <- parseSpeed <$> httpGetStrTags (ssachBoard b)
+                spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
                 liftIO $ putStrLn $ show spd
                 return (b, spd)
     let (got, failed) = partition (isJust . snd) maybeb
