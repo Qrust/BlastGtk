@@ -276,13 +276,13 @@ showBoardSettings board = do
             whenJust mtrd $ set wspinthreadnum . fromIntegral
 
             wchecksage <- builderGetObject b castToCheckButton "checksage"
-            whenJust mmod $ \mod -> do
-                if mod /= SagePopular && mod /= BumpUnpopular
+            whenJust mmod $ \mode -> do
+                if mode /= SagePopular && mode /= BumpUnpopular
                     then do
                         runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
                         toggleButtonSetInconsistent wchecksage True
                     else do
-                        set wchecksage (mod==SagePopular)
+                        set wchecksage (mode==SagePopular)
 
             wcheckposttimeout <- builderGetObject b castToCheckButton "checkposttimeout"
             set wcheckposttimeout $ isJust mposttm
@@ -380,7 +380,7 @@ boardUnitsEnvPart b = EP
 
         void $ on wchecksort buttonActivated $ do
             spd <- get wchecksort
-            foldM_ (\ !i bu -> i+1 <$ boxReorderChild wvboxboards (buWidget bu) i) 0 $
+            foldM_ (\ !i bu -> i+1 <$ (flip whenJust (\w -> boxReorderChild wvboxboards w i) =<< widgetGetParent (buWidget bu))) 0 $
                 if spd
                     then sortBy (compare `F.on` buBoard) boardUnits
                     else sortBy (compare `F.on` buBoard >>> \brd -> fromJustNote ("Board not in ssachBoardsSortedByPostRate, report bug: " ++ show brd) $

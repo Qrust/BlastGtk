@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.0.12.zip",
-                "5afdf810ea51fd55b65b7eec893ca88c"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.0.13.zip",
+                "39023710284ea04ed5f5a10d5fab8915"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.0.12.zip",
-                "6019b244ed3321c933aea690baa6c125"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.0.13.zip",
+                "bca90c1efd29cfcff0e1873b33bed6d2"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.0.13",
+            "Обосрался"
+        ],
         [
             "1.0.12",
             "Появилась возможность вайпать отдельные треды\nПоявилась возможность контролировать скорость постинга для отдельных досок и глобально"
@@ -78,5 +82,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.0.12"
+    "version": "1.0.13"
 }
