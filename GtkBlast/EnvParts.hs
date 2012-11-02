@@ -154,6 +154,10 @@ envParts b =
             wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
             wcheckimages <- (rec coAttachImages $ build castToCheckButton "check-images") e c
             wcheckwatermark <- (rec coWatermark $ build castToCheckButton "check-watermark") e c
+            wcheckposttimeout <- (rec coUsePostTimeout $ build castToCheckButton "checkposttimeout") e c
+            wspinposttimeout <- (rec coPostTimeout $ build castToSpinButton "spinposttimeout") e c
+            wcheckthreadtimeout <- (rec coUseThreadTimeout $ build castToCheckButton "checkthreadtimeout") e c
+            wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
 
             tqOut <- atomically $ newTQueue
 
@@ -163,8 +167,12 @@ envParts b =
             tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
             tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
             tappendjunkimages <- atomically $ newTVar True
+            tposttimeout <- atomically . newTVar =<<
+                ifM (get wcheckposttimeout) (Just <$> get wspinposttimeout) (return Nothing)
+            tthreadtimeout <- atomically . newTVar =<<
+                ifM (get wcheckthreadtimeout) (Just <$> get wspinthreadtimeout) (return Nothing)
 
-            on wcheckimages toggled $
+            on wcheckimages toggled $ do
                 atomically . writeTVar tuseimages =<< toggleButtonGetActive wcheckimages
         
             on wcheckthread toggled $
@@ -173,68 +181,43 @@ envParts b =
             on wcheckwatermark toggled $
                 atomically . writeTVar tmakewatermark =<< toggleButtonGetActive wcheckwatermark
 
-            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark))
-        (\(_, _, wct, wci, wcw) c -> do
-            ct <- get wct
-            ci <- get wci
-            cw <- get wcw
-            return c{coCreateThreads=ct
-                    ,coAttachImages=ci
-                    ,coWatermark=cw}
-            )
-        (\(tqOut, shS, _, wcheckimages, _) e -> e{tqOut=tqOut
-                                                 ,shS=shS
-                                                 ,wcheckimages=wcheckimages
-                                                 })
-    ,EP
-        (\e c -> do
-            emposttimeout <- atomically $ newTVar Nothing
-            emthreadtimeout <- atomically $ newTVar Nothing
-
-            wcheckposttimeout <- (rec coUsePostTimeout $ build castToCheckButton "checkposttimeout") e c
-            wspinposttimeout <- (rec coPostTimeout $ build castToSpinButton "spinposttimeout") e c
-            wcheckthreadtimeout <- (rec coUseThreadTimeout $ build castToCheckButton "checkthreadtimeout") e c
-            wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
-
             on wcheckposttimeout buttonActivated $ do
                 ifM (get wcheckposttimeout)
-                    (atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout)
-                    (atomically $ writeTVar emposttimeout Nothing)
+                    (atomically . writeTVar tposttimeout . Just =<< get wspinposttimeout)
+                    (atomically $ writeTVar tposttimeout Nothing)
 
             on wcheckthreadtimeout buttonActivated $ do
                 ifM (get wcheckthreadtimeout)
-                    (atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout)
-                    (atomically $ writeTVar emthreadtimeout Nothing)
+                    (atomically . writeTVar tthreadtimeout . Just =<< get wspinthreadtimeout)
+                    (atomically $ writeTVar tthreadtimeout Nothing)
 
             onValueSpinned wspinposttimeout $ whenM (get wcheckposttimeout) $ do
-                atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout
+                atomically . writeTVar tposttimeout . Just =<< get wspinposttimeout
 
             onValueSpinned wspinthreadtimeout $ whenM (get wcheckthreadtimeout) $ do
-                atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout
+                atomically . writeTVar tthreadtimeout . Just =<< get wspinthreadtimeout
 
-            whenM (get wcheckposttimeout) $ do
-                atomically . writeTVar emposttimeout . Just =<< get wspinposttimeout
-
-            whenM (get wcheckthreadtimeout) $ do
-                atomically . writeTVar emthreadtimeout . Just =<< get wspinthreadtimeout
-
-            return (emposttimeout, emthreadtimeout, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout))
-        (\(_,_,wcpt,wspt,wctt,wstt) c -> do
-            cupt <- get wcpt
-            cpt <- get wspt
-            cutt <- get wctt
-            ctt <- get wstt
-            return $ c{coUsePostTimeout=cupt
-                      ,coPostTimeout=cpt
-                      ,coUseThreadTimeout=cutt
-                      ,coThreadTimeout=ctt})
-        (\(ept,ett,wcpt,wspt,wctt,wstt) e ->
-            e{emposttimeout=ept
-             ,emthreadtimeout=ett
-             ,wcheckposttimeout=wcpt
-             ,wspinposttimeout=wspt
-             ,wcheckthreadtimeout=wctt
-             ,wspinthreadtimeout=wstt})
+            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout))
+        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt) c -> do
+            ct <- get wct
+            ci <- get wci
+            cw <- get wcw
+            cpt <- get wcpt
+            spt <- get wspt
+            ctt <- get wctt
+            stt <- get wstt
+            return c{coCreateThreads=ct
+                    ,coAttachImages=ci
+                    ,coWatermark=cw
+                    ,coUsePostTimeout=cpt
+                    ,coPostTimeout=spt
+                    ,coUseThreadTimeout=ctt
+                    ,coThreadTimeout=stt})
+        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_) e ->
+            e{tqOut=tqOut
+             ,shS=shS
+             ,wcheckimages=wcheckimages
+             })
     ,EP
         (rec coAnnoy $ build castToCheckButton "check-annoy")
         (\v c -> get v ? \a -> c{coAnnoy=a})

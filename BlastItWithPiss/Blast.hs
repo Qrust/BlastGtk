@@ -8,8 +8,8 @@ module BlastItWithPiss.Blast
     ,BlastProxy(..)
     ,readBlastProxy
     ,maybeNoProxy
-    ,userAgent
-    ,canonicalizeBrowser
+    ,userAgents
+    ,runBlastNew
     ,runBlast
     ,httpSetProxy
     ,httpReq
@@ -20,6 +20,7 @@ module BlastItWithPiss.Blast
     ,httpGetStrTags
     ) where
 import Import
+import BlastItWithPiss.MonadChoice
 import Control.Exception.Lifted
 import Network.Mime
 import Network.HTTP.Types
@@ -95,25 +96,38 @@ maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
-userAgent :: ByteString
-userAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
+userAgents :: [ByteString]
+userAgents =
+    ["Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
+    ,"Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)"
+    ,"Mozilla/5.0 (compatible; MSIE 10.6; Windows NT 6.1; Trident/5.0; InfoPath.2; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 2.0.50727) 3gpp-gba UNTRUSTED/1.0"
+    ,"Opera/9.80 (Windows NT 6.1; U; es-ES) Presto/2.9.181 Version/12.00"
+    ,"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
+    ,"Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0) Gecko/16.0 Firefox/16.0"
+    ]
 
-canonicalizeBrowser :: BrowserAction ()
-canonicalizeBrowser = do
+generateNewBrowser :: BrowserAction ()
+generateNewBrowser = do
     setMaxRedirects Nothing
     setMaxRetryCount 2 -- retry once
     setTimeout $ Just $ 10 * 1000000
-    setUserAgent $ Just userAgent
+    setUserAgent . Just =<< chooseFromList userAgents
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
                        ,(hConnection, "keep-alive")]
     --
     --setCookieFilter $ \_ _ -> return False
     --
 
-runBlast :: Blast a -> IO a
-runBlast blast = 
+runBlastNew :: Blast a -> IO a
+runBlastNew blast = 
     withManager $ flip browse $ do
-        canonicalizeBrowser
+        generateNewBrowser
+        blast
+
+runBlast :: BrowserState -> Blast a -> IO a
+runBlast st blast =
+    withManager $ flip browse $ do
+        setBrowserState st
         blast
 
 httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()

@@ -9,13 +9,11 @@
   </object>
   <object class="GtkAdjustment" id="adjustment2">
     <property name="upper">1000000000</property>
-    <property name="value">1800</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment3">
     <property name="upper">1000000000</property>
-    <property name="value">10</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -23,7 +21,7 @@
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Настройки &lt;/борды/&gt;</property>
     <property name="role">wipe-board-settings-&lt;/borda/&gt;</property>
-    <property name="icon">2ch.so.png</property>
+    <property name="icon">resources/2ch.so.png</property>
     <property name="skip_taskbar_hint">True</property>
     <child>
       <object class="GtkAlignment" id="alignment1">
@@ -59,7 +57,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkAlignment" id="alignment2">
+                  <object class="GtkAlignment" id="alignmentthread">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">10</property>
@@ -72,7 +70,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="xalign">0</property>
-                            <property name="label" translatable="yes">_Номер треда:&lt;TODO label /b/&gt;</property>
+                            <property name="label" translatable="yes">_Номер треда:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">spinthreadnum</property>
                           </object>

@@ -48,7 +48,7 @@ imageGen imagefolder agitka use = do
             (,) False <$> (readImageWithoutJunk =<< fromList ((agitkafile, 15) : map (\i -> (i, eq)) images)))
         (if null images
             then (,) True . Image "haruhi.jpg" "image/jpeg" <$> -- use recaptcha as a fallback
-                    runBlast (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
+                    runBlastNew (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
             else (,) False <$> (readImageWithoutJunk =<< chooseFromList images))
 
 imageEnvPart :: Builder -> EnvPart

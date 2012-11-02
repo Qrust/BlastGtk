@@ -37,16 +37,17 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.1 RELEASE ==
--- TODO Настройки досок
 -- TODO cliblast, убрать тормоза
 -- TODO показывать причину последнего бана когда все забанены
--- TODO вайп отдельных тредов, конфигурация сажи, настройка стратегии
--- TODO перепостинг из других досок
+-- TODO Не расходовать капчу зря
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO Писать забаненные/сдохнувшие прокси в файл+(борда X причина/ексепшн)
 -- TODO фильтровать забаненные / сдохнувшие.
+-- TODO Перепостинг из других досок
+-- TODO Настройка стратегии
 -- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
--- FIXME FIXME FIXME Скорость постинга не должна быть глобальной, переместить в настройки борд
+-- TODO Кэширование манифеста (ETag например)
+-- TODO Убрать жуткую вытянутость по вертикали.
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.

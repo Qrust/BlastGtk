@@ -17,8 +17,10 @@ import GtkBlast.Captcha
 import GtkBlast.Pasta
 import GtkBlast.Image
 import GtkBlast.Proxy
+import GtkBlast.BoardSettingsGuiXML
 import BlastItWithPiss
 import BlastItWithPiss.Blast
+import BlastItWithPiss.Choice (Mode(..))
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Board
 import Graphics.UI.Gtk hiding (get,set)
@@ -65,21 +67,17 @@ killBoardUnit bu = do
     killBoardUnitWipeUnits bu
     cleanBoardUnitBadRecord bu
 
-regenerateExcluding :: Board -> [BlastProxy] -> E [WipeUnit]
-regenerateExcluding board exc = do
+regenerateExcluding :: Board -> [BlastProxy] -> MuSettings -> E [WipeUnit]
+regenerateExcluding board exc mus = do
     E{..} <- ask
     prx <- M.assocs <$> get proxies
     catMaybes <$> forM prx (\(p, s) ->
         if elem p exc
             then return Nothing
             else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
-                    mthread <- io $ atomically $ newTVar Nothing
-                    mmode <- io $ atomically $ newTVar Nothing
-                    let mposttimeout = emposttimeout
-                    let mthreadtimeout = emthreadtimeout
-                    threadid <- io $ forkIO $ runBlast $ do
-                        --entryPoint p board Log shS MuSettings{..} s (putStrLn . show)
-                        entryPoint p board Log shS MuSettings{..} s $ atomically . writeTQueue tqOut
+                    threadid <- io $ forkIO $ runBlastNew $ do
+                        --entryPoint p board Log shS mus s (putStrLn . show)
+                        entryPoint p board Log shS mus s $ atomically . writeTQueue tqOut
                     writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
                     return $ Just $ WipeUnit p threadid
         )
@@ -109,7 +107,7 @@ maintainBoardUnit (!activecount, !pbanned, !pdead) bu@BoardUnit{..} = do
     dead <- get buDead
     new <- if isActive && hadWipeStarted
             then do
-                regenerateExcluding buBoard $ map wuProxy old ++ banned ++ dead
+                regenerateExcluding buBoard (map wuProxy old ++ banned ++ dead) buMuSettings
             else return []
     let newwus = old ++ new
     set buWipeUnits newwus
@@ -238,6 +236,7 @@ mainloop = do
 
 setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
 setMainLoop env configfile setConf = do
+    runE env $ writeLog $ "Setting timeouts."
     void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $ do
             progressBarPulse $ wprogresswipe env
@@ -245,9 +244,97 @@ setMainLoop env configfile setConf = do
     void $ timeoutAddFull (do
         runE env mainloop
         return True) priorityDefaultIdle 50 --kiloseconds, 20 fps.
-    void $ onDestroy (window env) $ do
-        runE env . writeConfig configfile =<< setConf def{coFirstLaunch=False, coLastVersion=version}
-        mainQuit
+    void $ onDestroy (window env) $ runE env $ do
+        writeLog "Closing gtkblast"
+        writeConfig configfile =<< io (setConf def{coFirstLaunch=False, coLastVersion=version})
+        writeLog "Shutting down GUI"
+        io $ mainQuit
+        writeLog "GUI shut down."
+
+showBoardSettings :: Board -> E ()
+showBoardSettings board = do
+    e <- ask
+    case find ((==board) . buBoard) $ boardUnits e of
+        Nothing -> do
+            writeLog $ "showBoardSettings: ERROR couldn't find boardunit for " ++ renderBoard board
+        Just BoardUnit{buMuSettings=MuSettings{..}} -> io $ do
+            b <- builderNew
+            builderAddFromString b $ boardSettingsGuiXML board
+            window <- builderGetObject b castToWindow "window1"
+
+            mtrd <- readTVarIO mthread
+            mmod <- readTVarIO mmode
+            mposttm <- readTVarIO mposttimeout
+            mtrdtm <- readTVarIO mthreadtimeout
+
+            walignmentthread <- builderGetObject b castToAlignment "alignmentthread"
+            wcheckwipethread <- builderGetObject b castToCheckButton "checkwipethread"
+            set wcheckwipethread $ isJust mtrd && isJust mmod
+            widgetSetSensitive walignmentthread $ isJust mtrd && isJust mmod
+
+            wspinthreadnum <- builderGetObject b castToSpinButton "spinthreadnum"
+            whenJust mtrd $ set wspinthreadnum . fromIntegral
+
+            wchecksage <- builderGetObject b castToCheckButton "checksage"
+            whenJust mmod $ \mod -> do
+                if mod /= SagePopular && mod /= BumpUnpopular
+                    then do
+                        runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
+                        toggleButtonSetInconsistent wchecksage True
+                    else do
+                        set wchecksage (mod==SagePopular)
+
+            wcheckposttimeout <- builderGetObject b castToCheckButton "checkposttimeout"
+            set wcheckposttimeout $ isJust mposttm
+
+            wspinposttimeout <- builderGetObject b castToSpinButton "spinposttimeout"
+            set wspinposttimeout $ fromMaybe (ssachPostTimeout board) mposttm
+
+            wcheckthreadtimeout <- builderGetObject b castToCheckButton "checkthreadtimeout"
+            set wcheckthreadtimeout $ isJust mtrdtm
+
+            wspinthreadtimeout <- builderGetObject b castToSpinButton "spinthreadtimeout"
+            set wspinthreadtimeout $ fromMaybe (ssachThreadTimeout board) mtrdtm
+
+            wbuttonapply <- builderGetObject b castToButton "buttonapply"
+            wbuttoncancel <- builderGetObject b castToButton "buttoncancel"
+            wbuttonok <- builderGetObject b castToButton "buttonok"
+
+            void $ on wcheckwipethread buttonActivated $ do
+                widgetSetSensitive walignmentthread =<< get wcheckwipethread
+
+            void $ on wbuttoncancel buttonActivated $ do
+                widgetDestroy window
+
+            void $ on wbuttonok buttonActivated $ do
+                buttonClicked wbuttonapply
+                widgetDestroy window
+
+            let ifMJust c t = ifM c (Just <$> t) (return Nothing)
+
+            void $ on wbuttonapply buttonActivated $ do
+                nmthread <- ifMJust (get wcheckwipethread)
+                                (spinButtonGetValueAsInt wspinthreadnum)
+                runE e $ writeLog $ renderBoard board ++ ": new thread: " ++ show nmthread
+                atomically $ writeTVar mthread nmthread
+
+                nmmode <- ifMJust (get wcheckwipethread)
+                                (bool BumpUnpopular SagePopular <$> get wchecksage)
+                atomically $ writeTVar mmode nmmode
+                runE e $ writeLog $ renderBoard board ++ ": new mode: " ++ show nmmode
+
+                nmposttimeout <- ifMJust (get wcheckposttimeout)
+                                (get wspinposttimeout)
+                atomically $ writeTVar mposttimeout nmposttimeout
+                runE e $ writeLog $ renderBoard board ++ ": new post timeout: " ++ show nmposttimeout
+
+                nmthreadtimeout <- ifMJust (get wcheckthreadtimeout)
+                                (get wspinthreadtimeout)
+                atomically $ writeTVar mthreadtimeout nmthreadtimeout
+                runE e $ writeLog $ renderBoard board ++ ": new thread timeout: " ++ show nmthreadtimeout
+                -- TODO Config read/write post timeout & thread timeout
+
+            widgetShowAll window
 
 boardUnitsEnvPart :: Builder -> EnvPart
 boardUnitsEnvPart b = EP
@@ -260,11 +347,24 @@ boardUnitsEnvPart b = EP
         wvboxboards <- builderGetObject b castToVBox "vbox-boards"
         
         boardUnits <- forM ssachBoardsWithSpeed $ \(board, sp) -> do
+            whb <- hBoxNew False 0
+
             wc <- checkButtonNewWithLabel $ renderBoard board
             when (board `elem` coActiveBoards c) $ toggleButtonSetActive wc True
             G.set wc [widgetTooltipText := Just (show sp ++ " п./час")]
-            boxPackStart wvboxboards wc PackNatural 0
-            BoardUnit board wc <$> newIORef [] <*> newIORef [] <*> newIORef []
+
+            wb <- buttonNew
+            containerAdd wb =<< imageNewFromStock stockEdit IconSizeMenu
+            buttonSetRelief wb ReliefNone
+            G.set wb [widgetTooltipText := Just ("Настроить вайп " ++ renderBoard board)]
+            void $ on wb buttonActivated $ do
+                runE e $ showBoardSettings board
+
+            boxPackStart whb wc PackGrow 0
+            boxPackStart whb wb PackNatural 0
+
+            boxPackStart wvboxboards whb PackNatural 0
+            BoardUnit board wc <$> newIORef [] <*> newIORef [] <*> newIORef [] <*> defMuS
 
         wbuttonselectall <- builderGetObject b castToButton "buttonselectall"
         wbuttonselectnone <- builderGetObject b castToButton "buttonselectnone"
@@ -293,6 +393,7 @@ boardUnitsEnvPart b = EP
         csbs <- get wcs
         return c{coActiveBoards=cab, coSortingByAlphabet=csbs})
     (\(v,_) e -> e{boardUnits=v})
+
 wipebuttonEnvPart :: Builder -> EnvPart
 wipebuttonEnvPart b = EP
     (\env _ -> do

@@ -74,7 +74,7 @@ removeCaptchaWidget = do
             widgetHide window
 
 addGuiCaptchas :: [(OriginStamp, Message)] -> E ()
-addGuiCaptchas [] = writeLog "ERROR Added 0 gui captchas..."
+addGuiCaptchas [] = writeLog "Added 0 gui captchas..."
 addGuiCaptchas sps = do
     E{..} <- ask
     pc <- get pendingGuiCaptchas
@@ -156,7 +156,7 @@ deactivateGuiCaptcha = do
 
 guiCaptchaEnvPart :: Builder -> EnvPart
 guiCaptchaEnvPart b = EP
-    (\env _ -> do
+    (\e _ -> do
         wvboxcaptcha <- builderGetObject b castToVBox "vboxcaptcha"
         weventboxcaptcha <- builderGetObject b castToEventBox "eventboxcaptcha"
         wimagecaptcha <- builderGetObject b castToImage "imagecaptcha"
@@ -169,7 +169,7 @@ guiCaptchaEnvPart b = EP
         guiReportQueue <- atomically newTQueue
 
         void $ on weventboxcaptcha buttonPressEvent $ do
-            io $ runE env $ removeCurrentCaptcha ReloadCaptcha
+            io $ runE e $ removeCurrentCaptcha ReloadCaptcha
             return True
     
         void $ on wbuttoncaptchaok buttonActivated $ do
@@ -177,10 +177,10 @@ guiCaptchaEnvPart b = EP
             {-if null x
                 then captchaError "Пожалуйста введите капчу"
                 else removeCurrentCaptcha $ Answer x-}
-            runE env $ removeCurrentCaptcha $ Answer x (atomically . writeTQueue guiReportQueue)
+            runE e $ removeCurrentCaptcha $ Answer x (atomically . writeTQueue guiReportQueue)
     
         void $ on wbuttoncaptchacancel buttonActivated $ do
-            runE env $ removeCurrentCaptcha AbortCaptcha
+            runE e $ removeCurrentCaptcha AbortCaptcha
 
         return (wvboxcaptcha, wimagecaptcha, wentrycaptcha, wbuttoncaptchaok, pendingGuiCaptchas, guiReportQueue))
     (const return)

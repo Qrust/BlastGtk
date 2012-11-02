@@ -101,9 +101,9 @@ instance Default Conf where
          ,coShuffleReposts = True
          ,coRandomQuote = True
          ,coUsePostTimeout = False
-         ,coPostTimeout = 10
+         ,coPostTimeout = ssachPostTimeout B
          ,coUseThreadTimeout = False
-         ,coThreadTimeout = 1800
+         ,coThreadTimeout = ssachThreadTimeout B
          }
 
 -- HACK Those are quite dangerous orphans
@@ -214,6 +214,7 @@ readConfig configfile = do
 
 writeConfig :: FilePath -> Conf -> E ()
 writeConfig configfile conf = do
+    writeLog "Writing config"
     tw <- try $ io $ LB.writeFile configfile $ encodePretty conf
     case tw of
         Left (a::SomeException) -> writeLog $ "Couldn't write config to \"" ++ configfile ++ "\" , got exception: " ++ show a

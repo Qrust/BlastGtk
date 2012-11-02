@@ -29,9 +29,7 @@ data BoardUnit = BoardUnit {buBoard :: !Board
                            ,buWipeUnits :: !(IORef [WipeUnit])
                            ,buBanned :: !(IORef [BlastProxy])
                            ,buDead :: !(IORef [BlastProxy])
-                           -- TODO right now we don't support configuring per-board
-                           --      wipe preferences
-                           --,buMuSettings :: MuSettings
+                           ,buMuSettings :: MuSettings
                            }
 
 data Env = E
@@ -85,12 +83,6 @@ data Env = E
     ,wcheckescapeinv :: CheckButton
     ,wcheckescapewrd :: CheckButton
     ,wcheckshufflereposts :: CheckButton
-    ,emposttimeout :: TVar (Maybe Double)
-    ,emthreadtimeout :: TVar (Maybe Double)
-    ,wcheckposttimeout :: CheckButton
-    ,wspinposttimeout :: SpinButton
-    ,wcheckthreadtimeout :: CheckButton
-    ,wspinthreadtimeout :: SpinButton
     ,wcheckrandomquote :: CheckButton
     }
 
@@ -148,12 +140,6 @@ instance NFData Env where
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd
         `seq` wcheckshufflereposts
-        `seq` emposttimeout
-        `seq` emthreadtimeout
-        `seq` wcheckposttimeout
-        `seq` wspinposttimeout
-        `seq` wcheckthreadtimeout
-        `seq` wspinthreadtimeout
         `seq` ()
 
 runE :: Env -> E a -> IO a

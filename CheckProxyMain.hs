@@ -120,7 +120,7 @@ mainloop board Config{..} ips mvs = do
     let txt = ">>" ++ show thread ++ "\nОП-хуй, сажаскрыл."
     plusmv <- forM ci $ \ip -> do
         m <- newEmptyMVar
-        void $ forkIO $ runBlast $ do
+        void $ forkIO $ runBlastNew $ do
             unless quiet $ liftIO $ putStrLn $ "Запущен тред для " ++ ip
             setTimeout $ Just $ 30 * 1000000 -- default timeout is 10 seconds, but we want to give slow proxies a chance
             maybe (error $ "Couldn't parse as a proxy \"" ++ ip ++ "\"")

@@ -97,7 +97,7 @@ a >$> b = b a
 
 {-# INLINE bool #-}
 bool :: a -> a -> Bool -> a
-bool e t b = if b then t else e
+bool false true cond = if cond then true else false
 
 {-# INLINE if' #-}
 if' :: Bool -> a -> a -> a
