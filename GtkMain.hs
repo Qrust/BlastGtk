@@ -37,7 +37,11 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 1.1 RELEASE ==
+-- TODO Новый ключ антигейта + кошелек донатов
+-- TODO DETECT CLOUDFLARE WHEN POSTING
+-- TODO Abstract (hierarchical) config management in BlastItWithPiss
 -- TODO cliblast, убрать тормоза
+-- TODO Вайпать несколько тредов
 -- TODO показывать причину последнего бана когда все забанены
 -- TODO Не расходовать капчу зря
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
@@ -45,12 +49,14 @@ import Data.Version
 -- TODO фильтровать забаненные / сдохнувшие.
 -- TODO Перепостинг из других досок
 -- TODO Настройка стратегии
+-- TODO Записывать конфиг сразу, а не при закрытии.
 -- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
 -- TODO Кэширование манифеста (ETag например)
 -- TODO Убрать жуткую вытянутость по вертикали.
+-- CONSIDER Поставить запросы на постинг в очередь(503)
 
 -- == FUTURE IMPROVEMENTS ==
--- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost? Add PostRejected outcome?), cloudflare ban, detect cloudflare when posting, mochan down.
+-- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost?), cloudflare ban, detect cloudflare when posting, mochan down.
 -- TODO Пикчи на тему ссания в жопу из Kuso Miso Technique.
 -- TODO Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)

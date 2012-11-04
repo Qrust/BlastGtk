@@ -67,7 +67,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
 instance Default Conf where
     def = Conf
          {
-          coActiveBoards = [B, BB, VN, SOC, MMO, FA]
+          coActiveBoards = [A, B, BB, VN, SOC, SEX, MMO, PER]
          ,coPastaSet = FromThread
          ,coCreateThreads = True
          ,coImageFolder = "images"
