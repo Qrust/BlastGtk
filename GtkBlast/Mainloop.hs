@@ -182,7 +182,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 Success -> addPost
                 SuccessLongPost _ -> addPost
                 Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
-                SameMessage -> tempError 2 $ stamp $ "Запостил одно и то же сообщение"
+                SameMessage -> tempError 2 $ stamp $ "Вы уже постили это сообщение"
                 SameImage -> tempError 2 $ stamp $ "Этот файл уже загружен"
                 TooFastPost -> writeLog $ stamp $ "Вы постите слишком часто, умерьте пыл"
                 TooFastThread -> tempError 3 $ stamp $ "Вы создаете треды слишком часто"

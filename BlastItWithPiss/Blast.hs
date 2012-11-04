@@ -13,9 +13,11 @@ module BlastItWithPiss.Blast
     ,runBlast
     ,httpSetProxy
     ,httpReq
+    ,httpReqLbs
     ,httpReqStr
     ,httpReqStrTags
     ,httpGet
+    ,httpGetLbs
     ,httpGetStr
     ,httpGetStrTags
     ) where
@@ -37,8 +39,15 @@ import Text.HTML.TagSoup.Fast
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as B8
-
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+
+
+
+import Data.Conduit
+import Data.Conduit.List as CL
+
+
 
 type Blast = BrowserAction
 
@@ -140,31 +149,38 @@ httpSetProxy NoProxy = httpSetProxys Nothing Nothing
 httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
 httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
 
-httpReq :: Request (ResourceT IO) -> Blast (Response LByteString)
-httpReq = makeRequestLbs
+httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
+httpReq = makeRequest
+
+httpReqLbs :: Request (ResourceT IO) -> Blast (Response LByteString)
+httpReqLbs = makeRequestLbs
 
 httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
-httpReqStr u = fmap (T.decodeUtf8 . S.concat . L.toChunks) <$> httpReq u
+httpReqStr u = do
+    x <- httpReq u
+    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map T.decodeUtf8 =$ consume)
 
 httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
-httpReqStrTags u = fmap (x . g) <$> httpReq u
-    where g = S.concat . L.toChunks
-          x = parseTagsT
+httpReqStrTags u = do
+    x <- httpReq u
+    liftIO $ runResourceT $ (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
 
-httpGet :: String -> Blast LByteString
-httpGet u = do
+httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
+httpGet = makeRequest . fromJust . parseUrl
+
+httpGetLbs :: String -> Blast LByteString
+httpGetLbs u = do
     r <- parseUrl u
     responseBody <$> makeRequestLbs r
 
 httpGetStr :: String -> Blast Text
 httpGetStr u = do
     g <- httpGet u
-    let x = T.decodeUtf8 $ S.concat $ L.toChunks g
-    x `deepseq` return x
+    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map T.decodeUtf8 =$ consume)
+    x
 
 httpGetStrTags :: String -> Blast [Tag Text]
 httpGetStrTags u = do
-    z <- httpGet u
-    let g = S.concat $ L.toChunks z
-    let x = parseTagsT g
-    return x
+    g <- httpGet u
+    let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
+    x

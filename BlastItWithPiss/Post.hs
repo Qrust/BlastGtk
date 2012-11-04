@@ -62,7 +62,7 @@ reloadCaptcha key chKey = void $
 
 getCaptchaImage :: String -> Blast LByteString
 getCaptchaImage chKey =
-    httpGet $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
+    httpGetLbs $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
 ssachGetCaptcha :: Board -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
 ssachGetCaptcha board thread key chKey =

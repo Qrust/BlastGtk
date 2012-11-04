@@ -158,47 +158,23 @@ envParts b =
             wspinposttimeout <- (rec coPostTimeout $ build castToSpinButton "spinposttimeout") e c
             wcheckthreadtimeout <- (rec coUseThreadTimeout $ build castToCheckButton "checkthreadtimeout") e c
             wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
+            wcheckfluctuation <- (rec coUseFluctuation $ build castToCheckButton "checkfluctuation") e c
+            wspinfluctuation <- (rec coFluctuation $ build castToSpinButton "spinfluctuation") e c
 
             tqOut <- atomically $ newTQueue
 
             tpastagen <- atomically $ newTVar $ \_ _ _ -> return (True, ((True, True), "Генератор не запущен. Осторожно, двери закрываются."))
             timagegen <- atomically $ newTVar $ imageGen [] False
-            tuseimages <- atomically . newTVar =<< toggleButtonGetActive wcheckimages
-            tcreatethreads <- atomically . newTVar =<< toggleButtonGetActive wcheckthread
-            tmakewatermark <- atomically . newTVar =<< toggleButtonGetActive wcheckwatermark
+            tuseimages <- tvarCheck get wcheckimages
+            tcreatethreads <- tvarCheck get wcheckthread
+            tmakewatermark <- tvarCheck get wcheckwatermark
             tappendjunkimages <- atomically $ newTVar True
-            tposttimeout <- atomically . newTVar =<<
-                ifM (get wcheckposttimeout) (Just <$> get wspinposttimeout) (return Nothing)
-            tthreadtimeout <- atomically . newTVar =<<
-                ifM (get wcheckthreadtimeout) (Just <$> get wspinthreadtimeout) (return Nothing)
+            tposttimeout <- tvarSpinCheck get wcheckposttimeout wspinposttimeout
+            tthreadtimeout <- tvarSpinCheck get wcheckthreadtimeout wspinthreadtimeout
+            tfluctuation <- tvarSpinCheck get wcheckfluctuation wspinfluctuation
 
-            on wcheckimages toggled $ do
-                atomically . writeTVar tuseimages =<< toggleButtonGetActive wcheckimages
-        
-            on wcheckthread toggled $
-                atomically . writeTVar tcreatethreads =<< toggleButtonGetActive wcheckthread
-
-            on wcheckwatermark toggled $
-                atomically . writeTVar tmakewatermark =<< toggleButtonGetActive wcheckwatermark
-
-            on wcheckposttimeout buttonActivated $ do
-                ifM (get wcheckposttimeout)
-                    (atomically . writeTVar tposttimeout . Just =<< get wspinposttimeout)
-                    (atomically $ writeTVar tposttimeout Nothing)
-
-            on wcheckthreadtimeout buttonActivated $ do
-                ifM (get wcheckthreadtimeout)
-                    (atomically . writeTVar tthreadtimeout . Just =<< get wspinthreadtimeout)
-                    (atomically $ writeTVar tthreadtimeout Nothing)
-
-            onValueSpinned wspinposttimeout $ whenM (get wcheckposttimeout) $ do
-                atomically . writeTVar tposttimeout . Just =<< get wspinposttimeout
-
-            onValueSpinned wspinthreadtimeout $ whenM (get wcheckthreadtimeout) $ do
-                atomically . writeTVar tthreadtimeout . Just =<< get wspinthreadtimeout
-
-            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout))
-        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt) c -> do
+            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation))
+        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf) c -> do
             ct <- get wct
             ci <- get wci
             cw <- get wcw
@@ -206,14 +182,18 @@ envParts b =
             spt <- get wspt
             ctt <- get wctt
             stt <- get wstt
+            cf <- get wcf
+            sf <- get wsf
             return c{coCreateThreads=ct
                     ,coAttachImages=ci
                     ,coWatermark=cw
                     ,coUsePostTimeout=cpt
                     ,coPostTimeout=spt
                     ,coUseThreadTimeout=ctt
-                    ,coThreadTimeout=stt})
-        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_) e ->
+                    ,coThreadTimeout=stt
+                    ,coUseFluctuation=cf
+                    ,coFluctuation=sf})
+        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_,_,_) e ->
             e{tqOut=tqOut
              ,shS=shS
              ,wcheckimages=wcheckimages

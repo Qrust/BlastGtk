@@ -43,13 +43,14 @@ import qualified Data.ByteString.Lazy as L
 
 data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
                              ,timagegen :: TVar (Bool -> IO (Bool, Image))
-                             --NOTE browser state accumulated during gens is lost.
+                             --NOTE all browser state accumulated in gens is lost.
                              ,tuseimages :: TVar Bool
                              ,tappendjunkimages :: TVar Bool
                              ,tcreatethreads :: TVar Bool
                              ,tmakewatermark :: TVar Bool
                              ,tposttimeout :: TVar (Maybe Double)
                              ,tthreadtimeout :: TVar (Maybe Double)
+                             ,tfluctuation :: TVar (Maybe Double)
                              }
 
 data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
@@ -289,7 +290,7 @@ blastPostData mode getThread mpastapage thread = do
     let final = PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd
     final `deepseq` return final
 
-blastCaptcha :: String -> Maybe Int -> BlastLog (String, Maybe (String, (OriginStamp -> IO ())))
+blastCaptcha :: String -> Maybe Int -> BlastLog (Bool, String, Maybe (String, (OriginStamp -> IO ())))
 blastCaptcha wakabapl thread = do
     board <- askBoard
     chKey <- blast $ getChallengeKey ssachRecaptchaKey
@@ -297,8 +298,8 @@ blastCaptcha wakabapl thread = do
     mbbytes <- blast $ ssachGetCaptcha board thread ssachRecaptchaKey chKey
     case mbbytes of
         Nothing -> do
-            blastLog "Couldn't download captcha"
-            return (chKey, Just ("", const $ return ()))
+            blastLog $ "Couldn't download captcha " ++ show chKey
+            return (False, chKey, Just ("", const $ return ()))
         Just bytes -> do
             blastLog "Got captcha image, sending captcha mvar"
             m <- newEmptyMVar
@@ -307,9 +308,9 @@ blastCaptcha wakabapl thread = do
             a <- takeMVar m
             blastLog $ "got captcha mvar, answer is... " ++ show a
             case a of
-                Answer s r -> return (chKey, Just (s, r))
+                Answer s r -> return (True, chKey, Just (s, r))
                 ReloadCaptcha -> blastCaptcha wakabapl thread
-                AbortCaptcha -> return (chKey, Nothing)
+                AbortCaptcha -> return (True, chKey, Nothing)
 
 -- TODO Should be buggy as hell.
 -- FIXME Code duplication with "post"
@@ -390,14 +391,14 @@ blastCloudflare md whatrsp url = do
 blastPost :: POSIXTime -> Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
-    (chKey, mcap) <-
+    (neededcaptcha, chKey, mcap) <-
         if cap || mode==CreateNew || not ssachAdaptivity
             then do
                 blastLog "querying captcha"
                 blastCaptcha wakabapl thread
             else do
                 blastLog "skipping captcha"
-                return ("", Just ("", const $ return ()))
+                return (False, "", Just ("", const $ return ()))
     case mcap of
         Nothing -> return (lthreadtime, lposttime)
         Just (captcha, reportbad) -> do
@@ -408,10 +409,23 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
                                 return $ ssachPostTimeout board
             blastLog $ "Post timeout: " ++ show posttimeout
             blastLog $ "Thread timeout: " ++ show threadtimeout
+            mfluctuation <- liftIO $ readTVarIO tfluctuation
+            blastLog $ "Post time fluctuation: " ++ show mfluctuation
             beforeSleep <- liftIO getPOSIXTime
             let canPost = beforeSleep - lposttime >= posttimeout
             when (mode /= CreateNew && not canPost) $ do
-                let slptime = (lposttime + posttimeout) - beforeSleep
+                fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
+                    if neededcaptcha
+                        then do
+                            blastLog "Needed to manually input captcha, cancelling fluctuation"
+                            return 0
+                        else do
+                            lowerHalf <- chooseFromList [True, True, True, False]
+                            r <- realToFrac <$> getRandomR
+                                (if lowerHalf then 0 else f/2, if lowerHalf then f/2 else f)
+                            blastLog $ "Sleep added by fluctuation: " ++ show r
+                            return r
+                let slptime = (lposttime + posttimeout) - beforeSleep + fluctuation
                 blastLog $ "sleeping " ++ show slptime ++ " seconds before post. FIXME using threadDelay for sleeping, instead of a more precise timer"
                 liftIO $ threadDelay $ round $ slptime * 1000000
             blastLog "posting"
@@ -446,8 +460,8 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
                     liftIO . reportbad =<< genOriginStamp
                     blastPost threadtimeout True lthreadtime lposttime w mode thread postdata
                   | otherwise -> do
-                    blastLog "post failed"
-                    return (lthreadtime, lposttime)
+                    blastLog "post failed, retrying in 0.5 seconds"
+                    return (lthreadtime, beforePost - (posttimeout - 0.5))
 
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do

@@ -26,8 +26,9 @@ import Data.Version
 -- == PERFORMANCE ==
 -- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
 -- CLARIFICATION dropped in favor of fast-tagsoup
--- TODO benchmark fast-tagsoup vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
--- TODO add API as a fallback if can't parse html
+-- TODO benchmark fast-tagsoup
+--      vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
+--      vs. regular expressions
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
 -- So it'll lag anyway, unless we move workers to different process.
@@ -36,24 +37,30 @@ import Data.Version
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
--- == 1.1 RELEASE ==
--- TODO Новый ключ антигейта + кошелек донатов
+-- == 2.0 RELEASE ==
+-- TODO skipCaptcha только когда уже получен один проход без капчи
+-- TODO show offending message in sameMessage and others
+-- TODO показывать причину последнего бана когда все забанены
 -- TODO DETECT CLOUDFLARE WHEN POSTING
 -- TODO Abstract (hierarchical) config management in BlastItWithPiss
 -- TODO cliblast, убрать тормоза
+-- TODO Новый ключ антигейта + кошелек донатов
 -- TODO Вайпать несколько тредов
--- TODO показывать причину последнего бана когда все забанены
 -- TODO Не расходовать капчу зря
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO Писать забаненные/сдохнувшие прокси в файл+(борда X причина/ексепшн)
 -- TODO фильтровать забаненные / сдохнувшие.
+-- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
 -- TODO Перепостинг из других досок
 -- TODO Настройка стратегии
 -- TODO Записывать конфиг сразу, а не при закрытии.
 -- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
 -- TODO Кэширование манифеста (ETag например)
 -- TODO Убрать жуткую вытянутость по вертикали.
--- CONSIDER Поставить запросы на постинг в очередь(503)
+-- TODO Поставить запросы на постинг в очередь(avoid 503)
+-- TODO Manual.md
+-- TODO benchmark fast-tagsoup LByteString & LText
+-- TODO оптимизировать ещё (прекратить пложение ОС-тредов? Реже парсить страницу?)
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost?), cloudflare ban, detect cloudflare when posting, mochan down.
@@ -71,9 +78,9 @@ import Data.Version
 -- TODO Показывать несколько капч одновременно
 -- TODO background mode
 -- TODO Support 2chnu, alterchan.
+-- TODO add API as a fallback if can't parse html
 
 -- == REFACTORING ==
--- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
