@@ -13,6 +13,7 @@ import BlastItWithPiss.MonadChoice
 import Network.HTTP.Types
 import Network.HTTP.Conduit
 import Data.CaseInsensitive (CI, foldedCase, original)
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 --import Codec.Binary.UTF8.Generic (toString, fromString)
 
@@ -46,9 +47,8 @@ instance NFData Field where
 randomBoundary :: MonadChoice m => m ByteString
 randomBoundary = do
     dashcount <- getRandomR (9, 50)
-    charcount <- getRandomR (30, 50)
-    fromString . (replicate dashcount '-' <>)
-               . take charcount . filter (/=';') <$> getRandomRs ('0', 'Z')
+    numcount <- getRandomR (9, 50)
+    B.pack . (replicate dashcount 45 <>) . take numcount <$> getRandomRs (48, 57) -- '-' ('0', '9')
 
 field :: ByteString -> ByteString -> Field
 field n v = Field [("name", n)] [] (toLBS v)
