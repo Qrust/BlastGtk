@@ -38,6 +38,12 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 2.0 RELEASE ==
+-- WTF snoyman's requestTimeout creates a new haskell thread for every request
+--     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
+--     somehow http-requests don't always obey requestTimeout and as such never die.(?)
+--     it also appears that with HTTP package we can have many simultaneous threads with requests
+--     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
+
 -- TODO skipCaptcha только когда уже получен один проход без капчи
 -- TODO show offending message in sameMessage and others
 -- TODO показывать причину последнего бана когда все забанены
