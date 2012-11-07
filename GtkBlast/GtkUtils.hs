@@ -11,8 +11,8 @@ import Control.Concurrent.STM hiding (check)
 
 windowPopup :: Window -> IO ()
 windowPopup window = do
-    widgetShow window
-    windowDeiconify window
+    whenM (not <$> get window widgetVisible) $ do
+        windowPresent window
 
 windowToggle :: Window -> IO ()
 windowToggle window =

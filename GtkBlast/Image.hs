@@ -33,11 +33,12 @@ regenerateImages = do
     li <- get imagefolderLast
     when (ni /= li) $ do
         writeLog "regen images"
-        io . atomically . writeTVar (timagegen shS) . imageGen ni =<< get wcheckagitka
+        io . atomically . writeTVar (timagegen shS) .
+            imageGen connection ni =<< get wcheckagitka
         set imagefolderLast ni
 
-imageGen :: FilePath -> Bool -> Bool -> IO (Bool, Image)
-imageGen imagefolder agitka use = do
+imageGen :: Manager -> FilePath -> Bool -> Bool -> IO (Bool, Image)
+imageGen connection imagefolder agitka use = do
     images <-
         if use
             then fromIOEM (return []) $ filterImages . map (imagefolder </>) <$> getDirectoryContents imagefolder
@@ -48,7 +49,7 @@ imageGen imagefolder agitka use = do
             (,) False <$> (readImageWithoutJunk =<< fromList ((agitkafile, 15) : map (\i -> (i, eq)) images)))
         (if null images
             then (,) True . Image "haruhi.jpg" "image/jpeg" <$> -- use recaptcha as a fallback
-                    runBlastNew (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
+                    runBlastNew connection (getCaptchaImage =<< getChallengeKey ssachRecaptchaKey)
             else (,) False <$> (readImageWithoutJunk =<< chooseFromList images))
 
 imageEnvPart :: Builder -> EnvPart

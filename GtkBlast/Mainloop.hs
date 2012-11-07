@@ -75,7 +75,7 @@ regenerateExcluding board exc mus = do
         if elem p exc
             then return Nothing
             else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
-                    threadid <- io $ forkIO $ runBlastNew $ do
+                    threadid <- io $ forkIO $ runBlastNew connection $ do
                         --entryPoint p board Log shS mus s (putStrLn . show)
                         entryPoint p board Log shS mus s $ atomically . writeTQueue tqOut
                     writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
@@ -144,6 +144,7 @@ killWipe = do
     E{..} <- ask
     writeLog "Stopping wipe..."
     set wipeStarted False
+    io $ closeManager connection -- TODO FIXME CLARIFY
     processMessages
     mapM_ killBoardUnit boardUnits
     processMessages

@@ -1,8 +1,5 @@
 module GtkBlast.Log
-    (rawPutStdout
-    ,withOpenLog
-    ,rawPutLog
-    ,writeLogIO
+    (rawPutLog
     ,writeLog
     ,showMessage
     ,tempError

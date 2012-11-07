@@ -32,6 +32,8 @@ import Foreign.C.String
 import System.Glib.GError
 import System.Glib.UTFString
 
+import Network.HTTP.Conduit(newManager, managerConnCount)
+
 envParts :: Builder -> [EnvPart]
 envParts b =
     let build :: GObjectClass cls => (GObject -> cls) -> String -> IO cls
@@ -164,7 +166,7 @@ envParts b =
             tqOut <- atomically $ newTQueue
 
             tpastagen <- atomically $ newTVar $ \_ _ _ -> return (True, ((True, True), "Генератор не запущен. Осторожно, двери закрываются."))
-            timagegen <- atomically $ newTVar $ imageGen [] False
+            timagegen <- atomically $ newTVar $ imageGen (connection e) [] False -- FIXME DANGER
             tuseimages <- tvarCheck get wcheckimages
             tcreatethreads <- tvarCheck get wcheckthread
             tmakewatermark <- tvarCheck get wcheckwatermark
@@ -347,6 +349,8 @@ createWidgetsAndFillEnv builder conf = do
 
     socksproxyMod <- newIORef nullTime
     socksproxyLast <- newIORef []
+
+    connection <- newManager def{managerConnCount=20000}
 
     (re, rs) <- mfix $ \ ~(lolhaskell, _) -> do
         (setEnv, setConf) <- runEnvParts (envParts builder) lolhaskell conf

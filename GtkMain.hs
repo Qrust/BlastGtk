@@ -40,10 +40,9 @@ import Data.Version
 -- == 2.0 RELEASE ==
 -- WTF snoyman's requestTimeout creates a new haskell thread for every request
 --     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
---     somehow http-requests don't always obey requestTimeout and as such never die.(?)
 --     it also appears that with HTTP package we can have many simultaneous threads with requests
 --     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
---     http-conduit seems to have a lot bigger memory consumption than HTTP, see OOM reports.
+--     http-conduit seems to have a lot bigger memory consumption than HTTP, see OOM reports.(?)
 --     CLARIFY wait, what'd happen if i put thousands of connections on one manager?
 --             >May be used concurrently by multiple threads.
 --             seems to indicate that this is what we need.
@@ -70,6 +69,7 @@ import Data.Version
 -- TODO Кэширование манифеста (ETag например)
 -- TODO Убрать жуткую вытянутость по вертикали.
 -- TODO Поставить запросы на постинг в очередь(avoid 503)
+-- TODO avoid 403 ban
 -- TODO Manual.md
 -- TODO benchmark fast-tagsoup LByteString & LText
 -- TODO оптимизировать ещё (прекратить пложение ОС-тредов? Реже парсить страницу?)

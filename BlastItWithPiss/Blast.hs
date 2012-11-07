@@ -9,6 +9,7 @@ module BlastItWithPiss.Blast
     ,readBlastProxy
     ,maybeNoProxy
     ,userAgents
+    ,generateNewBrowser
     ,runBlastNew
     ,runBlast
     ,httpSetProxy
@@ -118,7 +119,7 @@ userAgents =
 generateNewBrowser :: BrowserAction ()
 generateNewBrowser = do
     setMaxRedirects Nothing
-    setMaxRetryCount 2 -- retry once
+    setMaxRetryCount 2 -- FIXME retry once
     setTimeout $ Just $ 10 * 1000000
     setUserAgent . Just =<< chooseFromList userAgents
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
@@ -127,15 +128,15 @@ generateNewBrowser = do
     --setCookieFilter $ \_ _ -> return False
     --
 
-runBlastNew :: Blast a -> IO a
-runBlastNew blast = 
-    withManager $ flip browse $ do
+runBlastNew :: Manager -> Blast a -> IO a
+runBlastNew m blast = 
+    runResourceT $ browse m $ do
         generateNewBrowser
         blast
 
-runBlast :: BrowserState -> Blast a -> IO a
-runBlast st blast =
-    withManager $ flip browse $ do
+runBlast :: Manager -> BrowserState -> Blast a -> IO a
+runBlast m st blast =
+    runResourceT $ browse m $ do
         setBrowserState st
         blast
 

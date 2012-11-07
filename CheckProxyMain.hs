@@ -64,27 +64,28 @@ main = withSocketsDo $ do
         exitSuccess
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
     ifM (null <$> getArgs)
-        (print md)
-        (do conf@Config{..} <- cmdArgsRun md
-            let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду") $
-                            readBoard $ strBoard
-            ip <- nub . filter (not . null) . lines <$> readFile input
-            unless quiet $ print conf
-            let eraseFile f = do
-                    unless quiet $ putStrLn $ "erasing file " ++ f
-                    writeFile f ""
-            unless append $ do
-                eraseFile output
-                eraseFile banned
-                eraseFile four'o'four
-                eraseFile cloudflare_captcha
-                eraseFile cloudflare_ban
-                eraseFile bad
-            mainloop board conf ip [])
+        (print md) $ do
+        conf@Config{..} <- cmdArgsRun md
+        let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду") $
+                        readBoard $ strBoard
+        ip <- nub . filter (not . null) . lines <$> readFile input
+        unless quiet $ print conf
+        let eraseFile f = do
+                unless quiet $ putStrLn $ "erasing file " ++ f
+                writeFile f ""
+        unless append $ do
+            eraseFile output
+            eraseFile banned
+            eraseFile four'o'four
+            eraseFile cloudflare_captcha
+            eraseFile cloudflare_ban
+            eraseFile bad
+        bracket (newManager def) closeManager $
+            \m -> mainloop m board conf ip []
 
-mainloop :: Board -> Config -> [String] -> [(String, MVar Outcome)] -> IO ()
-mainloop _ _ [] [] = putStrLn "Ну вот и всё, ребята." >> return ()
-mainloop board Config{..} ips mvs = do
+mainloop :: Manager -> Board -> Config -> [String] -> [(String, MVar Outcome)] -> IO ()
+mainloop _ _ _ [] [] = putStrLn "Ну вот и всё, ребята." >> return ()
+mainloop manager board Config{..} ips mvs = do
     let ape f s = do
             unless quiet $ putStr ("Записываем в файл \"" ++ f ++ "\" :" ++ s ++ "\n")
             appendFile f (s ++ "\n")
@@ -120,7 +121,7 @@ mainloop board Config{..} ips mvs = do
     let txt = ">>" ++ show thread ++ "\nОП-хуй, сажаскрыл."
     plusmv <- forM ci $ \ip -> do
         m <- newEmptyMVar
-        void $ forkIO $ runBlastNew $ do
+        void $ forkIO $ runBlastNew manager $ do
             unless quiet $ liftIO $ putStrLn $ "Запущен тред для " ++ ip
             setTimeout $ Just $ 30 * 1000000 -- default timeout is 10 seconds, but we want to give slow proxies a chance
             maybe (error $ "Couldn't parse as a proxy \"" ++ ip ++ "\"")
@@ -134,7 +135,7 @@ mainloop board Config{..} ips mvs = do
         return (ip, m)
     unless quiet $ putStrLn $ "Передышка: " ++ show timeout ++ " секунд..., Ещё не запущено: " ++ show (length ni) ++ " проксей."
     threadDelay $ timeout * 1000000
-    mainloop board Config{..} ni (reverse plusmv ++ nmvs)
+    mainloop manager board Config{..} ni (reverse plusmv ++ nmvs)
 
 
 

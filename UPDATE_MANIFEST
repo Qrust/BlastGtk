@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.0.zip",
-                "645e7916a9837cb969e5584a72d5680e"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.1.zip",
+                "fdc3cebcee26a91a3c32ffc3acedcfe7"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.0.zip",
-                "1f67d5f643f7ad05e9e9b37410269860"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.1.zip",
+                "392698080f69e218dafaf30d65033bd1"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.1",
+            "Оптимизировал чуть-чуть."
+        ],
         [
             "1.1.0",
             "Добавлена маскировка под ручной вайп."
@@ -86,5 +90,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.0"
+    "version": "1.1.1"
 }

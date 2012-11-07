@@ -261,7 +261,8 @@ blastPostData mode getThread mpastapage thread = do
         r <- ask
         s <- lift get
         st <- blast getBrowserState
-        liftIO $ pastagen (runBlast st . runBlastLogSt r s . getThread) mpastapage thread
+        manager <- blast getManager
+        liftIO $ pastagen (runBlast manager st . runBlastLogSt r s . getThread) mpastapage thread
     when nopastas $ do
         blastOut NoPastas
         blastLog "threw NoPastas"
@@ -566,7 +567,7 @@ entryPoint proxy board lgDetail shS muS prS output = do
                 blastLoop w 0 0-}
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
-sortSsachBoardsByPopularity boards = runBlastNew $ do
+sortSsachBoardsByPopularity boards = bracket (newManager def) closeManager $ flip runBlastNew $ do
     maybeb <- forM boards $ \b -> do
                 liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
                 spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)

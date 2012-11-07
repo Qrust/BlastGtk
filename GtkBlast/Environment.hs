@@ -55,6 +55,7 @@ data Env = E
 
     ,tqOut :: TQueue OutMessage
     ,shS :: ShSettings
+    ,connection :: Manager
 
     ,window :: Window
     ,wbuf :: TextBuffer
@@ -112,6 +113,7 @@ instance NFData Env where
     
         `seq` tqOut
         `seq` shS
+        `seq` connection
     
         `seq` window
         `seq` wbuf
