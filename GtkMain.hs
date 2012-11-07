@@ -43,7 +43,14 @@ import Data.Version
 --     somehow http-requests don't always obey requestTimeout and as such never die.(?)
 --     it also appears that with HTTP package we can have many simultaneous threads with requests
 --     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
+--     http-conduit seems to have a lot bigger memory consumption than HTTP, see OOM reports.
+--     CLARIFY wait, what'd happen if i put thousands of connections on one manager?
+--             >May be used concurrently by multiple threads.
+--             seems to indicate that this is what we need.
+--     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")
 
+-- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
+-- TODO debuglog/normallog
 -- TODO skipCaptcha только когда уже получен один проход без капчи
 -- TODO show offending message in sameMessage and others
 -- TODO показывать причину последнего бана когда все забанены
@@ -56,7 +63,6 @@ import Data.Version
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
 -- TODO Писать забаненные/сдохнувшие прокси в файл+(борда X причина/ексепшн)
 -- TODO фильтровать забаненные / сдохнувшие.
--- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
 -- TODO Перепостинг из других досок
 -- TODO Настройка стратегии
 -- TODO Записывать конфиг сразу, а не при закрытии.

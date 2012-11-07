@@ -1,5 +1,5 @@
 #!/bin/sh
 
-ghc -optP-include -optPdist/build/autogen/cabal_macros.h -idist/build/autogen -XNoImplicitPrelude -XCPP \
+ghc -outputdir=/tmp/_ghctmp -optP-include -optPdist/build/autogen/cabal_macros.h -idist/build/autogen -XNoImplicitPrelude -XCPP \
 -XOverloadedStrings -XRecordWildCards -XScopedTypeVariables -XFlexibleContexts -XDeriveDataTypeable -XBangPatterns \
 -Wall $@
