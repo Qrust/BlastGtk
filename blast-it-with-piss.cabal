@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 1.1.1
+version: 1.1.2
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -58,9 +58,9 @@ library
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.2
+                  ,http-conduit == 1.7.0
                   ,http-conduit-browser >= 1.6.3
-                  ,certificate >= 1.3.1
+                  --,certificate >= 1.3.1
                   ,conduit
                   ,http-types
                   ,mime-types
@@ -178,9 +178,9 @@ executable gtkblast
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.2
+                  ,http-conduit == 1.7.0
                   ,http-conduit-browser >= 1.6.3
-                  ,certificate >= 1.3.1
+                  ----,certificate >= 1.3.1
                   ,conduit
                   ,http-types
                   ,mime-types
@@ -255,9 +255,9 @@ executable proxychecker
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.2
+                  ,http-conduit == 1.7.0
                   ,http-conduit-browser >= 1.6.3
-                  ,certificate >= 1.3.1
+                  --,certificate >= 1.3.1
                   ,conduit
                   ,http-types
                   ,mime-types
@@ -360,7 +360,7 @@ executable BlastItWithPiss
                   ,cryptohash
                   ,crypto-api
                   ,cereal
-                  ,tls-extra >= 0.4.7.1
+                  ,tls-extra == 0.4.7.1
                   ,executable-path
 
     if flag(bindist)

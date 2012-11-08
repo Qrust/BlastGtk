@@ -38,16 +38,28 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 2.0 RELEASE ==
+-- URGENT TODO Downgrade
+
+-- TODO antigate package doesn't share a manager
+-- TODO antigate package should use a builder
+
 -- WTF snoyman's requestTimeout creates a new haskell thread for every request
 --     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
 --     it also appears that with HTTP package we can have many simultaneous threads with requests
 --     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
 --     http-conduit seems to have a lot bigger memory consumption than HTTP, see OOM reports.(?)
---     CLARIFY wait, what'd happen if i put thousands of connections on one manager?
+--     CLARIFY wait, what'd happen if i put thousands of connections on one manager? [Nothing happens, at least nothing different from when you put thousands of connections on different managers]
 --             >May be used concurrently by multiple threads.
 --             seems to indicate that this is what we need.
 --     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")
 
+-- WTF
+--      "getAddrInfo: does not exist (Name or service not known)" — when connecting with more than 500 threads at the same time.(DNS antiDOS?)
+--      "socket: resource exhausted (Too many open files)" — when connecting with more than 500 threads at the same time.
+--      "/etc/ssl/certs/: getDirectoryContents: resource exhausted (Too many open files)" — http-conduit-1.8 regression, newManager/systemCertificate
+
+-- TODO 403
+-- TODO небампание определенных тредов (планета)
 -- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
 -- TODO debuglog/normallog
 -- TODO skipCaptcha только когда уже получен один проход без капчи
