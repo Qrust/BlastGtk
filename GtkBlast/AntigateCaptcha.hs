@@ -21,6 +21,7 @@ import GHC.Conc
 import Control.Concurrent.STM
 import Text.Recognition.Antigate
 import qualified Data.Map as M
+import Control.Monad.Trans.Resource
 
 recaptchaCaptchaConf :: CaptchaConf
 recaptchaCaptchaConf =
@@ -34,20 +35,23 @@ recaptchaCaptchaConf =
         ,max_bid = Nothing
         }
 
-antigateThread :: (OriginStamp, Message) -> TQueue (Either String String) -> String -> IO ()
-antigateThread (st, SupplyCaptcha{..}) tq key =
-    flip catches hands $ do
+antigateThread :: Manager -> (OriginStamp, Message) -> TQueue (Either String String) -> String -> IO ()
+antigateThread connection (st, SupplyCaptcha{..}) tq key =
+    runResourceT $ flip catches hands $ do
         -- FIXME we assume recaptcha
-        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes
+        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes connection
         lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
-        captchaSend $ Answer str (handle errex . report cid)
+        io $ captchaSend $ Answer str (handle errex . report cid)
         lg $ "Antigate thread finished for " ++ renderCompactStamp st
-  where lg = atomically . writeTQueue tq . Right
-        err = atomically . writeTQueue tq . Left
+  where lg :: MonadIO m => String -> m ()
+        lg = io . atomically . writeTQueue tq . Right
+        err :: MonadIO m => String -> m ()
+        err = io . atomically . writeTQueue tq . Left
         report cid nst = do
             lg $ "Reporting bad captcha id " ++ show cid ++ " for " ++ renderCompactStamp nst
-            reportBad key cid
-        errex (e::SomeException) = err (show e)
+            runResourceT $ reportBad key cid connection
+        errex (e::SomeException) = err $ "errex " ++ renderCompactStamp st ++ ": " ++ (show e)
+        hands :: [Handler (ResourceT IO) ()]
         hands =
             [Handler $ \(e::SolveException) -> do
                 case e of
@@ -56,18 +60,18 @@ antigateThread (st, SupplyCaptcha{..}) tq key =
                     SolveExceptionCheck i a ->
                         err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ renderCompactStamp st
                 lg $ "Aborting antigate thread for " ++ renderCompactStamp st
-                captchaSend AbortCaptcha
+                io $ captchaSend AbortCaptcha
             ,Handler $ \(e::AsyncException) -> do
                 lg $ "Antigate thread killed by async " ++ show e ++ " " ++ renderCompactStamp st
-            ,Handler errex
+            ,Handler $ io . errex
             ]
-antigateThread _ _ _ = error "FIXME Impossible happened, switch from Message, to a dedicated SupplyCaptcha type"
+antigateThread _ _ _ _ = error "FIXME Impossible happened. Switch from Message, to a dedicated SupplyCaptcha type"
 
 startAntigateThread :: (OriginStamp, Message) -> E (ThreadId, (OriginStamp, Message))
 startAntigateThread c@(OriginStamp{..},_) = do
     E{..} <- ask
     writeLog $ "Spawning antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
-    i <- io . forkIO . antigateThread c antigateLogQueue =<< get wentryantigatekey
+    i <- io . forkIO . antigateThread connection c antigateLogQueue =<< get wentryantigatekey
     return (i, c)
 
 addAntigateCaptchas :: [(OriginStamp, Message)] -> E ()

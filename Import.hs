@@ -82,7 +82,11 @@ instance NFData LB.ByteString where
 
 {-# INLINE toLBS #-}
 toLBS :: ByteString -> LByteString
+#if MIN_VERSION_bytestring(0,10,0)
+toLBS = LB.fromStrict
+#else
 toLBS x = LB.fromChunks [x]
+#endif
 
 {-# INLINE show #-}
 show :: (Show a, IsString b) => a -> b

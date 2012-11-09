@@ -38,10 +38,10 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 2.0 RELEASE ==
--- URGENT TODO Downgrade
+-- URGENT TODO >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
 
--- TODO antigate package doesn't share a manager
--- TODO antigate package should use a builder
+-- TODO avoid parsing page when only creating threads / when it's time time to create a thread and createthread probability == always
+-- TODO avoid rolling a dice when createthread == always
 
 -- WTF snoyman's requestTimeout creates a new haskell thread for every request
 --     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
