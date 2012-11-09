@@ -38,6 +38,8 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 
 -- == 2.0 RELEASE ==
+-- TODO Stable download links using github pages
+
 -- URGENT TODO >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
 
 -- TODO avoid parsing page when only creating threads / when it's time time to create a thread and createthread probability == always

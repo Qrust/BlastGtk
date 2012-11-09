@@ -75,7 +75,11 @@ regenerateExcluding board exc mus = do
         if elem p exc
             then return Nothing
             else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
+#ifdef mingw32_HOST_OS
+                    threadid <- io $ forkOS $ runBlastNew connection $ do
+#else
                     threadid <- io $ forkIO $ runBlastNew connection $ do
+#endif
                         --entryPoint p board Log shS mus s (putStrLn . show)
                         entryPoint p board Log shS mus s $ atomically . writeTQueue tqOut
                     writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
