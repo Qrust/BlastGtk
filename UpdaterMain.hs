@@ -33,22 +33,12 @@ currentPlatform = Mac
 manifestUrl :: String
 manifestUrl = "https://raw.github.com/exbb2/BlastItWithPiss/master/UPDATE_MANIFEST"
 
-{-
-data UpdaterConf = UpdaterConf
-        {updateWithoutAsking :: Bool
-        ,updateQuietly :: Bool
-        ,manifestUrl :: String
-        }
--}
-
-{-
-- скачиваем манифест с файла, в манифесте версия, список архивов и чексумм
-- скачиваем архивы, сверяем чексуммы, если что-то не совпадает выдаем диалог типа "Retry-Abort-Cancel"
-- создаем папку blast.old.$СТАРАЯ-ВЕРСИЯ, если уже есть то добавляем цифры
-    -- переименовываем файлы и директории для которых есть версия из архива в бэкап-папку.
-    -- ^ как часть распаковки уже
-- распаковываем.
--}
+helpMessage :: String
+helpMessage =
+    "Version: " ++ showVersion Paths.version ++ ", " ++ "Platform: " ++ show currentPlatform ++ "\n" ++
+    "Autoupdater for BlastItWithPiss, checks for updates then calls gtkblast\n" ++
+    "Use --repair to force update.\n" ++
+    "Use --postinstall <version> to execute post install hooks"
 
 mainNoBindist :: IO ()
 mainNoBindist = do
@@ -160,31 +150,38 @@ mainWorker mv = finalizeWork $ do
                 Left ex -> putMVar mv $ CrashWith ex
                 Right end -> putMVar mv $ GoodEnd end
 
-helpMessage :: String
-helpMessage =
-    "Version: " ++ showVersion Paths.version ++ ", " ++ "Platform: " ++ show currentPlatform ++ "\n" ++
-    "Autoupdater for BlastItWithPiss, checks for updates then calls gtkblast\n" ++
-    "Use --repair to force update.\n" ++
-    "Use --postinstall <version> to execute post install hooks"
+setExecutable :: FilePath -> IO ()
+setExecutable file = do
+    p <- getPermissions file
+    when (not $ executable p) $ do
+        setPermissions file p{executable=True}
 
 postInstall :: FilePath -> IO ()
 postInstall executablePath = do
     let updater = executablePath </> blastItWithPissBinary
-    p <- getPermissions updater
-    when (not $ executable p) $ do
-        setPermissions updater p{executable=True}
+    setExecutable updater
     void $ createProcess $ proc updater ["--postinstall", showVersion Paths.version]
     mainQuit
 
+-- HORRIBLE HACK both zip-archive and zip-conduit don't preserve file permissions
+-- so instead we'll simply set executable bit for our executables based on filename.
+-- Of course I could always switch to tar or LibZip, or add proper permission
+-- handling to zip-archive, but I'm too lazy for that.
+setExecutableBitForOurBinaries :: FilePath -> FilePath -> IO ()
+setExecutableBitForOurBinaries executablePath filepath = do
+    when (takeFileName filepath `elem` binaries) $ do
+        setExecutable $ executablePath </> filepath
+-- /HORRIBLE HACK
+
 postInstallHooks :: FilePath -> Version -> IO ()
-postInstallHooks _ _ = return ()
+postInstallHooks executablePath _ = do
+    files <- map (executablePath </>) . filter (\x -> x /= "." && x /= "..") <$> getDirectoryContents executablePath
+    forM_ files (setExecutableBitForOurBinaries executablePath)
 
 launchGtkblast :: FilePath -> IO ()
 launchGtkblast executablePath = do
     let gtkblast = executablePath </> gtkblastBinary
-    p <- getPermissions gtkblast
-    when (not $ executable p) $ do
-        setPermissions gtkblast p{executable=True}
+    setExecutable gtkblast
     void $ createProcess $ proc gtkblast []
     mainQuit
 

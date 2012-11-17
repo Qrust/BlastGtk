@@ -14,27 +14,6 @@ import System.FilePath
 import Codec.Archive.Zip
 import qualified Data.ByteString.Lazy as L
 
--- HORRIBLE HACK both zip-archive and zip-conduit don't preserve file permissions
--- so instead we'll simply set executable bit for our executables based on filename.
--- Of course I could always switch to tar or LibZip, or add proper permission
--- handling to zip-archive, but I'm too lazy for that.
-ourExecutables :: [String]
-ourExecutables =
-    ["BlastItWithPiss"
-    ,gtkblastBinary
-    ,"proxychecker"
-    ,"cliblast"
-    ]
-
-setExecutableBitForOurBinaries :: FilePath -> IO ()
-setExecutableBitForOurBinaries filepath
-    | f <- takeBaseName filepath
-    , f `elem` ourExecutables = do
-        p <- getPermissions filepath
-        setPermissions filepath p{executable=True}
-    | otherwise = return ()
--- /HORRIBLE HACK
-
 stripBlastItWithPiss :: Entry -> Maybe Entry
 stripBlastItWithPiss x
     | Just a <- stripPrefix "BlastItWithPiss/" (eRelativePath x)
@@ -50,7 +29,6 @@ writeWithBackup backupdir filepath content = do
             createDirectoryIfMissing True bfiledir
         renameFile filepath bfilepath
     L.writeFile filepath content
-    setExecutableBitForOurBinaries filepath
 
 blastEntry :: FilePath -> Entry -> IO ()
 blastEntry _ Entry{eRelativePath=[]} = return ()
