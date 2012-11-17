@@ -104,6 +104,7 @@ import Data.Version
 -- TODO Кэширование манифеста (ETag например)
 
 --Other:
+-- TODO перечислить такие-то фичи
 -- TODO Новый ключ антигейта + кошелек донатов
 -- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
 -- TODO Manual.md
