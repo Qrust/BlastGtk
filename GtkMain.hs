@@ -36,14 +36,7 @@ import Data.Version
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
 -- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
-
--- == 2.0 RELEASE ==
--- TODO Stable download links using github pages
-
--- URGENT TODO >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
-
--- TODO avoid parsing page when only creating threads / when it's time time to create a thread and createthread probability == always
--- TODO avoid rolling a dice when createthread == always
+-- TODO benchmark fast-tagsoup LByteString & LText vs. ByteString & Text
 
 -- WTF snoyman's requestTimeout creates a new haskell thread for every request
 --     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
@@ -54,39 +47,67 @@ import Data.Version
 --             >May be used concurrently by multiple threads.
 --             seems to indicate that this is what we need.
 --     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")
+-- WTF "getAddrInfo: does not exist (Name or service not known)" — when connecting with more than 500 threads at the same time.(DNS antiDOS?)
+--     "socket: resource exhausted (Too many open files)" — when connecting with more than 500 threads at the same time.
+--     "/etc/ssl/certs/: getDirectoryContents: resource exhausted (Too many open files)" — http-conduit-1.8 regression, newManager/systemCertificate
+--
+-- WTF Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
--- WTF
---      "getAddrInfo: does not exist (Name or service not known)" — when connecting with more than 500 threads at the same time.(DNS antiDOS?)
---      "socket: resource exhausted (Too many open files)" — when connecting with more than 500 threads at the same time.
---      "/etc/ssl/certs/: getDirectoryContents: resource exhausted (Too many open files)" — http-conduit-1.8 regression, newManager/systemCertificate
+-- == 2.0 RELEASE ==
 
--- TODO 403
--- TODO небампание определенных тредов (планета)
--- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen.
--- TODO debuglog/normallog
+
+
+
+-- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
+-- URGENT Отдельная простая вайпалка для одновременного смывания тредов(собирание капчи, ENTER→FIRE)
+-- URGENT Outcome 403Ban
+-- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
+
+
+
+--BlastItWithPiss lib:
+-- TODO avoid parsing page when only creating threads / when it's time time to
+--      create a thread and createthread == always
+-- TODO avoid rolling a dice when createthread == always
+-- URGENT >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
+--      УМВР вроде.
+--      Может добавлять мусор ещё и в начало?
+-- TODO Смывание доски с собиранием капчи
 -- TODO skipCaptcha только когда уже получен один проход без капчи
--- TODO show offending message in sameMessage and others
--- TODO показывать причину последнего бана когда все забанены
--- TODO DETECT CLOUDFLARE WHEN POSTING
--- TODO Abstract (hierarchical) config management in BlastItWithPiss
--- TODO cliblast, убрать тормоза
--- TODO Новый ключ антигейта + кошелек донатов
--- TODO Вайпать несколько тредов
 -- TODO Не расходовать капчу зря
+-- TODO avoid 403 ban
+-- TODO небампание определенных тредов (планета)
+-- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen. debuglog/normallog
+-- TODO show offending message in SameMessage and others
+-- TODO DETECT CLOUDFLARE WHEN POSTING
+-- TODO Abstract out (hierarchical) config management in BlastItWithPiss
+-- TODO Реже парсить страницу.
+-- TODO Перепостинг из других досок
+-- TODO оптимизировать ещё (прекратить пложение ОС-тредов? fix network synchronous)
+-- TODO Remove smyvalka (+Updater.Repair)
+
+--GtkMain:
+-- TODO BlastThreadId.
+-- TODO cliblast, убрать тормоза
+-- TODO показывать причину последнего бана когда все забанены
+-- TODO Записывать конфиг сразу, а не только при закрытии.
+-- TODO Вайпать несколько тредов
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
+-- TODO Останавливать вайп и показывать ачивку после нескольких безуспешных переподключений. ("Вы охуенны, ваш титул «%s».\nЗаскрините, покажите друзьям, сосните хуйца."
+-- TODO считать баны, включать в ачивки
 -- TODO Писать забаненные/сдохнувшие прокси в файл+(борда X причина/ексепшн)
 -- TODO фильтровать забаненные / сдохнувшие.
--- TODO Перепостинг из других досок
 -- TODO Настройка стратегии
--- TODO Записывать конфиг сразу, а не при закрытии.
--- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
--- TODO Кэширование манифеста (ETag например)
 -- TODO Убрать жуткую вытянутость по вертикали.
--- TODO Поставить запросы на постинг в очередь(avoid 503)
--- TODO avoid 403 ban
+
+--Updater:
+-- TODO Кэширование манифеста (ETag например)
+
+--Other:
+-- TODO Новый ключ антигейта + кошелек донатов
+-- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
 -- TODO Manual.md
--- TODO benchmark fast-tagsoup LByteString & LText
--- TODO оптимизировать ещё (прекратить пложение ОС-тредов? Реже парсить страницу?)
+-- TODO Stable download links using github pages
 
 -- == FUTURE IMPROVEMENTS ==
 -- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost?), cloudflare ban, detect cloudflare when posting, mochan down.

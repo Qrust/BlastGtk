@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
 description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 1.1.4
+version: 1.1.5
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -68,6 +68,7 @@ library
                   ,resourcet
                   ,case-insensitive
                   ,deepseq
+                  ,failure
                   ,tagsoup
                   ,fast-tagsoup
 
@@ -153,11 +154,11 @@ executable gtkblast
                   ,bytestring
                   ,utf8-string
                   ,text
-                  ,safe
                   ,gtk
                   ,glib
                   ,network
                   ,deepseq
+                  ,failure
                   ,data-default
                   ,aeson
                   ,aeson-pretty
@@ -180,7 +181,7 @@ executable gtkblast
                   ,network
                   ,http-conduit == 1.7.0
                   ,http-conduit-browser >= 1.6.3
-                  ----,certificate >= 1.3.1
+                  --,certificate >= 1.3.1
                   ,conduit
                   ,http-types
                   ,mime-types
@@ -188,6 +189,7 @@ executable gtkblast
                   ,resourcet
                   ,case-insensitive
                   ,deepseq
+                  ,failure
                   ,tagsoup
                   ,fast-tagsoup
 
@@ -239,6 +241,7 @@ executable proxychecker
                   ,text
                   ,safe
                   ,deepseq
+                  ,failure
                   ,data-default
 
                   ,lifted-base
@@ -265,8 +268,89 @@ executable proxychecker
                   ,resourcet
                   ,case-insensitive
                   ,deepseq
+                  ,failure
                   ,tagsoup
                   ,fast-tagsoup
+    if flag(bindist)
+        cpp-options: -DBINDIST
+        if !os(windows)
+            ghc-options: -optl-Wl,-rpath,$ORIGIN
+
+    if flag(test)
+        cpp-options: -DTEST
+
+    ghc-options: -Wall -threaded 
+
+    default-language: Haskell2010
+
+    default-extensions:
+                NoImplicitPrelude
+               ,CPP
+               ,OverloadedStrings
+               ,RecordWildCards
+               ,ScopedTypeVariables
+               ,FlexibleContexts
+               ,DeriveDataTypeable
+               ,PackageImports
+               ,BangPatterns
+
+    other-extensions:
+                ExistentialQuantification
+               ,MultiParamTypeClasses
+               ,FunctionalDependencies
+               ,FlexibleInstances
+               ,TypeSynonymInstances
+
+executable smyvalka
+    main-is: SmyvalkaMain.hs
+
+    other-modules: Import
+    
+    build-depends: base
+                  ,cmdargs
+                  ,network
+
+                  ,time
+                  ,transformers
+                  ,monad-control
+                  ,lifted-base
+                  ,bytestring
+                  ,utf8-string
+                  ,text
+                  ,safe
+                  ,deepseq
+                  ,failure
+                  ,data-default
+
+                  ,lifted-base
+                  ,stm >= 2.4
+                  ,data-default
+                  ,random
+                  ,containers
+                  ,time
+                  ,bytestring
+                  ,text
+                  ,safe
+                  ,filepath
+                  ,MonadRandom
+                  ,monad-control
+                  ,transformers
+                  ,network
+                  ,http-conduit == 1.7.0
+                  ,http-conduit-browser >= 1.6.3
+                  --,certificate >= 1.3.1
+                  ,conduit
+                  ,http-types
+                  ,mime-types
+                  ,socks
+                  ,resourcet
+                  ,case-insensitive
+                  ,deepseq
+                  ,failure
+                  ,tagsoup
+                  ,fast-tagsoup
+                  ,random-shuffle
+                  ,antigate
     if flag(bindist)
         cpp-options: -DBINDIST
         if !os(windows)
@@ -345,6 +429,7 @@ executable BlastItWithPiss
                   ,directory
                   ,filepath
                   ,deepseq
+                  ,failure
                   ,containers
                   ,time
                   ,bytestring

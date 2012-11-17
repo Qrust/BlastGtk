@@ -101,7 +101,7 @@ instance Default Conf where
          ,coPostAgitka = True
          ,coSortingByAlphabet = True
          ,coShuffleReposts = True
-         ,coRandomQuote = True
+         ,coRandomQuote = False
          ,coUsePostTimeout = False
          ,coPostTimeout = ssachPostTimeout B
          ,coUseThreadTimeout = False

@@ -23,7 +23,7 @@ mimeMap = insert "jpe" "image/jpeg" defaultMimeMap
 
 appendJunkB :: MonadChoice m => LByteString -> m LByteString
 appendJunkB b = do
-    bytecount <- getRandomR (128, 10240)
+    bytecount <- getRandomR (256, 20480)
     L.append b . L.pack . take bytecount <$> getRandomRs (1, 255)
 
 appendJunk :: MonadChoice m => Image -> m Image

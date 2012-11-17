@@ -215,6 +215,10 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 Four'o'FourBan -> do
                     banMessage 2 $ stamp $ "Бан по 404"
                     setBanned board proxy
+                Four'o'ThreeBan -> do
+                    banMessage 2 $ stamp $ "Бан по 403"
+                    setBanned board proxy
+                Five'o'ThreeError -> writeLog $ stamp $ "Five'o'ThreeError"
                 UnknownError -> tempError 4 $ stamp $ "Неизвестная ошибка, что-то пошло не так"
         c@SupplyCaptcha{} -> addCaptcha (st, c)
         NoPastas -> do writeLog (show s)

@@ -10,6 +10,7 @@ module BlastItWithPiss.Post
     ,post
     ) where
 import Import
+import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
 import BlastItWithPiss.MultipartFormData
@@ -18,6 +19,7 @@ import BlastItWithPiss.Blast
 import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import Control.Failure
 
 
 import BlastItWithPiss.Parsing
@@ -48,7 +50,6 @@ doWeNeedCaptcha board thread usercode = do
 
 getChallengeKey :: String -> Blast String
 getChallengeKey key = do
--- TODO use JSON parser(since we'll be using it for config and update manifest anyway)
     rawjsstr <- T.unpack <$> httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
     return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjsstr) $
         mapMaybe getChallenge $ lines rawjsstr
@@ -96,7 +97,7 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-prepare :: Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> Blast (Request a, Outcome)
+prepare :: (MonadChoice m, Failure HttpException m) => Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> m (Request a, Outcome)
 prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
@@ -162,6 +163,7 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
 
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
+    let exc som = return (InternalError $ ErrorException $ toException som, Nothing)
     catches
         (do Response st _ heads ~tags <- httpReqStrTags req
             case()of
@@ -171,9 +173,11 @@ post (req, success) = do
                     then return (PostRejected, Nothing)
                     else if T.isInfixOf "res/" loc
                             then return (success, Nothing)
-                            else throwIO (StatusCodeException st heads)
+                            else exc (StatusCodeException st heads)
+               | statusCode st == 503
+                -> return (Five'o'ThreeError, Nothing)
                | statusCode st == 403
-                -> maybe (throwIO $ StatusCodeException st heads)
+                -> maybe (return (Four'o'ThreeBan, Nothing))
                     (return . flip (,) (Just tags)) $ detectCloudflare tags
                | statusCode st == 404 && (maybe False (=="NWS_QPLUS_HY") $
                     lookup hServer heads)
@@ -181,7 +185,7 @@ post (req, success) = do
                | statusCode st >= 200 && statusCode st <= 300
                 -> return (detectOutcome tags, Just tags)
                | otherwise
-                -> throwIO (StatusCodeException st heads)
+                -> exc (StatusCodeException st heads)
             )
         [Handler $ \(async :: AsyncException) ->
             throwIO async

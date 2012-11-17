@@ -256,6 +256,8 @@ data Outcome = Success
              | CloudflareCaptcha
              | CloudflareBan
              | Four'o'FourBan
+             | Four'o'ThreeBan
+             | Five'o'ThreeError
              | OtherError {errMessage :: ErrorMessage}
              | InternalError {errException :: ErrorException}
              | UnknownError

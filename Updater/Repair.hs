@@ -23,13 +23,13 @@ blastItWithPissBinary =
 #else
     "BlastItWithPiss"
 #endif
-
+-- TODO remove smyvalka
 binaries :: [FilePath]
 binaries =
 #ifdef mingw32_HOST_OS
-    [gtkblastBinary, blastItWithPissBinary, "proxychecker.exe"] -- ++ ["cliblast.exe"]
+    [gtkblastBinary, blastItWithPissBinary, "proxychecker.exe", "smyvalka.exe"] -- ++ ["cliblast.exe"]
 #else
-    [gtkblastBinary, blastItWithPissBinary, "proxychecker"] -- ++ ["cliblast"]
+    [gtkblastBinary, blastItWithPissBinary, "proxychecker", "smyvalka"] -- ++ ["cliblast"]
 #endif
 
 distribFiles :: [FilePath]
