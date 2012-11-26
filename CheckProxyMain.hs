@@ -119,7 +119,7 @@ main = withSocketsDo $ do
     ifM (null <$> getArgs)
         (print md) $ do
         conf@Config{..} <- cmdArgsRun md
-        let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду") $
+        let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду, возможно вы имели ввиду \"/"++ strBoard ++ "/\"?") $
                         readBoard $ strBoard
         ip <- nub . filter (not . null) . lines <$> readFile input
         unless quiet $ print conf

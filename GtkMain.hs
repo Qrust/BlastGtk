@@ -57,12 +57,12 @@ import Data.Version
 
 
 
-
+-- URGENT MANUAL + corner cases (403, wordfilter, etc.)
 -- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
--- URGENT Отдельная простая вайпалка для одновременного смывания тредов(собирание капчи, ENTER→FIRE)
+-- URGENT Five'o'Three BlastItWithPiss workaround
 -- URGENT Outcome 403Ban
 -- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
-
+-- URGENT Better error messages (no parse, 403, etc.)
 
 
 --BlastItWithPiss lib:

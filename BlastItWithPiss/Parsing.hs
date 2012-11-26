@@ -332,6 +332,7 @@ detectOutcome tags
               | T.isInfixOf "Неверный код подтверждения" err
                 -> WrongCaptcha
               | T.isInfixOf "заблокирован на сервере ReCaptcha" err
+                || T.isInfixOf "Your IP probably was blocked on Recaptcha server" err
                 -> RecaptchaBan
               | T.isInfixOf "Слишком большое сообщение" err
                 -> LongPost
