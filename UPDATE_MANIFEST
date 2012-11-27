@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.5.zip",
-                "dbf08d4df62cd39928ef5950d97ea697"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.7.zip",
+                "8716142526fd0b291454c88f58f33261"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.5.zip",
-                "e5fd8fa8fa73085a8c821e27b5a98bcd"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.7.zip",
+                "e2cb38ed81fd6ac007adf906b667fd5a"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.7",
+            "Фикс частых 403. Добавил перерешение капчи в смывалке (опция -r), фильтр дохлоты в смывалке. Обновил либы."
+        ],
         [
             "1.1.5",
             "Добавил простую консольную смывалку доски smyvalka(.exe)"
@@ -106,5 +110,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.5"
+    "version": "1.1.7"
 }
