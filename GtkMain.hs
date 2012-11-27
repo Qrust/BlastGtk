@@ -55,15 +55,17 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
-
-
--- URGENT MANUAL + corner cases (403, wordfilter, etc.)
--- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
 -- URGENT Five'o'Three BlastItWithPiss workaround
 -- URGENT Outcome 403Ban
 -- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
+-- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
 -- URGENT Better error messages (no parse, 403, etc.)
+-- URGENT GHC under Wine HaskellWiki
+-- URGENT MANUAL + corner cases (403, wordfilter, etc.)
+-- URGENT Rid of unsafePerformIO in Blast.userAgent
 
+--Smyvalka
+-- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
 
 --BlastItWithPiss lib:
 -- TODO avoid parsing page when only creating threads / when it's time time to

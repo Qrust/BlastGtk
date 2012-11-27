@@ -41,7 +41,8 @@ data Config = Config
     {socks :: Bool
     ,strBoard :: String
     ,proxyFile :: String
-    ,antigateKey :: String
+    ,_antigateKey :: String
+    ,_retryCaptcha :: Bool
     }
     deriving (Show, Data, Typeable)
 
@@ -49,8 +50,9 @@ data State = State
     {
      manager :: Manager
     ,board :: Board
-    ,antigate :: String
+    ,antigateKey :: String
     ,proxies :: [BlastProxy]
+    ,retryCaptcha :: Bool
     }
 
 type M = ReaderT State IO
@@ -61,7 +63,8 @@ impureAnnotatedCmdargsConfig =
         {socks = False &= help "Файл с проксями содержит Socks5 прокси, а не HTTP?"
         ,strBoard = [] &= argPos 1 &= typ "/Доска/"
         ,proxyFile = [] &= argPos 2 &= typ "Файл_с_проксями"
-        ,antigateKey = [] &= argPos 0 &= typ "Ключ_антигейта"
+        ,_antigateKey = [] &= argPos 0 &= typ "Ключ_антигейта"
+        ,_retryCaptcha = False &= explicit &= name "r" &= name "retrycaptcha" &= help "Пробовать решить капчу снова при фейле?"
         }
         &= program "smyvalka"
         &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
@@ -80,21 +83,25 @@ displayCaptchaCounters ready all = go 0 0
         threadDelay 100000
         go rd al
 
-antigateThread :: (IO (), IO ()) -> Manager -> String -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO ()
-antigateThread (success, fail) m key res = flip catch hand $ runBlastNew m $ do
+antigate :: String -> BlastProxy -> Blast (String, String, Image, BrowserState, IO ())
+antigate key p = httpWithProxy NoProxy $ do
+    m <- getManager
     chKey <- getChallengeKey ssachRecaptchaKey
     captchaBytes <- getCaptchaImage chKey
-    -- we assume recaptcha
-    (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes m
+    (cid, str) <-
+        solveCaptcha (3*1000000) (3*1000000)
+                     key recaptchaCaptchaConf
+                     "recaptcha.jpg" captchaBytes m
     st <- getBrowserState
-    liftIO $ putMVar res $ Just
-        (chKey, str, Image "shinku.jpg" "image/jpeg" captchaBytes, st, runResourceT $ reportBad key cid m)
-    liftIO $ success
+    return
+        (chKey
+        ,str
+        ,Image "shinku.jpg" "image/jpeg" captchaBytes
+        ,st
+        ,do runResourceT $ reportBad key cid m
+            putStrLn $ "Reported bad captcha for proxy {" ++ show p ++ "}")
   where
-    hand (a::SomeException) = do
-        putMVar res Nothing
-        fail
-        print a
+    -- assuming recaptcha
     recaptchaCaptchaConf =
         def {phrase = True
             ,regsense = False
@@ -106,6 +113,20 @@ antigateThread (success, fail) m key res = flip catch hand $ runBlastNew m $ do
             ,max_bid = Nothing
             }
 
+antigateThread :: (IO (), IO ()) -> Board -> String -> BlastProxy -> Manager -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO ()
+antigateThread (success, fail) board antigateKey p manager mvar = do
+    x <- try $ runBlastNew manager $ do
+            void $ httpWithProxy p $ httpGetLbs $ ssachBoard board -- try to make a request to filter out dead.
+            antigate antigateKey p
+    case x of
+      Right a -> do
+        putMVar mvar $ Just a
+        success
+      Left (e::SomeException) -> do
+        putMVar mvar $ Nothing
+        putStrLn $ "{" ++ show p ++"} Failed to get captcha, exception was: " ++ show e
+        fail
+
 collectCaptcha :: M [(BlastProxy, MVar (Maybe (String, String, Image, BrowserState, IO ())))]
 collectCaptcha = do
     State{..} <- ask
@@ -115,24 +136,23 @@ collectCaptcha = do
         let success = atomicModifyIORef readycount $ \a -> (a+1, ())
             fail = atomicModifyIORef proxycount $ \a -> (a-1, ())
         res <- forM proxies $ \p -> do
-            m <- newEmptyMVar
-            _ <- forkIO $ antigateThread (success, fail) manager antigate m
-            return (p, m)
-        putStrLn "Нажмите Enter чтобы запустить пушки когда достаточно капчи будет готово. Пушки сами не запустятся"
+            mvar <- newEmptyMVar
+            _ <- forkIO $ antigateThread (success, fail) board antigateKey p manager mvar
+            return (p, mvar)
+        putStrLn "Нажмите Enter чтобы запустить пушки когда достаточно капчи будет готово. Пушки сами себя не запустят."
         _ <- forkIO $ displayCaptchaCounters readycount proxycount
         _ <- getLine
         putStrLn "BLAST IT WITH PISS"
         return res
 
-createThread :: Manager -> Board -> BlastProxy -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO (MVar ())
-createThread manager board proxy mvar = do
+createThread :: Bool -> String -> Manager -> Board -> BlastProxy -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO (MVar ())
+createThread retrycaptcha key manager board proxy mvar = do
     putStrLn $ "Creating thread {" ++ show proxy ++ "}"
     m <- newEmptyMVar
-    _ <- forkIO $ do
+    void $ forkIO $ do
         _x <- takeMVar mvar
         case _x of
             Nothing -> do
-                putStrLn $ "{" ++ show proxy ++ "} Failed to get captcha"
                 putMVar m ()
             Just _x -> go m _x
     return m
@@ -154,6 +174,10 @@ createThread manager board proxy mvar = do
                     Five'o'ThreeError -> goto
                     o | o==NeedCaptcha || o==WrongCaptcha -> do
                         badCaptcha
+                        when retrycaptcha $ do
+                            putStrLn $ "Retrying captcha for {" ++ show proxy ++ "}"
+                            r <- runBlast manager st $ antigate key proxy
+                            go m r
                     _ -> return ()
         putMVar m ()
 
@@ -161,7 +185,8 @@ mainloop :: M ()
 mainloop = do
     State{..} <- ask
     assoc <- collectCaptcha
-    waitmvars <- liftIO $ forM assoc $ \(p, m) -> createThread manager board p m
+    waitmvars <- liftIO $ forM assoc $
+        \(p, m) -> createThread retryCaptcha antigateKey manager board p m
     loop waitmvars (length waitmvars)
   where
     loop [] _ = liftIO $ putStrLn "Ну вот и всё, ребята."
@@ -179,7 +204,7 @@ main = withSocketsDo $ do
     ifM (null <$> getArgs)
         (print md) $ do
         Config{..} <- cmdArgsRun md
-        let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду") $
+        let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду, возможно вы имели ввиду \"/" ++ strBoard ++ "/\"?") $
                         readBoard $ strBoard
         rawIps <- nub . filter (not . null) . lines <$> readFile proxyFile
         let (errors, proxies) =
@@ -188,4 +213,4 @@ main = withSocketsDo $ do
                         rawIps
         forM_ errors $ hPutStrLn stderr . ("Couldn't read \"" ++) . (++ "\" as a proxy")
         bracket (newManager def{managerConnCount=1000000}) closeManager $
-            \m -> runReaderT mainloop (State m board antigateKey proxies)
+            \m -> runReaderT mainloop (State m board _antigateKey proxies _retryCaptcha)

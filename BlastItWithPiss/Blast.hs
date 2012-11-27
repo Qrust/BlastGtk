@@ -21,6 +21,8 @@ module BlastItWithPiss.Blast
     ,httpGetLbs
     ,httpGetStr
     ,httpGetStrTags
+    ,httpGetProxy
+    ,httpWithProxy
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
@@ -43,12 +45,11 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
-
-
 import Data.Conduit
 import Data.Conduit.List as CL
 
-
+-- HACK unsafePerformIO
+import qualified System.IO.Unsafe as Unsafe
 
 type Blast = BrowserAction
 
@@ -63,9 +64,6 @@ instance Show BlastProxy where
     show (SocksProxy (SocksConf h (PortNum p) _)) =
         h ++ ":" ++ show p
     show NoProxy = "@"
-
-instance Eq Proxy where
-    (Proxy h1 p1) == (Proxy h2 p2) = h1 == h2 && p1 == p2
 
 instance Eq SocksConf where
     (SocksConf h1 p1 v1) == (SocksConf h2 p2 v2) =
@@ -116,12 +114,16 @@ userAgents =
     ,"Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0) Gecko/16.0 Firefox/16.0"
     ]
 
+-- HACK HACK HACK unsafePerformIO
+userAgent :: ByteString
+userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
+
 generateNewBrowser :: BrowserAction ()
 generateNewBrowser = do
     setMaxRedirects Nothing
-    setMaxRetryCount 2 -- FIXME retry once
+    setMaxRetryCount 1
     setTimeout $ Just $ 10 * 1000000
-    setUserAgent . Just =<< chooseFromList userAgents
+    setUserAgent $ Just userAgent
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
                        ,(hConnection, "keep-alive")]
     --
@@ -149,6 +151,26 @@ httpSetProxy :: BlastProxy -> Blast ()
 httpSetProxy NoProxy = httpSetProxys Nothing Nothing
 httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
 httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
+
+httpGetProxy :: Blast BlastProxy
+httpGetProxy = do
+    h <- getCurrentProxy
+    case h of
+        Just p -> return $ HttpProxy p
+        Nothing -> do
+            s <- getCurrentSocksProxy
+            case s of
+                Just p -> return $ SocksProxy p
+                Nothing -> return NoProxy
+
+httpWithProxy :: BlastProxy -> Blast a -> Blast a
+httpWithProxy p m = do
+    bracket
+        httpGetProxy
+        (\current -> httpSetProxy current)
+        (\_ -> do
+            httpSetProxy p
+            m)
 
 httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
 httpReq = makeRequest

@@ -27,7 +27,7 @@ case $1 in
             MINGW*) optimi="--ghc-options=-O2 --enable-optimization=2";;
             *) case $2 in
                 wine*) optimi="--ghc-options=-O2 --enable-optimization=2";;
-                *) optimi="--ghc-options=-O2 -fllvm --enable-optimization=2";;
+                *) optimi="--ghc-options=-O2 --enable-optimization=2";;
                esac;;
         esac;;
 esac
