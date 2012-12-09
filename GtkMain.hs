@@ -24,51 +24,55 @@ import Data.Version
 --  \/  PLANS  \/
 
 -- == PERFORMANCE ==
--- TODO Tagsoup is the source of freezes, parseTags allocates a shitton
--- CLARIFICATION dropped in favor of fast-tagsoup
 -- TODO benchmark fast-tagsoup
 --      vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
 --      vs. regular expressions
+-- TODO benchmark fast-tagsoup LByteString & LText vs. ByteString & Text
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
--- So it'll lag anyway, unless we move workers to different process.
+--      So it'll lag anyway, unless we move workers to different process.
 -- FIXME We need a threadscope profile before we can decide on anything
 -- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
--- FIXME http-conduit doesn't play well with AWS in uploader, spawn curl instead.
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
--- TODO benchmark fast-tagsoup LByteString & LText vs. ByteString & Text
+-- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
 -- WTF snoyman's requestTimeout creates a new haskell thread for every request
---     new http-conduit seems to consult system certificates even on non-https requests (certs too many open files)
 --     it also appears that with HTTP package we can have many simultaneous threads with requests
 --     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
---     http-conduit seems to have a lot bigger memory consumption than HTTP, see OOM reports.(?)
 --     CLARIFY wait, what'd happen if i put thousands of connections on one manager? [Nothing happens, at least nothing different from when you put thousands of connections on different managers]
 --             >May be used concurrently by multiple threads.
 --             seems to indicate that this is what we need.
---     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")
+--     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
 -- WTF "getAddrInfo: does not exist (Name or service not known)" — when connecting with more than 500 threads at the same time.(DNS antiDOS?)
 --     "socket: resource exhausted (Too many open files)" — when connecting with more than 500 threads at the same time.
---     "/etc/ssl/certs/: getDirectoryContents: resource exhausted (Too many open files)" — http-conduit-1.8 regression, newManager/systemCertificate
---
--- WTF Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
+-- TODO DNS caching in http-conduit
 
 -- == 2.0 RELEASE ==
 
+-- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
 -- URGENT Five'o'Three BlastItWithPiss workaround
 -- URGENT Outcome 403Ban
 -- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
 -- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
 -- URGENT Better error messages (no parse, 403, etc.)
 -- URGENT GHC under Wine HaskellWiki
--- URGENT MANUAL + corner cases (403, wordfilter, etc.)
--- URGENT Rid of unsafePerformIO in Blast.userAgent
+-- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
+-- URGENT
+--  Синхронизация юнитов, кэширование страниц(не только нулевой) между проксями
+--  на одной борде. Записывать какие треды бампнули с штампом чтобы не бампать
+--  дважды. Записывать какие треды создали с ноко, чтобы бампать вайп;
+--  BumpUnpopular → BumpWipe, otherwise BumpOld. Перезаргузка некэшированных
+--  страниц.
+--  + Слежение за тредом, автобамп
+-- URGENT Rename EnvPart → Widget
+-- URGENT ControlCenter type/class which controls wipe units.
+-- URGENT Remove "{ ++ }"
 
 --Smyvalka
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
 
 --BlastItWithPiss lib:
--- TODO avoid parsing page when only creating threads / when it's time time to
+-- TODO avoid parsing page when only creating threads / when it's time to
 --      create a thread and createthread == always
 -- TODO avoid rolling a dice when createthread == always
 -- URGENT >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
@@ -84,6 +88,7 @@ import Data.Version
 -- TODO DETECT CLOUDFLARE WHEN POSTING
 -- TODO Abstract out (hierarchical) config management in BlastItWithPiss
 -- TODO Реже парсить страницу.
+-- TODO Share parsed page between all proxies working on the same board.
 -- TODO Перепостинг из других досок
 -- TODO оптимизировать ещё (прекратить пложение ОС-тредов? fix network synchronous)
 -- TODO Remove smyvalka (+Updater.Repair)
@@ -133,6 +138,11 @@ import Data.Version
 -- == REFACTORING ==
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Move more envparts from EnvParts.hs to their own modules
+-- TODO ugliest things: regenerations, "old" vars in disableable envparts.
+-- TODO Add a representation type for ControlCenter (that's what mainloop and gtkblast is)
+-- TODO Being functional means modeling a program in a data-oriented fashon, not
+--      effect-oriented. Right now BlastItWithPiss is as imperative as it gets.
+-- FIXME EnvPart internal state shouldn't really lie around in global env?
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
 -- TODO Add more type safety.(Any type safety?)
 -- TODO Add more modularity.(Any modularity?)

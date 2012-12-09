@@ -27,7 +27,9 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text as T
 
--- Fields are made strict so it won't compile if anything is missing in default or fromjson instance
+-- CLARIFICATION Unfortunately, we can't use TH due to some obscure linking errors on winDOS.
+
+-- Fields are strict so it won't compile if anything is missing in Default or FromJSON instances
 data Conf = Conf {coActiveBoards :: ![Board]
                  ,coPastaSet :: !PastaSet
                  ,coCreateThreads :: !Bool
@@ -149,53 +151,56 @@ instance ToJSON Board where
 -- snd contains warnings, we don't fail if some of the fields are missing.
 instance FromJSON (Conf, String) where
     parseJSON (Object obj) = runWriterT $ do
-        let f :: (FromJSON a, Show a) => Text -> (Conf -> a) -> WriterT String Parser a
-            f name getDef = do
+        let parseWithDefault :: (FromJSON a, Show a) => Text -> a -> WriterT String Parser a
+            parseWithDefault name _def = do
                 x <- lift $ obj .:? name
                 case x of
                     Just v -> return v
                     Nothing -> do
-                        let v = getDef def
+                        let v = _def
                         v <$ tell ("Couldn't parse field \"" ++ T.unpack name ++ "\", loading default value: " ++ show v ++ "\n")
-        coActiveBoards <- f "coActiveBoards" coActiveBoards
-        coPastaSet <- f "coPastaSet" coPastaSet
-        coCreateThreads <- f "coCreateThreads" coCreateThreads
-        coImageFolder <- f "coImageFolder" coImageFolder
-        coAttachImages <- f "coAttachImages" coAttachImages
-        coAnnoy <- f "coAnnoy" coAnnoy
-        coHideOnSubmit <- f "coHideOnSubmit" coHideOnSubmit
-        coAnnoyErrors <- f "coAnnoyErrors" coAnnoyErrors
-        coTray <- f "coTray" coTray
-        coWatermark <- f "coWatermark" coWatermark
-        coSettingsShown <- f "coSettingsShown" coSettingsShown
-        coAdditionalShown <- f "coAdditionalShown" coAdditionalShown
-        coLogShown <- f "coLogShown" coLogShown
-        coFirstLaunch <- f "coFirstLaunch" coFirstLaunch
-        coUseHttpProxy <- f "coUseHttpProxy" coUseHttpProxy
-        coHttpProxyFile <- f "coHttpProxyFile" coHttpProxyFile
-        coUseSocksProxy <- f "coUseSocksProxy" coUseSocksProxy
-        coSocksProxyFile <- f "coSocksProxyFile" coSocksProxyFile
-        coUseNoProxy <- f "coUseNoProxy" coUseNoProxy
-        coCaptchaMode <- f "coCaptchaMode" coCaptchaMode
-        coAntigateKey <- f "coAntigateKey" coAntigateKey
-        coLastVersion <- f "coLastVersion" coLastVersion
-        coPastaFile <- f "coPastaFile" coPastaFile
-        coEscapeInv <- f "coEscapeInv" coEscapeInv
-        coEscapeWrd <- f "coEscapeWrd" coEscapeWrd
-        coPostAgitka <- f "coPostAgitka" coPostAgitka
-        coSortingByAlphabet <- f "coSortingByAlphabet" coSortingByAlphabet
-        coShuffleReposts <- f "coShuffleReposts" coShuffleReposts
-        coRandomQuote <- f "coRandomQuote" coRandomQuote
-        coUsePostTimeout <- f "coUsePostTimeout" coUsePostTimeout
-        coPostTimeout <- f "coPostTimeout" coPostTimeout
-        coUseThreadTimeout <- f "coUseThreadTimeout" coUseThreadTimeout
-        coThreadTimeout <- f "coThreadTimeout" coThreadTimeout
-        coUseFluctuation <- f "coUseFluctuation" coUseFluctuation
-        coFluctuation <- f "coFluctuation" coFluctuation
+-- CLARIFICATION this macro relies on -traditional or cpphs.
+--               -traditional is default on GHC.
+#define F(x) x <- parseWithDefault "x" $ x def
+        F(coActiveBoards)
+        F(coPastaSet)
+        F(coCreateThreads)
+        F(coImageFolder)
+        F(coAttachImages)
+        F(coAnnoy)
+        F(coHideOnSubmit)
+        F(coAnnoyErrors)
+        F(coTray)
+        F(coWatermark)
+        F(coSettingsShown)
+        F(coAdditionalShown)
+        F(coLogShown)
+        F(coFirstLaunch)
+        F(coUseHttpProxy)
+        F(coHttpProxyFile)
+        F(coUseSocksProxy)
+        F(coSocksProxyFile)
+        F(coUseNoProxy)
+        F(coCaptchaMode)
+        F(coAntigateKey)
+        F(coLastVersion)
+        F(coPastaFile)
+        F(coEscapeInv)
+        F(coEscapeWrd)
+        F(coPostAgitka)
+        F(coSortingByAlphabet)
+        F(coShuffleReposts)
+        F(coRandomQuote)
+        F(coUsePostTimeout)
+        F(coPostTimeout)
+        F(coUseThreadTimeout)
+        F(coThreadTimeout)
+        F(coUseFluctuation)
+        F(coFluctuation)
+#undef F
         return Conf{..}
     parseJSON _ = mzero
 
--- CLARIFICATION (Un)fortunately, we can't use TH due to some obscure linking errors on winDOS.
 instance ToJSON Conf where
 
 readConfig :: FilePath -> IO Conf

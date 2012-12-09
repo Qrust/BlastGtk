@@ -1,8 +1,12 @@
-dist/*
-linux-dist/*
-dos-dist/*
-builddir/*
-cabal-dev/*
+dist
+linux-dist
+linux-dist-old
+dos-dist
+dos-dist-old
+imagepack
+libs
+builddir
+cabal-dev
 BlastItWithPiss*.zip
 wipe-image-pack*.zip
 Setup
@@ -15,3 +19,4 @@ config.old.faulty
 log.txt
 log.txt.bak
 VersionIncrementerMain
+DownloadsUploader

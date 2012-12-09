@@ -10,4 +10,5 @@
 :set -XFlexibleContexts
 :set -XDeriveDataTypeable
 :set -XBangPatterns
+:set -XConstraintKinds
 :set -Wall

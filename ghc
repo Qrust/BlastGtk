@@ -1,5 +1,32 @@
 #!/bin/sh
 
-ghc -outputdir=/tmp/_ghctmp -optP-include -optPdist/build/autogen/cabal_macros.h -idist/build/autogen -XNoImplicitPrelude -XCPP \
--XOverloadedStrings -XRecordWildCards -XScopedTypeVariables -XFlexibleContexts -XDeriveDataTypeable -XBangPatterns \
--Wall $@
+ghc -package-confdist/package.conf.inplace \
+-idist/build/autogen \
+-optP-include -optPdist/build/autogen/cabal_macros.h \
+-XNoImplicitPrelude \
+-XPackageImports \
+-XCPP \
+-XOverloadedStrings \
+-XRecordWildCards \
+-XScopedTypeVariables \
+-XFlexibleContexts \
+-XDeriveDataTypeable \
+-XBangPatterns \
+-XNoMonomorphismRestriction \
+-XTypeSynonymInstances \
+-XFlexibleInstances \
+-XFlexibleContexts \
+-XKindSignatures \
+-XScopedTypeVariables \
+-XGADTs \
+-XTypeFamilies \
+-XMultiParamTypeClasses \
+-XFunctionalDependencies \
+-XQuasiQuotes \
+-XTemplateHaskell \
+-XBangPatterns \
+-XMagicHash \
+-XConstraintKinds \
+-Wall \
+-outputdir=/tmp/_ghctmp \
+$@
