@@ -26,6 +26,7 @@ module BlastItWithPiss.Blast
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
+import BlastItWithPiss.Proxy
 import Control.Exception.Lifted
 import Network.Mime
 import Network.HTTP.Types
@@ -33,7 +34,6 @@ import Network.Socket.Internal
 import Network.Socks5
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.Browser
-import qualified Text.Show as Show
 import Control.Monad.Trans.Resource
 
 import Text.HTML.TagSoup (Tag)
@@ -41,55 +41,176 @@ import Text.HTML.TagSoup.Fast
 
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+
+import qualified Text.Show as Show
 
 import Data.Conduit
 import Data.Conduit.List as CL
 
+import BlastItWithPiss.Image
+import BlastItWithPiss.Board
+import BlastItWithPiss.Parsing
+import BlastItWithPiss.Choice
+import Control.Concurrent.STM
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State.Strict
+
 -- HACK unsafePerformIO
-import qualified System.IO.Unsafe as Unsafe
+import qualified System.IO.Unsafe as Unsafe (unsafePerformIO)
+{-# NOINLINE userAgent #-}
+userAgent :: ByteString
+userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
 
 type Blast = BrowserAction
 
-data BlastProxy = HttpProxy !Proxy
-                | SocksProxy !SocksConf
-                | NoProxy
-    deriving (Eq, Ord)
+------------ORIGIN STAMP----------------------
+data OriginStamp
+    = OriginStamp
+        {oTime :: !ZonedTime
+        ,oProxy :: !BlastProxy
+        ,oBoard :: !Board
+        ,oMode :: !Mode
+        ,oThread :: !PostDest
+        }
 
-instance Show BlastProxy where
-    show (HttpProxy (Proxy h p)) =
-        B8.unpack h ++ ":" ++ show p
-    show (SocksProxy (SocksConf h (PortNum p) _)) =
-        h ++ ":" ++ show p
-    show NoProxy = "@"
+renderCompactStamp :: OriginStamp -> String
+renderCompactStamp (OriginStamp _ proxy board _ _) =
+    renderBoard board ++ " {" ++ show proxy ++ "}"
 
-instance Eq SocksConf where
-    (SocksConf h1 p1 v1) == (SocksConf h2 p2 v2) =
-        h1==h2 && p1 == p2 && v1 == v2
+instance Show OriginStamp where
+    show (OriginStamp time proxy board mode thread) =
+        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
+        " " ++ show mode ++ " [| " ++
+        ssachThread board thread ++ " |]"
+------------------------------------------------
+-- | State and configuration shared by all units
+data PerWipe
+    = PerWipe
+        {tpastagen :: !(TVar ((Int -> BlastLog ParsedThread) -> Maybe Page -> PostDest -> BlastLog ((Bool, ((Bool, Bool), String)))))
+        ,timagegen :: !(TVar (Bool -> BlastLog (Bool, Image)))
+        ,tuseimages :: !(TVar Bool)
+        ,tappendjunkimages :: !(TVar Bool)
+        ,tcreatethreads :: !(TVar Bool)
+        ,tmakewatermark :: !(TVar Bool)
+        ,tposttimeout :: !(TVar (Maybe Double))
+        ,tthreadtimeout :: !(TVar (Maybe Double))
+        ,tfluctuation :: !(TVar (Maybe Double))
+        }
 
-instance Ord Proxy where
-    compare (Proxy h1 p1) (Proxy h2 p2) =
-        compare h1 h2 <> compare p1 p2
+-- | State per board
+data PerBoard
+    = PerBoard
+        {mthread :: !(TVar PostDest)
+        ,mmode :: !(TVar (Maybe Mode))
+        ,mposttimeout :: !(TVar (Maybe Double))
+        ,mthreadtimeout :: !(TVar (Maybe Double))
+        }
 
-instance Ord SocksConf where
-    compare (SocksConf h1 p1 v1) (SocksConf h2 p2 v2) =
-        compare h1 h2 <> compare p1 p2 <> compare v1 v2
+mkEmptyPerBoard :: IO PerBoard
+mkEmptyPerBoard = atomically $
+    PerBoard <$> newTVar NewThread <*> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing
 
-instance NFData Proxy where
-    rnf (Proxy h p) = rnf (h,p)
+-- | State per proxy
+data PerProxy
+    = PerProxy
+        {psharedCookies :: !(TMVar CookieJar)
+        ,pcloudflareCaptchaLock :: !(TMVar ())
+        }
 
-instance NFData PortNumber where
-    rnf (PortNum p) = rnf p
+mkEmptyPerProxy :: IO PerProxy
+mkEmptyPerProxy = atomically $ do
+    psharedCookies <- newEmptyTMVar
+    pcloudflareCaptchaLock <- newTMVar ()
+    return PerProxy{..}
 
-instance NFData SocksConf where
-    rnf (SocksConf h p v) = rnf (h,p,v)
+data CaptchaType
+    = CaptchaPosting
+    | CaptchaCloudflare
 
-instance NFData BlastProxy where
-    rnf (HttpProxy p) = rnf p
-    rnf (SocksProxy p) = rnf p
-    rnf NoProxy = ()
+data CaptchaAnswer
+    = Answer !String !(OriginStamp -> IO ())
+    | ReloadCaptcha
+    | AbortCaptcha
+
+data Message
+    = OutcomeMessage !Outcome
+    | LogMessage !String
+    | SupplyCaptcha
+        {captchaType :: !CaptchaType
+        ,captchaBytes :: !LByteString
+        ,captchaSend :: !(CaptchaAnswer -> IO ())
+        }
+    | NoPastas
+    | NoImages
+
+data OutMessage
+    = OutMessage !OriginStamp !Message
+
+data LogDetail
+    = LogDetail
+        {logNormal :: !Bool
+        ,logDebug :: !Bool
+        }
+  deriving (Eq, Show)
+
+data BlastLogData
+    = BlastLogData
+        {bldProxy :: !BlastProxy
+        ,bldBoard :: !Board
+        ,bldLogD :: !LogDetail
+        ,bldShS :: !PerWipe
+        ,bldMuS :: !PerBoard
+        ,bldPrS :: !PerProxy
+        ,bldOut :: !(OutMessage -> IO ())
+        }
+
+data OriginInfo
+    = OriginInfo
+        {gmode :: !Mode
+        ,gthread :: !PostDest
+        }
+
+type BlastLog
+    = ReaderT BlastLogData (StateT OriginInfo Blast)
+
+instance Show CaptchaAnswer where
+    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
+    show ReloadCaptcha = "ReloadCaptcha"
+    show AbortCaptcha = "AbortCaptcha"
+
+instance Show Message where
+    show (OutcomeMessage o) = show o
+    show (LogMessage o) = o
+    show SupplyCaptcha{} = "SupplyCaptcha"
+    show NoPastas = "NoPastas"
+    show NoImages = "NoImages"
+
+instance Show OutMessage where
+    show (OutMessage s m) = show s ++ ": " ++ show m
+
+-- HACK Default OriginInfo
+instance Default OriginInfo where
+    def = OriginInfo CreateNew NewThread
+
+instance NFData CaptchaType
+
+instance NFData CaptchaAnswer where
+    rnf (Answer s r) = r `seq` rnf s
+    rnf _ = ()
+
+instance NFData OriginStamp where
+    rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
+
+instance NFData Message where
+    rnf (OutcomeMessage o) = rnf o
+    rnf (LogMessage s) = rnf s
+    rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
+    rnf _ = ()
+
+instance NFData OutMessage where
+    rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
 
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =
@@ -113,10 +234,6 @@ userAgents =
     ,"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
     ,"Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0) Gecko/16.0 Firefox/16.0"
     ]
-
--- HACK HACK HACK unsafePerformIO
-userAgent :: ByteString
-userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
 
 generateNewBrowser :: BrowserAction ()
 generateNewBrowser = do

@@ -1,8 +1,8 @@
 module BlastItWithPiss.Parsing
     (Html
 
-    ,Post(..)
-    ,Thread(..)
+    ,ParsedPost(..)
+    ,ParsedThread(..)
     ,Page(..)
     ,postsFromPage
 
@@ -56,18 +56,18 @@ tgOpen = TagOpen
 tgClose :: Text -> Tag Text
 tgClose = TagClose
 
-data Post = Post
+data ParsedPost = ParsedPost
     {postId :: Int
     ,postContents :: String
     }
     deriving (Eq, Ord)
 
-data Thread = Thread
+data ParsedThread = ParsedThread
     {threadId :: !Int
     ,pinned :: !Bool
     ,locked :: !Bool
     ,postcount :: !Int
-    ,visibleposts :: [Post]
+    ,visibleposts :: [ParsedPost]
     }
     deriving (Show, Eq)
 
@@ -75,14 +75,14 @@ data Page = Page
     {pageId :: !Int
     ,lastpage :: !Int
     ,speed :: !Int
-    ,threads :: [Thread]
+    ,threads :: [ParsedThread]
     }
     deriving (Show, Eq)
 
-instance Show Post where
-    show (Post postid _) = "Post " ++ show postid
+instance Show ParsedPost where
+    show (ParsedPost postid _) = "ParsedPost " ++ show postid
 
-instance Ord Thread where
+instance Ord ParsedThread where
     compare x y = compare (postcount x) (postcount y)
 
 instance Ord Page where
@@ -96,16 +96,16 @@ instance NFData t => NFData (Tag t) where
     rnf (TagWarning x) = rnf x
     rnf (TagPosition x y) = x `deepseq` y `deepseq` ()
 
-instance NFData Post where
-    rnf Post{..} = rnf (postId, postContents)
+instance NFData ParsedPost where
+    rnf ParsedPost{..} = rnf (postId, postContents)
 
-instance NFData Thread where
-    rnf Thread{..} = rnf (threadId, pinned, locked, postcount, visibleposts)
+instance NFData ParsedThread where
+    rnf ParsedThread{..} = rnf (threadId, pinned, locked, postcount, visibleposts)
 
 instance NFData Page where
     rnf Page{..} = rnf (pageId, lastpage, speed, threads)
 
-postsFromPage :: Page -> [Post]
+postsFromPage :: Page -> [ParsedPost]
 postsFromPage = concatMap visibleposts . threads
 
 innerTextWithBr :: [Tag Text] -> String
@@ -113,18 +113,18 @@ innerTextWithBr = concat . mapMaybe aux
     where aux (TagOpen "br" []) = Just "\n"
           aux a = T.unpack <$> maybeTagText a
 
-parseOpPost :: Int -> [Tag Text] -> (Post, [Tag Text])
+parseOpPost :: Int -> [Tag Text] -> (ParsedPost, [Tag Text])
 parseOpPost i ts =
     let (postcont, rest) = break (==TagClose "blockquote") ts
-    in (Post i $ innerTextWithBr postcont, tailSafe rest)
+    in (ParsedPost i $ innerTextWithBr postcont, tailSafe rest)
 
-parsePosts :: [Tag Text] -> ([Post], [Tag Text])
+parsePosts :: [Tag Text] -> ([ParsedPost], [Tag Text])
 parsePosts = first reverse . go []
   where strip'm' ('m':a) = Just a
         strip'm' _ = Nothing
         go posts (TagOpen "blockquote" (("id", mpostid):_):ts) =
             let (postcont, (_:rest)) = break (==TagClose "blockquote") ts
-            in case (flip Post $ innerTextWithBr postcont) <$>
+            in case (flip ParsedPost $ innerTextWithBr postcont) <$>
                         (readMay =<< strip'm' (T.unpack mpostid)) of
                 Just a -> go (a:posts) rest
                 Nothing -> go posts rest
@@ -152,7 +152,7 @@ parseIcons (pin,lck) (TagOpen "blockquote" _:ts) = ((pin, lck), ts)
 parseIcons (pin,lck) (_:ts) = parseIcons (pin,lck) ts
 parseIcons (pin,lck) [] = parseIcons (pin,lck) []
 
-parseThreads :: [Tag Text] -> ([Thread], [Tag Text])
+parseThreads :: [Tag Text] -> ([ParsedThread], [Tag Text])
 parseThreads = first reverse . go []
   where go tds (TagOpen "div" (("id", postid):_):ts)
             | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
@@ -160,7 +160,7 @@ parseThreads = first reverse . go []
              ,(oppost, rest2) <- parseOpPost tid rest1
              ,(mpostn, rest3) <- parseOmitted rest2
              ,(vposts, rest4) <- parsePosts rest3
-             = go (Thread {threadId = tid
+             = go (ParsedThread {threadId = tid
                           ,postcount = fromMaybe 0 mpostn + length vposts
                           ,visibleposts = oppost : vposts
                           ,pinned = pin

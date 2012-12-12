@@ -20,7 +20,7 @@ module BlastItWithPiss.Escaping
 import Import
 import BlastItWithPiss.MonadChoice
 
--- FIXME code here is a goddamn mess.
+-- FIXME Кажется за каждый reverse мне светит по ебалу
 
 -- | Words which need escaping
 wordfilter :: [String]
@@ -29,8 +29,8 @@ wordfilter =
     ,"Сосач"
     ,"сомали"
     ,"Сомали"
-    ,"тиреч"
-    ,"Тиреч"
+    ,"тире"
+    ,"Тире"
     ,"двач"
     ,"Двач"
     ,"колчан"
@@ -69,6 +69,10 @@ wordfilter =
     ,"mdk"
     ,"MDK"
     ,"мдк"
+    ,"Инач"
+    ,"инач"
+    ,"Инали"
+    ,"инали"
     ]
 -- FIXME "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
 

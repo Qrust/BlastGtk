@@ -41,122 +41,6 @@ import Network
 import qualified Data.ByteString.Lazy as L
 --}
 
-data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
-                             ,timagegen :: TVar (Bool -> IO (Bool, Image))
-                             --NOTE all browser state accumulated in gens is lost.
-                             ,tuseimages :: TVar Bool
-                             ,tappendjunkimages :: TVar Bool
-                             ,tcreatethreads :: TVar Bool
-                             ,tmakewatermark :: TVar Bool
-                             ,tposttimeout :: TVar (Maybe Double)
-                             ,tthreadtimeout :: TVar (Maybe Double)
-                             ,tfluctuation :: TVar (Maybe Double)
-                             }
-
-data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
-                             ,mmode :: TVar (Maybe Mode)
-                             ,mposttimeout :: TVar (Maybe Double)
-                             ,mthreadtimeout :: TVar (Maybe Double)
-                             }
-
-data CaptchaType = CaptchaPosting | CaptchaCloudflare
-
-data CaptchaAnswer = Answer !String !(OriginStamp -> IO ())
-                   | ReloadCaptcha
-                   | AbortCaptcha
-
-data OriginStamp = OriginStamp {oTime :: !ZonedTime
-                               ,oProxy :: !BlastProxy
-                               ,oBoard :: !Board
-                               ,oMode :: !Mode
-                               ,oThread :: !(Maybe Int)
-                               }
-
-data Message = OutcomeMessage !Outcome
-             | LogMessage !String
-             | SupplyCaptcha {captchaType :: !CaptchaType
-                             ,captchaBytes :: !LByteString
-                             ,captchaSend :: !(CaptchaAnswer -> IO ())
-                             }
-             | NoPastas
-             | NoImages
-
-data OutMessage = OutMessage !OriginStamp !Message
-
-data LogDetail = Log
-               | Don'tLog
-    deriving (Eq, Show, Ord, Enum, Bounded)
-
-data ProxySettings = ProxyS {psharedCookies :: !(TMVar CookieJar)
-                            ,pcloudflareCaptchaLock :: !(TMVar ())
-                            }
-
-data BlastLogData = BlastLogData
-        {bldProxy :: !BlastProxy
-        ,bldBoard :: !Board
-        ,bldLogD :: !LogDetail
-        ,bldShS :: !ShSettings
-        ,bldMuS :: !MuSettings
-        ,bldPrS :: !ProxySettings
-        ,bldOut :: !(OutMessage -> IO ())
-        }
-
-data OriginInfo = OriginInfo {gmode :: !Mode, gthread :: !(Maybe Int)}
-
-type BlastLog = ReaderT BlastLogData (StateT OriginInfo Blast)
-
-instance Show CaptchaAnswer where
-    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
-    show ReloadCaptcha = "ReloadCaptcha"
-    show AbortCaptcha = "AbortCaptcha"
-
-renderCompactStamp :: OriginStamp -> String
-renderCompactStamp (OriginStamp _ proxy board _ _) =
-    renderBoard board ++ " {" ++ show proxy ++ "}"
-
-instance Show OriginStamp where
-    show (OriginStamp time proxy board mode thread) =
-        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
-        " " ++ show mode ++ " [| " ++
-        ssachThread board thread ++ " |]"
-
-instance Show Message where
-    show (OutcomeMessage o) = show o
-    show (LogMessage o) = o
-    show SupplyCaptcha{} = "SupplyCaptcha"
-    show NoPastas = "NoPastas"
-    show NoImages = "NoImages"
-
-instance Show OutMessage where
-    show (OutMessage s m) = show s ++ ": " ++ show m
-
-instance Default OriginInfo where
-    def = OriginInfo CreateNew Nothing
-
-instance NFData CaptchaType
-
-instance NFData CaptchaAnswer where
-    rnf (Answer s r) = r `seq` rnf s
-    rnf _ = ()
-
-instance NFData OriginStamp where
-    rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
-
-instance NFData Message where
-    rnf (OutcomeMessage o) = rnf o
-    rnf (LogMessage s) = rnf s
-    rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
-    rnf _ = ()
-
-instance NFData OutMessage where
-    rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
-
-instance MonadRandom m => MonadRandom (StateT s m) where
-    getRandom = lift getRandom
-    getRandoms = lift getRandoms
-    getRandomR = lift . getRandomR
-    getRandomRs = lift . getRandomRs
-
 {-# INLINE maybeSTM #-}
 maybeSTM :: (Functor m, MonadIO m) => TVar (Maybe a) -> (a -> b) -> m b -> m b
 maybeSTM t d m = maybe m (return . d) =<< liftIO (readTVarIO t)
@@ -168,16 +52,6 @@ flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
 {-# INLINE flBoolModSTM #-}
 flBoolModSTM :: MonadIO m => TVar Bool -> (a -> m a) -> a -> m a
 flBoolModSTM t f v = ifM (liftIO $ readTVarIO t) (f v) (return v)
-
-defMuS :: IO MuSettings
-defMuS = atomically $
-    MuSettings <$> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing
-
-defPrS :: IO ProxySettings
-defPrS = atomically $ do
-    psharedCookies <- newEmptyTMVar
-    pcloudflareCaptchaLock <- newTMVar ()
-    return ProxyS{..}
 
 runBlastLog :: BlastLogData -> BlastLog a -> Blast a
 runBlastLog d m = evalStateT (runReaderT m d) def
@@ -357,6 +231,7 @@ blastCloudflare md whatrsp url = do
                     bytes <- blast $ getCaptchaImage chKey
                     m <- newEmptyMVar
                     -- FIXME wait, why the hell don't we use blastCaptcha?
+                    -- FIXME HACK HORRIBLE What the fuck is this shit?
                     blastOut $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!)
                     a <- takeMVar m
                     case a of

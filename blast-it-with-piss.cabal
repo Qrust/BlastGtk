@@ -75,12 +75,14 @@ library
     exposed-modules:
                    BlastItWithPiss
                   ,BlastItWithPiss.Blast
+                  ,BlastItWithPiss.Proxy
                   ,BlastItWithPiss.Post
                   ,BlastItWithPiss.Parsing
                   ,BlastItWithPiss.Escaping
                   ,BlastItWithPiss.MultipartFormData
                   ,BlastItWithPiss.Image
                   ,BlastItWithPiss.Board
+                  ,BlastItWithPiss.PostDestination
                   ,BlastItWithPiss.Choice
                   ,BlastItWithPiss.MonadChoice
 
@@ -110,6 +112,7 @@ library
                ,FlexibleContexts
                ,DeriveDataTypeable
                ,BangPatterns
+               ,ConstraintKinds
 
 executable gtkblast
     main-is: GtkMain.hs
@@ -218,6 +221,7 @@ executable gtkblast
                ,DeriveDataTypeable
                ,PackageImports
                ,BangPatterns
+               ,ConstraintKinds
 
     other-extensions:
                 UndecidableInstances
@@ -293,6 +297,7 @@ executable proxychecker
                ,DeriveDataTypeable
                ,PackageImports
                ,BangPatterns
+               ,ConstraintKinds
 
     other-extensions:
                 ExistentialQuantification
@@ -373,6 +378,7 @@ executable smyvalka
                ,DeriveDataTypeable
                ,PackageImports
                ,BangPatterns
+               ,ConstraintKinds
 
     other-extensions:
                 ExistentialQuantification
@@ -471,3 +477,4 @@ executable BlastItWithPiss
                ,FlexibleContexts
                ,DeriveDataTypeable
                ,BangPatterns
+               ,ConstraintKinds

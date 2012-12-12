@@ -1,5 +1,6 @@
 module BlastItWithPiss.Board
-    (cloudflareRecaptchaKey
+    (module BlastItWithPiss.PostDestination
+    ,cloudflareRecaptchaKey
     ,Board(..)
     ,readBoard
     ,renderBoard
@@ -27,6 +28,7 @@ module BlastItWithPiss.Board
     ) where
 import Import
 import BlastItWithPiss.MultipartFormData
+import BlastItWithPiss.PostDestination
 
 -- | Sosach boards.
 data Board = A
@@ -36,7 +38,7 @@ data Board = A
            | ASYLUM -- temp/hid
            | AU
            | B
-           | BB
+--           | BB
            | BG
            | BI
            | BIZ
@@ -49,7 +51,7 @@ data Board = A
            | DI
            | DIY
            | DOM -- temp/hid
-           | DR -- temp/hid
+--           | DR -- temp/hid
            | EM
            | EW
            | F
@@ -75,7 +77,7 @@ data Board = A
            | INT
            | IZD -- temp/hid
            | JA
-           | LS
+--           | LS
            | MA
            | MC
            | MDK
@@ -150,7 +152,7 @@ ssachBoardsSortedByPostRate =
     ,(MU,61)
     ,(RF,59)
     ,(FA,55)
-    ,(BB,45)
+--    ,(BB,45)
     ,(SOC,39)
     ,(GA,39)
     ,(MOV,34)
@@ -170,7 +172,7 @@ ssachBoardsSortedByPostRate =
     ,(S,13)
     ,(BI,13)
     ,(PR,10)
-    ,(DR,10)
+--    ,(DR,10)
     ,(P,9)
     ,(MA,9)
     ,(DI,9)
@@ -220,7 +222,7 @@ ssachBoardsSortedByPostRate =
     ,(PA,1)
     ,(NE,1)
     ,(MG,1)
-    ,(LS,1)
+--    ,(LS,1)
     ,(I,1)
     ,(HH,1)
     ,(GB,1)
@@ -250,9 +252,9 @@ ssach = "http://2ch.hk"
 ssachBoard :: (Monoid a, IsString a) => Board -> a
 ssachBoard b = ssach <> renderBoard b
 
-ssachThread :: (Monoid a, IsString a) => Board -> Maybe Int -> a
-ssachThread b Nothing = ssachBoard b
-ssachThread b (Just t) = ssachBoard b <> "res/" <> show t <> ".html"
+ssachThread :: (Monoid a, IsString a) => Board -> PostDest -> a
+ssachThread b NewThread = ssachBoard b
+ssachThread b (Thread t) = ssachBoard b <> "res/" <> show t <> ".html"
 
 ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
 ssachPage b 0 = ssachBoard b <> "wakaba.html"
@@ -297,9 +299,9 @@ hoptoparasha = "http://hoptach.uni.me"
 hoptoparashaBoard :: (Monoid a, IsString a) => Board -> a
 hoptoparashaBoard b = hoptoparasha <> renderBoard b
 
-hoptoparashaThread :: (Monoid a, IsString a) => Board -> Maybe Int -> a
-hoptoparashaThread b Nothing = hoptoparashaBoard b
-hoptoparashaThread b (Just t) = hoptoparashaBoard b <> "res/" <> show t <> ".html"
+hoptoparashaThread :: (Monoid a, IsString a) => Board -> PostDest -> a
+hoptoparashaThread b NewThread = hoptoparashaBoard b
+hoptoparashaThread b (Thread t) = hoptoparashaBoard b <> "res/" <> show t <> ".html"
 
 hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
 hoptoparashaPage b 0 = hoptoparashaBoard b

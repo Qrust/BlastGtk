@@ -94,12 +94,14 @@ strategies =
             ,ShitupSticky / 100
             ,BumpOld / 30
             ,CreateNew / always]
+{- FIXME BB REMOVED
         ,BB /
             [SagePopular / 20
-            ,BumpUnpopular / 40
-            ,ShitupSticky / 60
-            ,BumpOld / 30
+            ,BumpUnpopular / 20
+            ,ShitupSticky / 40
+            ,BumpOld / 60
             ,CreateNew / always]
+-}
         ,DEV /
             [SagePopular / 15
             ,BumpUnpopular / 15
@@ -186,25 +188,25 @@ defaultStrategy =
        ,BumpOld        / 35
        ,CreateNew      / always]
 
-unlocked :: Thread -> Bool
+unlocked :: ParsedThread -> Bool
 unlocked = not . locked
 
-unpinned :: Thread -> Bool
+unpinned :: ParsedThread -> Bool
 unpinned = not . pinned
 
-bumpable :: Board -> Thread -> Bool
-bumpable board Thread{..} = postcount < ssachBumpLimit board
+bumpable :: Board -> ParsedThread -> Bool
+bumpable board ParsedThread{..} = postcount < ssachBumpLimit board
 
-unlockedUnpinnedBump :: Board -> Thread -> Bool
+unlockedUnpinnedBump :: Board -> ParsedThread -> Bool
 unlockedUnpinnedBump board t = unlocked t && unpinned t && bumpable board t
 
-unlockedSticky :: Thread -> Bool
-unlockedSticky Thread{..} = not locked && pinned
+unlockedSticky :: ParsedThread -> Bool
+unlockedSticky ParsedThread{..} = not locked && pinned
 
-newThread :: Thread -> Bool
+newThread :: ParsedThread -> Bool
 newThread t = postcount t <= 5
 
-veryPopularThread :: Thread -> Bool
+veryPopularThread :: ParsedThread -> Bool
 veryPopularThread t = postcount t >= 100
 
 tooFast :: Int -> Bool
@@ -251,9 +253,11 @@ chooseThread' board canfail mode Page{..}
     | thrds' <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
                 else let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
-                     in if null nost then filter unlocked threads else nost -- what can we do if there are only stickies left?
+                     in if null nost
+                        then filter unlocked threads -- what can we do if there are only stickies left?
+                        else nost
     , thrds <- if mode /= ShitupSticky && canfail
-                    then (Thread (-1) False False 50 [] : thrds') -- add the possibility of failure
+                    then (ParsedThread (-1) False False 50 [] : thrds') -- HACK add the possibility of failure
                                                  -- in that case we advance to the next/previous page
                     else thrds'
     , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
@@ -275,7 +279,7 @@ chooseThread board mode getPage p0
             maybe Nothing (Just . flip (,) pg . Just) <$>
                 chooseThread' board True mode pg
 
-probablyDescendAndGetPosts :: MonadChoice m => Rational -> Rational -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> m [Post]
+probablyDescendAndGetPosts :: MonadChoice m => Rational -> Rational -> (Int -> m ParsedThread) -> Maybe Page -> Maybe Int -> m [ParsedPost]
 probablyDescendAndGetPosts _ _ _ Nothing Nothing = return []
 probablyDescendAndGetPosts _ _ _ (Just p0) Nothing = return $ postsFromPage p0
 probablyDescendAndGetPosts _ _ getThread Nothing (Just tid) = visibleposts <$> getThread tid
@@ -287,26 +291,26 @@ probablyDescendAndGetPosts pprob tprob getThread (Just p0) (Just tid) = do
         else do
             return $ postsFromPage p0
 
-randomQuote :: MonadChoice m => [Post] -> String -> m String
+randomQuote :: MonadChoice m => [ParsedPost] -> String -> m String
 randomQuote [] msg = return msg
 randomQuote posts msg = do
     let removequotes = filter (fromMaybe True . fmap (/='>') . headMay)
     let puremsg = initSafe $ unlines $ removequotes $ lines msg -- initSafe removes trailing newline
-    Post{..} <- chooseFromList posts
+    ParsedPost{..} <- chooseFromList posts
     let lns = (">>" ++ show postId) : map ('>' :) (removequotes $ lines postContents)
     return $ unlines lns ++ puremsg
 
-choosePostToRepost :: MonadChoice m => Bool -> [Post] -> m String
+choosePostToRepost :: MonadChoice m => Bool -> [ParsedPost] -> m String
 choosePostToRepost randomquote posts = do
     (if randomquote then (randomQuote posts =<<) else id) $
         mchooseFromList $ filter (not . null) $ map postContents posts
 
-genPastaRandomQuote :: MonadChoice m => Rational -> Rational -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> String -> m String
+genPastaRandomQuote :: MonadChoice m => Rational -> Rational -> (Int -> m ParsedThread) -> Maybe Page -> Maybe Int -> String -> m String
 genPastaRandomQuote pprob tprob getThread mp0 mtid msg = do
     flip randomQuote msg =<< probablyDescendAndGetPosts pprob tprob getThread mp0 mtid
 
 -- | Randomly choose a post to repost from page or from thread
-genPastaFromReposts :: MonadChoice m => Bool -> (Int -> m Thread) -> Maybe Page -> Maybe Int -> m String
+genPastaFromReposts :: MonadChoice m => Bool -> (Int -> m ParsedThread) -> Maybe Page -> Maybe Int -> m String
 genPastaFromReposts q getThread mp0 mtid = do
     choosePostToRepost q =<< probablyDescendAndGetPosts 10 90 getThread mp0 mtid
     
