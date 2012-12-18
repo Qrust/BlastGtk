@@ -18,6 +18,22 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 import Paths_blast_it_with_piss
 import Data.Version
 
+
+
+
+-- FUUUUUUUUUUUCK
+-- Github removes downloads
+-- 
+-- https://github.com/blog/1302-goodbye-uploads
+--
+-- QUICK DO SOMETHING
+-- dropbox, git-annex?
+
+
+
+
+
+
 --- /\  FIXMES /\
 -- /==\ TODOS /==\
 -- \==/ NOTES \==/
@@ -48,6 +64,9 @@ import Data.Version
 -- TODO DNS caching in http-conduit
 
 -- == 2.0 RELEASE ==
+
+-- URGENT Настройка тема и поле имя/трипкод, + видео
+-- URGENT лучше маскировка убрать mfod
 
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 -- URGENT
