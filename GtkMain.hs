@@ -66,7 +66,8 @@ import Data.Version
 -- == 2.0 RELEASE ==
 
 -- URGENT Настройка тема и поле имя/трипкод, + видео
--- URGENT лучше маскировка убрать mfod
+-- URGENT Разделить цитату номера поста и цитату содержимого
+-- URGENT табовый интерфейс
 
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 -- URGENT
@@ -157,6 +158,7 @@ import Data.Version
 -- TODO Support 2chnu, alterchan.
 -- TODO add API as a fallback if can't parse html
 -- TODO Постинг в /o/
+-- TODO лучше маскировка убрать mfod
 
 -- == REFACTORING ==
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
