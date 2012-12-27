@@ -85,6 +85,8 @@ library
                   ,BlastItWithPiss.PostDestination
                   ,BlastItWithPiss.Choice
                   ,BlastItWithPiss.MonadChoice
+                  ,BlastItWithPiss.UserAgent
+                  ,BlastItWithPiss.Origin
 
     other-modules: Import
 

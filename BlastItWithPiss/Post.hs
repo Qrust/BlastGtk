@@ -39,7 +39,7 @@ instance NFData PostData where
     rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
 
 -- | Query adaptive captcha state
-doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
+doWeNeedCaptcha :: Board -> PostDest -> String -> Blast Bool
 doWeNeedCaptcha board thread usercode = do
     cd <- responseBody <$> httpReqStr
         (fromJust $ parseUrl $ ssach ++ "/makaba/captcha?code=" ++ usercode)
@@ -65,7 +65,7 @@ getCaptchaImage :: String -> Blast LByteString
 getCaptchaImage chKey =
     httpGetLbs $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
 
-ssachGetCaptcha :: Board -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
+ssachGetCaptcha :: Board -> PostDest -> String -> String -> Blast (Maybe LByteString)
 ssachGetCaptcha board thread key chKey =
     ifM (doWeNeedCaptcha board thread "")
         (do reloadCaptcha key chKey
@@ -97,7 +97,7 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-prepare :: (MonadChoice m, Failure HttpException m) => Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> m (Request a, Outcome)
+prepare :: (MonadChoice m, Failure HttpException m) => Board -> PostDest -> PostData -> String -> String -> String -> [Field] -> Int -> m (Request a, Outcome)
 prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
@@ -108,8 +108,11 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
         escapingFunction False True = escapeWordfilter maxlength wordfilter
         escapingFunction False False = return
     text <- escapingFunction escapeInv escapeWrd unesctext
+    let parent = case thread of
+                NewThread -> ""
+                Thread i -> show i
     let fields = (
-            [field "parent" (maybe "" show thread)
+            [field "parent" parent
             ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
             ,field "shampoo" (T.encodeUtf8 $ T.pack text)
             ] ++

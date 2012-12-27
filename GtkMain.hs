@@ -68,6 +68,8 @@ import Data.Version
 -- URGENT Настройка тема и поле имя/трипкод, + видео
 -- URGENT Разделить цитату номера поста и цитату содержимого
 -- URGENT табовый интерфейс
+-- URGENT вставлять ссылку на тред, не только номер
+-- URGENT blastitwithpiss.github.com
 
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 -- URGENT

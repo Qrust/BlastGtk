@@ -1,18 +1,45 @@
 module BlastItWithPiss.Blast
-    (module Control.Exception.Lifted
+    (
+    --FIXME
+    genOriginStamp,
+    --FIXME
+
+     module Control.Exception.Lifted
+    ,module Network.Mime
     ,module Network.HTTP.Conduit
     ,module Network.HTTP.Conduit.Browser
-    ,module Network.Mime
     ,module Network.HTTP.Types
+    ,module BlastItWithPiss.Proxy
+    ,module BlastItWithPiss.Origin
+    
     ,Blast
-    ,BlastProxy(..)
-    ,readBlastProxy
-    ,maybeNoProxy
-    ,userAgents
-    ,generateNewBrowser
-    ,runBlastNew
+    ,PerWipe(..)
+    ,PerBoard(..)
+    ,PerProxy(..)
+    ,mkEmptyPerProxy
+
+    ,LogDetail(..)
+    ,BlastData(..)
+
+    ,CaptchaType(..)
+    ,LogType(..)
+
+    ,CaptchaAnswer(..)
+    ,Message(..)
+    ,OutMessage(..)
+
     ,runBlast
+    ,recMode
+    ,recThread
+    ,log
+    ,debug
+    ,sendOut
+
+    ,setupBlast
+    ,runHttp
+    ,httpGetProxy
     ,httpSetProxy
+    ,httpWithProxy
     ,httpReq
     ,httpReqLbs
     ,httpReqStr
@@ -21,18 +48,18 @@ module BlastItWithPiss.Blast
     ,httpGetLbs
     ,httpGetStr
     ,httpGetStrTags
-    ,httpGetProxy
-    ,httpWithProxy
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Proxy
+import BlastItWithPiss.UserAgent
+import BlastItWithPiss.Origin
 import Control.Exception.Lifted
 import Network.Mime
 import Network.HTTP.Types
-import Network.Socket.Internal
 import Network.Socks5
-import Network.HTTP.Conduit
+import Network.HTTP.Conduit hiding (Proxy)
+import qualified Network.HTTP.Conduit as HTTP (Proxy)
 import Network.HTTP.Conduit.Browser
 import Control.Monad.Trans.Resource
 
@@ -40,11 +67,10 @@ import Text.HTML.TagSoup (Tag)
 import Text.HTML.TagSoup.Fast
 
 import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
-import qualified Text.Show as Show
+import qualified Text.Show
 
 import Data.Conduit
 import Data.Conduit.List as CL
@@ -54,42 +80,16 @@ import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Choice
 import Control.Concurrent.STM
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 
--- HACK unsafePerformIO
-import qualified System.IO.Unsafe as Unsafe (unsafePerformIO)
-{-# NOINLINE userAgent #-}
-userAgent :: ByteString
-userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
-
-type Blast = BrowserAction
-
-------------ORIGIN STAMP----------------------
-data OriginStamp
-    = OriginStamp
-        {oTime :: !ZonedTime
-        ,oProxy :: !BlastProxy
-        ,oBoard :: !Board
-        ,oMode :: !Mode
-        ,oThread :: !PostDest
-        }
-
-renderCompactStamp :: OriginStamp -> String
-renderCompactStamp (OriginStamp _ proxy board _ _) =
-    renderBoard board ++ " {" ++ show proxy ++ "}"
-
-instance Show OriginStamp where
-    show (OriginStamp time proxy board mode thread) =
-        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
-        " " ++ show mode ++ " [| " ++
-        ssachThread board thread ++ " |]"
 ------------------------------------------------
 -- | State and configuration shared by all units
 data PerWipe
     = PerWipe
-        {tpastagen :: !(TVar ((Int -> BlastLog ParsedThread) -> Maybe Page -> PostDest -> BlastLog ((Bool, ((Bool, Bool), String)))))
-        ,timagegen :: !(TVar (Bool -> BlastLog (Bool, Image)))
+        {tpastagen :: !(TVar ((Int -> Blast ParsedThread) -> Maybe Page -> PostDest -> Blast ((Bool, ((Bool, Bool), String)))))
+        ,timagegen :: !(TVar (Bool -> Blast (Bool, Image)))
         ,tuseimages :: !(TVar Bool)
         ,tappendjunkimages :: !(TVar Bool)
         ,tcreatethreads :: !(TVar Bool)
@@ -108,26 +108,30 @@ data PerBoard
         ,mthreadtimeout :: !(TVar (Maybe Double))
         }
 
-mkEmptyPerBoard :: IO PerBoard
-mkEmptyPerBoard = atomically $
-    PerBoard <$> newTVar NewThread <*> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing
-
 -- | State per proxy
 data PerProxy
     = PerProxy
         {psharedCookies :: !(TMVar CookieJar)
         ,pcloudflareCaptchaLock :: !(TMVar ())
+        ,pUserAgent :: !(TVar ByteString)
         }
 
 mkEmptyPerProxy :: IO PerProxy
-mkEmptyPerProxy = atomically $ do
-    psharedCookies <- newEmptyTMVar
-    pcloudflareCaptchaLock <- newTMVar ()
+mkEmptyPerProxy = do
+    psharedCookies <- atomically $ newEmptyTMVar
+    pcloudflareCaptchaLock <- atomically $ newTMVar ()
+    pUserAgent <- atomically . newTVar =<< chooseFromList userAgents
     return PerProxy{..}
 
 data CaptchaType
     = CaptchaPosting
     | CaptchaCloudflare
+  deriving Show
+
+data LogType
+    = LogNormal
+    | LogDebug
+  deriving (Eq, Show, Ord, Enum)
 
 data CaptchaAnswer
     = Answer !String !(OriginStamp -> IO ())
@@ -136,7 +140,7 @@ data CaptchaAnswer
 
 data Message
     = OutcomeMessage !Outcome
-    | LogMessage !String
+    | LogMessage !LogType !String
     | SupplyCaptcha
         {captchaType :: !CaptchaType
         ,captchaBytes :: !LByteString
@@ -155,25 +159,18 @@ data LogDetail
         }
   deriving (Eq, Show)
 
-data BlastLogData
-    = BlastLogData
-        {bldProxy :: !BlastProxy
-        ,bldBoard :: !Board
-        ,bldLogD :: !LogDetail
-        ,bldShS :: !PerWipe
-        ,bldMuS :: !PerBoard
-        ,bldPrS :: !PerProxy
-        ,bldOut :: !(OutMessage -> IO ())
+data BlastData
+    = BlastData
+        {bProxy :: !Proxy
+        ,bBoard :: !Board
+        ,bLogDetail :: !LogDetail
+        ,bPerWipe :: !PerWipe
+        ,bPerBoard :: !PerBoard
+        ,bPerProxy :: !PerProxy
+        ,bOut :: !(OutMessage -> IO ())
         }
 
-data OriginInfo
-    = OriginInfo
-        {gmode :: !Mode
-        ,gthread :: !PostDest
-        }
-
-type BlastLog
-    = ReaderT BlastLogData (StateT OriginInfo Blast)
+type Blast = ReaderT BlastData (StateT OriginInfo BrowserAction)
 
 instance Show CaptchaAnswer where
     show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
@@ -182,17 +179,16 @@ instance Show CaptchaAnswer where
 
 instance Show Message where
     show (OutcomeMessage o) = show o
-    show (LogMessage o) = o
-    show SupplyCaptcha{} = "SupplyCaptcha"
+    show (LogMessage LogNormal o) = o
+    show (LogMessage LogDebug o) = "<debug>" ++ o ++ "</debug>"
+    show (SupplyCaptcha t _ _) = "SupplyCaptcha " ++ show t
     show NoPastas = "NoPastas"
     show NoImages = "NoImages"
 
 instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
 
--- HACK Default OriginInfo
-instance Default OriginInfo where
-    def = OriginInfo CreateNew NewThread
+instance NFData LogType
 
 instance NFData CaptchaType
 
@@ -200,77 +196,85 @@ instance NFData CaptchaAnswer where
     rnf (Answer s r) = r `seq` rnf s
     rnf _ = ()
 
-instance NFData OriginStamp where
-    rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
-
 instance NFData Message where
     rnf (OutcomeMessage o) = rnf o
-    rnf (LogMessage s) = rnf s
+    rnf (LogMessage d s) = rnf (d,s)
     rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
     rnf _ = ()
 
 instance NFData OutMessage where
-    rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
+    rnf (OutMessage os m) = rnf (os, m)
 
-readBlastProxy :: Bool -> String -> Maybe BlastProxy
-readBlastProxy isSocks s =
-    case break (==':') (dropWhile isSpace s) of
-        (host@(_:_), (_:port)) ->
-            if isSocks
-                then SocksProxy . defaultSocksConf host . PortNum <$> readMay port
-                else HttpProxy . Proxy (fromString host) <$> readMay port
-        _ -> Nothing
+recMode :: Mode -> Blast ()
+recMode m = lift get >>= \s -> lift $ put s{gmode=m}
 
-maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
-maybeNoProxy v _ NoProxy = v
-maybeNoProxy _ f p = f p
+recThread :: PostDest -> Blast ()
+recThread t = lift get >>= \s -> lift $ put s{gthread=t}
 
-userAgents :: [ByteString]
-userAgents =
-    ["Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
-    ,"Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)"
-    ,"Mozilla/5.0 (compatible; MSIE 10.6; Windows NT 6.1; Trident/5.0; InfoPath.2; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 2.0.50727) 3gpp-gba UNTRUSTED/1.0"
-    ,"Opera/9.80 (Windows NT 6.1; U; es-ES) Presto/2.9.181 Version/12.00"
-    ,"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
-    ,"Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0) Gecko/16.0 Firefox/16.0"
-    ]
+{-# DEPRECATED genOriginStamp "FIXME" #-}
+genOriginStamp :: Blast OriginStamp
+genOriginStamp = do
+    BlastData{..} <- ask
+    OriginInfo{..} <- lift get
+    now <- liftIO getZonedTime
+    return $ OriginStamp now bProxy bBoard gmode gthread
 
-generateNewBrowser :: BrowserAction ()
-generateNewBrowser = do
-    setMaxRedirects Nothing
-    setMaxRetryCount 1
-    setTimeout $ Just $ 10 * 1000000
-    setUserAgent $ Just userAgent
-    setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
-                       ,(hConnection, "keep-alive")]
-    --
-    --setCookieFilter $ \_ _ -> return False
-    --
+sendOut :: Message -> Blast ()
+sendOut msg = do
+    stamp <- genOriginStamp
+    let a = OutMessage stamp msg
+    send <- asks bOut
+    a `deepseq` liftIO (send a)
 
-runBlastNew :: Manager -> Blast a -> IO a
-runBlastNew m blast = 
+log :: String -> Blast ()
+log msg = do
+    d <- asks bLogDetail
+    when (logNormal d) $ do
+        sendOut (LogMessage LogNormal msg)
+
+debug :: String -> Blast ()
+debug msg = do
+    d <- asks bLogDetail
+    when (logDebug d) $ do
+        sendOut (LogMessage LogDebug msg)
+
+runBlast :: Manager -> Proxy -> BlastData -> Blast a -> IO a
+runBlast m p bdata a =
     runResourceT $ browse m $ do
-        generateNewBrowser
-        blast
+        flip evalStateT def $ flip runReaderT bdata $ do
+            setupBlast p
+            a
 
-runBlast :: Manager -> BrowserState -> Blast a -> IO a
-runBlast m st blast =
-    runResourceT $ browse m $ do
-        setBrowserState st
-        blast
+setupBlast :: Proxy -> Blast ()
+setupBlast proxy = do
+    httpSetProxy proxy
+    userAgent <- liftIO . readTVarIO =<< asks (bPerProxy >>> pUserAgent)
+    runHttp $ do
+        setMaxRedirects Nothing
+        setMaxRetryCount 1
+        setTimeout $ Just $ 10 * 1000000
+        setUserAgent $ Just userAgent
+        setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
+                           ,(hConnection, "keep-alive")]
+        --
+        --setCookieFilter $ \_ _ -> return False
 
-httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
-httpSetProxys h s = do
+{-# DEPRECATED runHttp "FIXME" #-}
+runHttp :: BrowserAction a -> Blast a
+runHttp = lift . lift
+
+httpSetProxies :: Maybe HTTP.Proxy -> Maybe SocksConf -> Blast ()
+httpSetProxies h s = runHttp $ do
     setCurrentProxy h
     setCurrentSocksProxy s
 
-httpSetProxy :: BlastProxy -> Blast ()
-httpSetProxy NoProxy = httpSetProxys Nothing Nothing
-httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
-httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
+httpSetProxy :: Proxy -> Blast ()
+httpSetProxy NoProxy = httpSetProxies Nothing Nothing
+httpSetProxy (HttpProxy p) = httpSetProxies (Just p) Nothing
+httpSetProxy (SocksProxy p) = httpSetProxies Nothing (Just p)
 
-httpGetProxy :: Blast BlastProxy
-httpGetProxy = do
+httpGetProxy :: Blast Proxy
+httpGetProxy = runHttp $ do
     h <- getCurrentProxy
     case h of
         Just p -> return $ HttpProxy p
@@ -280,47 +284,48 @@ httpGetProxy = do
                 Just p -> return $ SocksProxy p
                 Nothing -> return NoProxy
 
-httpWithProxy :: BlastProxy -> Blast a -> Blast a
-httpWithProxy p m = do
-    bracket
-        httpGetProxy
-        (\current -> httpSetProxy current)
-        (\_ -> do
-            httpSetProxy p
-            m)
+httpWithProxy :: Proxy -> Blast a -> Blast a
+httpWithProxy p m = bracket
+    httpGetProxy
+    (\current -> httpSetProxy current)
+    (\_ -> do
+        httpSetProxy p
+        m)
 
 httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpReq = makeRequest
+httpReq = runHttp . makeRequest
 
 httpReqLbs :: Request (ResourceT IO) -> Blast (Response LByteString)
-httpReqLbs = makeRequestLbs
+httpReqLbs = runHttp . makeRequestLbs
 
 httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
 httpReqStr u = do
     x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map T.decodeUtf8 =$ consume)
+    liftResourceT $ fmap ((<$ x) . T.concat) $ responseBody x $$+- CL.map T.decodeUtf8 =$ consume
 
 httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
 httpReqStrTags u = do
     x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
+    liftResourceT $ fmap ((<$ x) . parseTagsT . S.concat) $ responseBody x $$+- consume
 
 httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpGet = makeRequest . fromJust . parseUrl
+httpGet u = runHttp $ do
+    r <- parseUrl u
+    makeRequest r
 
 httpGetLbs :: String -> Blast LByteString
-httpGetLbs u = do
+httpGetLbs u = runHttp $ do
     r <- parseUrl u
     responseBody <$> makeRequestLbs r
 
 httpGetStr :: String -> Blast Text
 httpGetStr u = do
     g <- httpGet u
-    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map T.decodeUtf8 =$ consume)
+    let x = liftResourceT $ fmap T.concat $ responseBody g $$+- CL.map T.decodeUtf8 =$ consume
     x
 
 httpGetStrTags :: String -> Blast [Tag Text]
 httpGetStrTags u = do
     g <- httpGet u
-    let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
+    let x = liftResourceT $ fmap (parseTagsT . S.concat) $ responseBody g $$+- consume
     x

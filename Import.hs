@@ -40,7 +40,7 @@ module Import
 import Debug.Trace as A
 #endif
 import Safe as A
-import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError)
+import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError, log)
 import System.IO as A hiding (readFile, writeFile, appendFile)
 import Data.Monoid as A
 import Data.Maybe as A
