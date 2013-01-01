@@ -18,6 +18,22 @@ import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 import Paths_blast_it_with_piss
 import Data.Version
 
+
+
+
+-- FUUUUUUUUUUUCK
+-- Github removes downloads
+-- 
+-- https://github.com/blog/1302-goodbye-uploads
+--
+-- QUICK DO SOMETHING
+-- dropbox, git-annex?
+
+
+
+
+
+
 --- /\  FIXMES /\
 -- /==\ TODOS /==\
 -- \==/ NOTES \==/
@@ -49,13 +65,18 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
--- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
--- URGENT Five'o'Three BlastItWithPiss workaround
--- URGENT Outcome 403Ban
--- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
--- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
--- URGENT Better error messages (no parse, 403, etc.)
--- URGENT GHC under Wine HaskellWiki
+
+
+-- URGENT captcha.fcgi
+
+
+
+-- URGENT Настройка тема и поле имя/трипкод, + видео
+-- URGENT Разделить цитату номера поста и цитату содержимого
+-- URGENT табовый интерфейс
+-- URGENT вставлять ссылку на тред, не только номер
+-- URGENT blastitwithpiss.github.com
+
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 -- URGENT
 --  Синхронизация юнитов, кэширование страниц(не только нулевой) между проксями
@@ -65,8 +86,18 @@ import Data.Version
 --  страниц.
 --  + Слежение за тредом, автобамп
 -- URGENT Rename EnvPart → Widget
--- URGENT ControlCenter type/class which controls wipe units.
--- URGENT Remove "{ ++ }"
+-- URGNET blastCloudflare → withCloudflare
+-- URGENT ControlCenter type/class which controls wipe units, WipeUnit type.
+-- URGENT Remove "{" ++ "}"
+-- URGENT global useragent makes all proxies share useragent
+
+-- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
+-- URGENT Five'o'Three BlastItWithPiss workaround
+-- URGENT Outcome 403Ban
+-- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
+-- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
+-- URGENT Better error messages (no parse, 403, etc.)
+-- URGENT GHC under Wine HaskellWiki
 
 --Smyvalka
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
@@ -134,12 +165,13 @@ import Data.Version
 -- TODO background mode
 -- TODO Support 2chnu, alterchan.
 -- TODO add API as a fallback if can't parse html
+-- TODO Постинг в /o/
+-- TODO лучше маскировка убрать mfod
 
 -- == REFACTORING ==
 -- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Move more envparts from EnvParts.hs to their own modules
 -- TODO ugliest things: regenerations, "old" vars in disableable envparts.
--- TODO Add a representation type for ControlCenter (that's what mainloop and gtkblast is)
 -- TODO Being functional means modeling a program in a data-oriented fashon, not
 --      effect-oriented. Right now BlastItWithPiss is as imperative as it gets.
 -- FIXME EnvPart internal state shouldn't really lie around in global env?

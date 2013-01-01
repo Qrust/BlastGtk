@@ -94,12 +94,14 @@ strategies =
             ,ShitupSticky / 100
             ,BumpOld / 30
             ,CreateNew / always]
+{- FIXME BB REMOVED
         ,BB /
             [SagePopular / 20
-            ,BumpUnpopular / 40
-            ,ShitupSticky / 60
-            ,BumpOld / 30
+            ,BumpUnpopular / 20
+            ,ShitupSticky / 40
+            ,BumpOld / 60
             ,CreateNew / always]
+-}
         ,DEV /
             [SagePopular / 15
             ,BumpUnpopular / 15
@@ -251,7 +253,9 @@ chooseThread' board canfail mode Page{..}
     | thrds' <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
                 else let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
-                     in if null nost then filter unlocked threads else nost -- what can we do if there are only stickies left?
+                     in if null nost
+                        then filter unlocked threads -- what can we do if there are only stickies left?
+                        else nost
     , thrds <- if mode /= ShitupSticky && canfail
                     then (Thread (-1) False False 50 [] : thrds') -- add the possibility of failure
                                                  -- in that case we advance to the next/previous page

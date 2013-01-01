@@ -36,7 +36,7 @@ data Board = A
            | ASYLUM -- temp/hid
            | AU
            | B
-           | BB
+--           | BB
            | BG
            | BI
            | BIZ
@@ -49,7 +49,7 @@ data Board = A
            | DI
            | DIY
            | DOM -- temp/hid
-           | DR -- temp/hid
+--           | DR -- temp/hid
            | EM
            | EW
            | F
@@ -75,7 +75,7 @@ data Board = A
            | INT
            | IZD -- temp/hid
            | JA
-           | LS
+--           | LS
            | MA
            | MC
            | MDK
@@ -150,7 +150,7 @@ ssachBoardsSortedByPostRate =
     ,(MU,61)
     ,(RF,59)
     ,(FA,55)
-    ,(BB,45)
+--    ,(BB,45)
     ,(SOC,39)
     ,(GA,39)
     ,(MOV,34)
@@ -170,7 +170,7 @@ ssachBoardsSortedByPostRate =
     ,(S,13)
     ,(BI,13)
     ,(PR,10)
-    ,(DR,10)
+--    ,(DR,10)
     ,(P,9)
     ,(MA,9)
     ,(DI,9)
@@ -220,7 +220,7 @@ ssachBoardsSortedByPostRate =
     ,(PA,1)
     ,(NE,1)
     ,(MG,1)
-    ,(LS,1)
+--    ,(LS,1)
     ,(I,1)
     ,(HH,1)
     ,(GB,1)

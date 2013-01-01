@@ -151,12 +151,6 @@ instance NFData Message where
 instance NFData OutMessage where
     rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
 
-instance MonadRandom m => MonadRandom (StateT s m) where
-    getRandom = lift getRandom
-    getRandoms = lift getRandoms
-    getRandomR = lift . getRandomR
-    getRandomRs = lift . getRandomRs
-
 {-# INLINE maybeSTM #-}
 maybeSTM :: (Functor m, MonadIO m) => TVar (Maybe a) -> (a -> b) -> m b -> m b
 maybeSTM t d m = maybe m (return . d) =<< liftIO (readTVarIO t)
