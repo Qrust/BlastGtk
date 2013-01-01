@@ -65,6 +65,12 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
+
+
+-- URGENT captcha.fcgi
+
+
+
 -- URGENT Настройка тема и поле имя/трипкод, + видео
 -- URGENT Разделить цитату номера поста и цитату содержимого
 -- URGENT табовый интерфейс
@@ -82,7 +88,7 @@ import Data.Version
 -- URGENT Rename EnvPart → Widget
 -- URGNET blastCloudflare → withCloudflare
 -- URGENT ControlCenter type/class which controls wipe units, WipeUnit type.
--- URGENT Remove "{ ++ }"
+-- URGENT Remove "{" ++ "}"
 -- URGENT global useragent makes all proxies share useragent
 
 -- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)

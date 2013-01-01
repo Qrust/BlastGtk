@@ -6,7 +6,7 @@ module BlastItWithPiss.MonadChoice
     ,mchooseFromList
     ) where
 import Import
-import Control.Monad.Trans
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Resource
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Random
