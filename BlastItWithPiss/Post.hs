@@ -1,11 +1,6 @@
 module BlastItWithPiss.Post
-    (PostData(..)
-    ,doWeNeedCaptcha
-    ,getChallengeKey
-    ,reloadCaptcha
-    ,getCaptchaImage
-    ,ssachGetCaptcha
-
+    (module BlastItWithPiss.Captcha
+    ,PostData(..)
     ,prepare
     ,post
     ) where
@@ -15,6 +10,7 @@ import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
 import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Image
+import BlastItWithPiss.Captcha
 import BlastItWithPiss.Blast
 import Control.Monad.Trans.Resource
 import qualified Data.Text as T
@@ -37,40 +33,6 @@ data PostData = PostData
 
 instance NFData PostData where
     rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
-
--- | Query adaptive captcha state
-doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
-doWeNeedCaptcha board thread usercode = do
-    cd <- responseBody <$> httpReqStr
-        (fromJust $ parseUrl $ ssach ++ "/makaba/captcha.fcgi?code=" ++ usercode)
-            {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
-                              ,("x-requested-with", "XMLHttpRequest")
-                              ,(hReferer, ssachThread board thread)]}
-    return $ not (T.isInfixOf "OK" cd || T.isInfixOf "VIP" cd)
-
-getChallengeKey :: String -> Blast String
-getChallengeKey key = do
-    rawjsstr <- T.unpack <$> httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
-    return $ headNote ("getChallengeKey: Recaptcha changed their JSON formatting, update code: " ++ rawjsstr) $
-        mapMaybe getChallenge $ lines rawjsstr
-  where getChallenge s =
-            takeUntil (=='\'') <$> stripPrefix "challenge : \'" (dropWhile isSpace s)
-
-reloadCaptcha :: String -> String -> Blast ()
-reloadCaptcha key chKey = void $
-    httpGet $ "http://www.google.com/recaptcha/api/reload?c="
-                    ++ chKey ++ "&k=" ++ key ++ "&reason=r&type=image&lang=en"
-
-getCaptchaImage :: String -> Blast LByteString
-getCaptchaImage chKey =
-    httpGetLbs $ "http://www.google.com/recaptcha/api/image?c=" ++ chKey
-
-ssachGetCaptcha :: Board -> Maybe Int -> String -> String -> Blast (Maybe LByteString)
-ssachGetCaptcha board thread key chKey =
-    ifM (doWeNeedCaptcha board thread "")
-        (do reloadCaptcha key chKey
-            Just <$> getCaptchaImage chKey)
-        (return Nothing)
 
 instance NFData (RequestBody a) where
     rnf (RequestBodyBS b) = rnf b
@@ -109,10 +71,10 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
         escapingFunction False False = return
     text <- escapingFunction escapeInv escapeWrd unesctext
     let fields = (
-            [field "parent" (maybe "" show thread)
-            ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
-            ,field "shampoo" (T.encodeUtf8 $ T.pack text)
-            ] ++
+            ([field "parent" (maybe "" show thread)
+             ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
+             ,field "shampoo" (T.encodeUtf8 $ T.pack text)
+            ]) ++
             ([Field
                 [("name", "file")
                 ,("filename", maybe mempty (T.encodeUtf8 . T.pack . filename) image)]

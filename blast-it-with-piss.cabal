@@ -34,6 +34,10 @@ flag library
     description: Build library
     default: False
 
+flag gtkonly
+    description: Build only gtkblast binary
+    default: False
+
 flag bindist
     description: Set executable's directory as the current working directory.
     default: False
@@ -86,7 +90,7 @@ library
 
     other-modules: Import
 
-    if flag(library)
+    if flag(library) && !flag(gtkonly)
         buildable: True
     else
         buildable: False
@@ -273,6 +277,10 @@ executable proxychecker
                   ,failure
                   ,tagsoup
                   ,fast-tagsoup
+
+    if flag(gtkonly)
+        buildable: False
+
     if flag(bindist)
         cpp-options: -DBINDIST
         if !os(windows)
@@ -354,6 +362,10 @@ executable smyvalka
                   ,fast-tagsoup
                   ,random-shuffle
                   ,antigate
+
+    if flag(gtkonly)
+        buildable: False
+
     if flag(bindist)
         cpp-options: -DBINDIST
         if !os(windows)
@@ -393,6 +405,9 @@ executable smyvalka
 --~                  ,stm
 --~                  ,bytestring
 --~                  ,blast-it-with-piss
+--~
+--~    if flag(gtkonly)
+--~        buildable: False
 --~
 --~    if flag(bindist)
 --~        cpp-options: -DBINDIST
@@ -451,6 +466,8 @@ executable BlastItWithPiss
                   ,cereal
                   --,tls-extra == 0.4.7.1
                   ,executable-path
+    if flag(gtkonly)
+        buildable: False
 
     if flag(bindist)
         cpp-options: -DBINDIST

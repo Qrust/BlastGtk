@@ -47,6 +47,7 @@ killWipeUnit :: Board -> WipeUnit -> E ()
 killWipeUnit board WipeUnit{..} = do
     writeLog $ "Killing thread for " ++ renderBoard board ++ " {" ++ show wuProxy ++ "}"
     io $ killThread wuThreadId
+    writeLog $ "Killed thread for " ++ renderBoard board ++ " {" ++ show wuProxy ++ "}"
 
 killBoardUnitWipeUnits :: BoardUnit -> E ()
 killBoardUnitWipeUnits BoardUnit{..} = do

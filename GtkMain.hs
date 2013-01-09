@@ -28,6 +28,7 @@ import Data.Version
 --
 -- QUICK DO SOMETHING
 -- dropbox, git-annex?
+-- bitbucket has Downloads section, we can setup a mirror there.
 
 
 
@@ -66,8 +67,13 @@ import Data.Version
 -- == 2.0 RELEASE ==
 
 
-
--- URGENT captcha.fcgi
+-- URGENT fucking haskell won't just fucking work.
+--        On linux threads don't get killed after a ban, something swallows the exception.
+--        Adding a 'print' somewhere "fixes" the problem, but it doesn't seem related to
+--        exception masking, It reports that it's unmasked, yet won't fucking terminate
+--        without that print.
+-- URGENT yandex captcha
+-- URGENT repeat on 503, database error
 
 
 
@@ -103,6 +109,7 @@ import Data.Version
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
 
 --BlastItWithPiss lib:
+-- TODO Безжалостное уродование текста (замена на цифры, leet, вставка пробелов/минусов)
 -- TODO avoid parsing page when only creating threads / when it's time to
 --      create a thread and createthread == always
 -- TODO avoid rolling a dice when createthread == always
