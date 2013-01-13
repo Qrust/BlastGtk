@@ -69,7 +69,7 @@ import Data.Version
 
 -- URGENT yandex captcha
 -- URGENT repeat on 503, database error, once on http
-
+-- URGENT капча на несколько постов вперед.
 
 
 -- URGENT Настройка тема и поле имя/трипкод, + видео

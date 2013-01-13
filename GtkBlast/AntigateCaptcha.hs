@@ -63,7 +63,9 @@ antigateThread connection (st, SupplyCaptcha{..}) tq key =
                 io $ captchaSend AbortCaptcha
             ,Handler $ \(e::AsyncException) -> do
                 lg $ "Antigate thread killed by async " ++ show e ++ " " ++ renderCompactStamp st
-            ,Handler $ io . errex
+            ,Handler $ \e -> do
+                io $ captchaSend AbortCaptcha
+                io $ errex e
             ]
 antigateThread _ _ _ _ = error "FIXME Impossible happened. Switch from Message, to a dedicated SupplyCaptcha type"
 
