@@ -52,8 +52,7 @@ pastaChooser pastas = do
     rquoter <- ifM (get wcheckrandomquote) (return $ genPastaRandomQuote 100 0) (return $ \_ _ _ -> return)
     e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
     return $ \a b c -> do
-        let nogaems = null pastas
-        (,) nogaems . (,) e <$> (rquoter a b c =<< mchooseFromList pastas)
+        (,) (null pastas) . (,) e <$> (rquoter a b c =<< mchooseFromList pastas)
 
 generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
 generatePastaGen PastaFile =

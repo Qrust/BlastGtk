@@ -67,13 +67,8 @@ import Data.Version
 -- == 2.0 RELEASE ==
 
 
--- URGENT fucking haskell won't just fucking work.
---        On linux threads don't get killed after a ban, something swallows the exception.
---        Adding a 'print' somewhere "fixes" the problem, but it doesn't seem related to
---        exception masking, It reports that it's unmasked, yet won't fucking terminate
---        without that print.
 -- URGENT yandex captcha
--- URGENT repeat on 503, database error
+-- URGENT repeat on 503, database error, once on http
 
 
 
@@ -96,6 +91,7 @@ import Data.Version
 -- URGENT ControlCenter type/class which controls wipe units, WipeUnit type.
 -- URGENT Remove "{" ++ "}"
 -- URGENT global useragent makes all proxies share useragent
+-- URGENT parse less often if board is slow
 
 -- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
 -- URGENT Five'o'Three BlastItWithPiss workaround

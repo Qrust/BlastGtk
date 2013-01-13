@@ -62,7 +62,7 @@ library
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.6
+                  ,http-conduit >= 1.8.6.3
                   ,http-conduit-browser >= 1.7.1.2
                   ,certificate >= 1.3.1
                   ,conduit
@@ -184,7 +184,7 @@ executable gtkblast
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.6
+                  ,http-conduit >= 1.8.6.3
                   ,http-conduit-browser >= 1.7.1.2
                   ,certificate >= 1.3.1
                   ,conduit
@@ -264,7 +264,7 @@ executable proxychecker
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.6
+                  ,http-conduit >= 1.8.6.3
                   ,http-conduit-browser >= 1.7.1.2
                   ,certificate >= 1.3.1
                   ,conduit
@@ -347,7 +347,7 @@ executable smyvalka
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.6
+                  ,http-conduit >= 1.8.6.3
                   ,http-conduit-browser >= 1.7.1.2
                   ,certificate >= 1.3.1
                   ,conduit

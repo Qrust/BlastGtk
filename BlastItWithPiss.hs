@@ -257,15 +257,15 @@ blastPostData mode getThread mpastapage thread = do
         st <- blast getBrowserState
         manager <- blast getManager
         liftIO $ pastagen (runBlast manager st . runBlastLogSt r s . getThread) mpastapage thread
-    when nopastas $ do
+    {-when nopastas $ do
         blastOut NoPastas
-        blastLog "threw NoPastas"
+        blastLog "threw NoPastas"-}
     blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
     blastLog "Choosing image"
     (noimages, cleanImage) <- do
         use <- liftIO $ readTVarIO tuseimages
-        if not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode
+        if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode) && not nopastas
             then return (False, Nothing)
             else second Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
     when noimages $ do
@@ -412,7 +412,7 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
                 fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
                     if neededcaptcha
                         then do
-                            blastLog "Needed to manually input captcha, cancelling fluctuation"
+                            blastLog "Had to manually input captcha, cancelling fluctuation"
                             return 0
                         else do
                             lowerHalf <- chooseFromList [True, True, True, False]
@@ -429,7 +429,7 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
             afterPost <- liftIO $ getPOSIXTime --pessimistic
             blastOut (OutcomeMessage out)
             when (successOutcome out) $ blastLog "post succeded"
-            let (nthreadtime, nposttime) =
+            let (!nthreadtime, !nposttime) =
                     if mode == CreateNew
                         then (afterPost, lposttime) --pessimistic
                         else (lthreadtime, beforePost) --optimistic
@@ -504,7 +504,8 @@ blastLoop w lthreadtime lposttime = do
     recThread thread
     blastLog $ "chose thread " ++ show thread
     postdata <- blastPostData mode getThread mpastapage thread
-    (nthreadtime, nposttime) <- blastPost threadtimeout False lthreadtime lposttime w mode thread postdata
+    (nthreadtime, nposttime) <- blastPost threadtimeout False lthreadtime lposttime
+                                    w mode thread postdata
     blastLoop w nthreadtime nposttime
 
 -- | Entry point should always be forked.
@@ -529,7 +530,9 @@ entryPoint proxy board lgDetail shS muS prS output = do
               {-,Handler $ \(a::HttpException) -> do
                 blastLog $ "Got http exception, restarting. Exception was: " ++ show a
                 start -- Dunno what to do except restart.-}
-              ,Handler $ \(_::AbortOutcome) -> start --HACK abortOutcome
+              ,Handler $ \(_::AbortOutcome) -> do
+                blastLog "HACK abortOutcome"
+                start --HACK abortOutcome
               ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException a

@@ -20,8 +20,9 @@ class ChallengeKey a where
 -- | Query adaptive captcha state
 doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
 doWeNeedCaptcha board thread usercode = do
+    let code = if not $ null usercode then "?code=" ++ usercode else []
     cd <- responseBody <$> httpReqStr
-        (fromJust $ parseUrl $ ssach ++ "/makaba/captcha.fcgi?code=" ++ usercode)
+        (fromJust $ parseUrl $ ssach ++ "/makaba/captcha.fcgi" ++ code)
             {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
                               ,("X-Requested-With", "XMLHttpRequest")
                               ,(hReferer, ssachThread board thread)]}
