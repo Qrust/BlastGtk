@@ -1,11 +1,9 @@
 module BlastItWithPiss.Board
-    (cloudflareRecaptchaKey
-    ,Board(..)
+    (Board(..)
     ,readBoard
     ,renderBoard
 
     -- * Ssach
-    ,ssachAdaptivity
     ,ssachBoardsSortedByPostRate
     ,ssachLastRecordedWakabaplAndFields
     ,allSsachBoards
@@ -13,7 +11,6 @@ module BlastItWithPiss.Board
     ,ssachBoard
     ,ssachThread
     ,ssachPage
-    ,ssachRecaptchaKey
     ,ssachLengthLimit
     ,ssachThreadTimeout
     ,ssachPostTimeout
@@ -258,9 +255,6 @@ ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
 ssachPage b 0 = ssachBoard b <> "wakaba.html"
 ssachPage b i = ssachBoard b <> show i <> ".html"
 
-ssachRecaptchaKey :: String
-ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
-
 ssachLengthLimit :: Num a => a
 ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
                         -- bytes instead of unicode chars.
@@ -269,10 +263,6 @@ ssachThreadTimeout :: Num a => Board -> a
 ssachThreadTimeout _ = 30 * 60
 ssachPostTimeout :: Num a => Board -> a
 ssachPostTimeout _ = 10
-
-ssachAdaptivity :: Bool
--- TODO update later, when they disable adaptivity
-ssachAdaptivity = True
 
 ssachBumpLimit :: Num a => Board -> a
 ssachBumpLimit B = 513
@@ -303,9 +293,5 @@ hoptoparashaThread b (Just t) = hoptoparashaBoard b <> "res/" <> show t <> ".htm
 hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
 hoptoparashaPage b 0 = hoptoparashaBoard b
 hoptoparashaPage b i = hoptoparashaBoard b <> show i <> ".html"
-
--- | This should be put somewhere else
-cloudflareRecaptchaKey :: String
-cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
 
 -- TODO add 2chnu

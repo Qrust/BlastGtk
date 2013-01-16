@@ -23,23 +23,11 @@ import Text.Recognition.Antigate
 import qualified Data.Map as M
 import Control.Monad.Trans.Resource
 
-recaptchaCaptchaConf :: CaptchaConf
-recaptchaCaptchaConf =
-    def {phrase = True
-        ,regsense = False
-        ,numeric = Nothing
-        ,calc = False
-        ,min_len = 0
-        ,max_len = 0
-        ,is_russian = False
-        ,max_bid = Nothing
-        }
-
-antigateThread :: Manager -> (OriginStamp, Message) -> TQueue (Either String String) -> String -> IO ()
+antigateThread :: Manager -> (OriginStamp, SupplyCaptcha) -> TQueue (Either String String) -> String -> IO ()
 antigateThread connection (st, SupplyCaptcha{..}) tq key =
     runResourceT $ flip catches hands $ do
         -- FIXME we assume recaptcha
-        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf "recaptcha.jpg" captchaBytes connection
+        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key captchaConf "recaptcha.jpg" captchaBytes connection
         lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
         io $ captchaSend $ Answer str (handle errex . report cid)
         lg $ "Antigate thread finished for " ++ renderCompactStamp st
@@ -67,22 +55,21 @@ antigateThread connection (st, SupplyCaptcha{..}) tq key =
                 io $ captchaSend AbortCaptcha
                 io $ errex e
             ]
-antigateThread _ _ _ _ = error "FIXME Impossible happened. Switch from Message, to a dedicated SupplyCaptcha type"
 
-startAntigateThread :: (OriginStamp, Message) -> E (ThreadId, (OriginStamp, Message))
+startAntigateThread :: (OriginStamp, SupplyCaptcha) -> E (ThreadId, (OriginStamp, SupplyCaptcha))
 startAntigateThread c@(OriginStamp{..},_) = do
     E{..} <- ask
     writeLog $ "Spawning antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
     i <- io . forkIO . antigateThread connection c antigateLogQueue =<< get wentryantigatekey
     return (i, c)
 
-addAntigateCaptchas :: [(OriginStamp, Message)] -> E ()
+addAntigateCaptchas :: [(OriginStamp, SupplyCaptcha)] -> E ()
 addAntigateCaptchas [] = writeLog "Added 0 antigate captchas..."
 addAntigateCaptchas sps = do
     E{..} <- ask
     modM pendingAntigateCaptchas $ \x -> (x ++) <$> mapM startAntigateThread sps
 
-addAntigateCaptcha :: (OriginStamp, Message) -> E ()
+addAntigateCaptcha :: (OriginStamp, SupplyCaptcha) -> E ()
 addAntigateCaptcha sp = addAntigateCaptchas [sp]
 
 filterDead :: E ()
@@ -121,7 +108,7 @@ maintainAntigateCaptcha blacklist = do
     filterDead
     filterBlacklist blacklist
 
-killAntigateCaptchas :: E [(OriginStamp, Message)]
+killAntigateCaptchas :: E [(OriginStamp, SupplyCaptcha)]
 killAntigateCaptchas = do
     E{..} <- ask
     oldPac <- get pendingAntigateCaptchas
@@ -139,7 +126,7 @@ killAntigateCaptcha = do
     void $ killAntigateCaptchas
     displayLogs
 
-deactivateAntigateCaptcha :: E [(OriginStamp, Message)]
+deactivateAntigateCaptcha :: E [(OriginStamp, SupplyCaptcha)]
 deactivateAntigateCaptcha = do
     E{..} <- ask
     writeLog "Deactivating antigate captcha..."

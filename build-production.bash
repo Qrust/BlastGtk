@@ -1,4 +1,10 @@
 #!/bin/sh
+if [ -d "cabal-dev" ]
+    then
+        _cabal="cabal-dev"
+    else
+        _cabal="cabal"
+fi
 case `uname` in
     MINGW*)
         lbdir="dos"
@@ -15,7 +21,7 @@ case `uname` in
             *)
                 lbdir="linux"
                 foldr="linux-dist"
-                cbl="cabal"
+                cbl="$_cabal"
                 cr=`pwd`;;
         esac;;
 esac

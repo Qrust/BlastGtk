@@ -25,19 +25,19 @@ captchaError :: String -> E ()
 captchaError =
     showMessage wcheckannoy "Captcha error" (Just 2) True
 
-captchaMessagePersistent :: String -> E ()
-captchaMessagePersistent s =
+captchaSupplyCaptchaPersistent :: String -> E ()
+captchaSupplyCaptchaPersistent s =
     showMessage wcheckannoy "Persistent captcha message" Nothing False s
-    -- showMessage increments messageLocks, we deincrement messageLock in removeCurrentCaptcha
+    -- showSupplyCaptcha increments messageLocks, we deincrement messageLock in removeCurrentCaptcha
 
-formatCaptchaMessage :: CaptchaType -> OriginStamp -> String
-formatCaptchaMessage CaptchaPosting (OriginStamp _ proxy board _ thread) =
+formatCaptchaSupplyCaptcha :: CaptchaType -> OriginStamp -> String
+formatCaptchaSupplyCaptcha CaptchaPosting (OriginStamp _ proxy board _ thread) =
     "Введите капчу для " ++
         (case thread of
             Nothing -> "создания нового треда в " ++ renderBoard board
             t -> "Поста в тред " ++ ssachThread board t) ++
                 maybeNoProxy "" (\p -> "с прокси {" ++ show p ++ "}") proxy
-formatCaptchaMessage CaptchaCloudflare (OriginStamp _ proxy _ _ _) =
+formatCaptchaSupplyCaptcha CaptchaCloudflare (OriginStamp _ proxy _ _ _) =
     "Введите капчу Cloudflare для " ++ show proxy
 
 updateCaptchaWidget :: E ()
@@ -47,13 +47,13 @@ updateCaptchaWidget = do
     case pc of
         [] -> tempError 2 $ "Switching while there are no captchas."
         ((st, c):_) -> control $ \lio ->
-            withSystemTempFile "recaptcha-captcha-image.jpeg" $ \fn h -> lio $ do
+            withSystemTempFile "captcha.image" $ \fn h -> lio $ do
                 io $ L.hPut h $ captchaBytes c
                 io $ hClose h
                 io $ imageSetFromFile wimagecaptcha fn
                 writeLog "switched captcha"
                 io $ entrySetText wentrycaptcha ""
-                captchaMessagePersistent $ formatCaptchaMessage (captchaType c) st
+                captchaSupplyCaptchaPersistent $ formatCaptchaSupplyCaptcha (captchaType c) st
 
 putCaptchaWidget :: E ()
 putCaptchaWidget = do
@@ -73,7 +73,7 @@ removeCaptchaWidget = do
         whenM (get wcheckhideonsubmit) $
             widgetHide window
 
-addGuiCaptchas :: [(OriginStamp, Message)] -> E ()
+addGuiCaptchas :: [(OriginStamp, SupplyCaptcha)] -> E ()
 addGuiCaptchas [] = writeLog "Added 0 gui captchas..."
 addGuiCaptchas sps = do
     E{..} <- ask
@@ -84,7 +84,7 @@ addGuiCaptchas sps = do
         updateCaptchaWidget
         putCaptchaWidget
 
-addGuiCaptcha :: (OriginStamp, Message) -> E ()
+addGuiCaptcha :: (OriginStamp, SupplyCaptcha) -> E ()
 addGuiCaptcha sp = addGuiCaptchas [sp]
 
 resetCurrentCaptcha :: E ()
@@ -95,7 +95,7 @@ resetCurrentCaptcha = do
         removeCaptchaWidget
         updateCaptchaWidget
 
-removeCurrentCaptchaWith :: ((OriginStamp, Message) -> E ()) -> E ()
+removeCurrentCaptchaWith :: ((OriginStamp, SupplyCaptcha) -> E ()) -> E ()
 removeCurrentCaptchaWith f = do
     E{..} <- ask
     pc <- get pendingGuiCaptchas
@@ -145,7 +145,7 @@ killGuiCaptcha = do
     set pendingGuiCaptchas []
     mod messageLocks (subtract $ length pgc)
 
-deactivateGuiCaptcha :: E [(OriginStamp, Message)]
+deactivateGuiCaptcha :: E [(OriginStamp, SupplyCaptcha)]
 deactivateGuiCaptcha = do
     E{..} <- ask
     writeLog "Deactivating gui captcha..."

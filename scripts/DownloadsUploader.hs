@@ -95,8 +95,8 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
         }
         , id)
 
-uploadZip :: Int -> Text -> String -> ByteString -> Text -> IO ()
-uploadZip t pass arcfilename arcbytes desc = withManager $ \m -> do
+uploadZip :: Text -> String -> ByteString -> Text -> IO ()
+uploadZip pass arcfilename arcbytes desc = withManager $ \m -> do
     let req = applyBasicAuth username (encodeUtf8 pass) $
                 (fromJust $ parseUrl $
                     "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads")
@@ -114,21 +114,8 @@ uploadZip t pass arcfilename arcbytes desc = withManager $ \m -> do
     liftIO $ putStrLn "Part2"
     boundary <- liftIO $ randomBoundary
     let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
-    e <- try $ http req m
-    case e of
-        Left (a::SomeException) -> liftIO $ do
-            -- Oh well, if that's the only way...
-            -- Randomly fails with
-            -- hPutBuf: resource vanished (Broken pipe)
-            -- or hPutBuf: resource vanished (Connection reset by peer)
-            putStrLn $ "Got exception: " ++ show a ++ ", restarting..."
-            if t < 10
-                then do
-                    deleteDownload pass id
-                    uploadZip (t+1) pass arcfilename arcbytes desc
-                else throwIO a
-        Right _ -> do
-            liftIO $ putStrLn "Success."
+    http req m
+    liftIO $ putStrLn "Success."
 
 deleteDownloads :: Text -> Version -> IO ()
 deleteDownloads pass v = do
@@ -178,9 +165,9 @@ main = do
     hSetEcho stdin False
     password <- maybe (error "Пароль обязателен") T.pack <$> readline "Пароль гитхаба:\n"
     putStrLn "Прыщи..."
-    uploadZip 0 password lafilename labytes "Прыщи"
+    uploadZip password lafilename labytes "Прыщи"
     putStrLn "Сперма..."
-    uploadZip 0 password wafilename wabytes "Сперма"
+    uploadZip password wafilename wabytes "Сперма"
     putStrLn "Загрузилось наконец."
     when (read dogit) $ do
         putStrLn "git commit"

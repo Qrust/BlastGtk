@@ -67,7 +67,8 @@ import Data.Version
 -- == 2.0 RELEASE ==
 
 
--- URGENT yandex captcha
+-- URGENT Fix proxychecker
+
 -- URGENT repeat on 503, database error, once on http
 -- URGENT капча на несколько постов вперед.
 

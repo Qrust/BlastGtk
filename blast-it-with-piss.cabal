@@ -1,7 +1,7 @@
 name: blast-it-with-piss
-synopsis: Flooder for pseudo-anonymous bydloforum 2ch.so
-description: Flooder for pseudo-anonymous bydloforum 2ch.so, includes GTK2 gui and auto-updater.
-version: 1.1.8
+synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
+description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
+version: 1.1.9
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -67,7 +67,7 @@ library
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
-                  ,mime-types
+                  ,mime-types >= 0.1.0.2
                   ,socks
                   ,resourcet
                   ,case-insensitive
@@ -75,6 +75,7 @@ library
                   ,failure
                   ,tagsoup
                   ,fast-tagsoup
+                  ,antigate
 
     exposed-modules:
                    BlastItWithPiss
@@ -189,7 +190,7 @@ executable gtkblast
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
-                  ,mime-types
+                  ,mime-types >= 0.1.0.2
                   ,socks
                   ,resourcet
                   ,case-insensitive
@@ -269,7 +270,7 @@ executable proxychecker
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
-                  ,mime-types
+                  ,mime-types >= 0.1.0.2
                   ,socks
                   ,resourcet
                   ,case-insensitive
@@ -277,6 +278,7 @@ executable proxychecker
                   ,failure
                   ,tagsoup
                   ,fast-tagsoup
+                  ,antigate
 
     if flag(gtkonly)
         buildable: False
@@ -352,7 +354,7 @@ executable smyvalka
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
-                  ,mime-types
+                  ,mime-types >= 0.1.0.2
                   ,socks
                   ,resourcet
                   ,case-insensitive

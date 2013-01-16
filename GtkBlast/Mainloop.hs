@@ -221,7 +221,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                     setBanned board proxy
                 Five'o'ThreeError -> writeLog $ stamp $ "Five'o'ThreeError"
                 UnknownError -> tempError 4 $ stamp $ "Неизвестная ошибка, что-то пошло не так"
-        c@SupplyCaptcha{} -> addCaptcha (st, c)
+        SolveCaptcha c -> addCaptcha (st, c)
         NoPastas -> do writeLog (show s)
                        tempError 3 "Невозможно прочитать пасты, постим нихуя"
         NoImages -> do writeLog (show s)

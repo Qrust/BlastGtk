@@ -47,9 +47,9 @@ data Env = E
     ,socksproxyMod :: IORef ModificationTime
     ,socksproxyLast :: IORef [BlastProxy]
     ,captchaMode :: IORef CaptchaMode
-    ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, Message))]
+    ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, SupplyCaptcha))]
     ,antigateLogQueue :: TQueue (Either String String)
-    ,pendingGuiCaptchas :: IORef [(OriginStamp, Message)]
+    ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
     ,guiReportQueue :: TQueue OriginStamp
     ,boardUnits :: [BoardUnit]
 

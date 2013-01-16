@@ -5,6 +5,7 @@ module BlastItWithPiss
     ,CaptchaAnswer(..)
     ,OriginStamp(..)
     ,renderCompactStamp
+    ,SupplyCaptcha(..)
     ,Message(..)
     ,OutMessage(..)
     ,LogDetail(..)
@@ -15,6 +16,7 @@ module BlastItWithPiss
     ,sortSsachBoardsByPopularity
     ) where
 import Import
+
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Image
 import BlastItWithPiss.Board
@@ -23,87 +25,98 @@ import BlastItWithPiss.Choice
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Post
+
 import Control.Concurrent.Lifted
 import Control.Concurrent.STM
+
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
-import qualified Text.Show as Show
-import Text.HTML.TagSoup(Tag)
+
 import Data.Time.Clock.POSIX
 
-{-
-import Control.Concurrent (forkIO)
-import GHC.Conc (threadStatus, ThreadStatus(..))
-import System.Process
-import System.Exit
-import Network
-import qualified Data.ByteString.Lazy as L
---}
+import qualified Text.Show as Show
+import Text.HTML.TagSoup(Tag)
 
-data ShSettings = ShSettings {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
-                             ,timagegen :: TVar (Bool -> IO (Bool, Image))
-                             --NOTE all browser state accumulated in gens is lost.
-                             ,tuseimages :: TVar Bool
-                             ,tappendjunkimages :: TVar Bool
-                             ,tcreatethreads :: TVar Bool
-                             ,tmakewatermark :: TVar Bool
-                             ,tposttimeout :: TVar (Maybe Double)
-                             ,tthreadtimeout :: TVar (Maybe Double)
-                             ,tfluctuation :: TVar (Maybe Double)
-                             }
+data ShSettings = ShSettings
+    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
+    ,timagegen :: TVar (Bool -> IO (Bool, Image))
+    --NOTE all browser state accumulated in gens is lost.
+    ,tuseimages :: TVar Bool
+    ,tappendjunkimages :: TVar Bool
+    ,tcreatethreads :: TVar Bool
+    ,tmakewatermark :: TVar Bool
+    ,tposttimeout :: TVar (Maybe Double)
+    ,tthreadtimeout :: TVar (Maybe Double)
+    ,tfluctuation :: TVar (Maybe Double)
+    }
 
-data MuSettings = MuSettings {mthread :: TVar (Maybe Int)
-                             ,mmode :: TVar (Maybe Mode)
-                             ,mposttimeout :: TVar (Maybe Double)
-                             ,mthreadtimeout :: TVar (Maybe Double)
-                             }
+data MuSettings = MuSettings
+    {mthread :: TVar (Maybe Int)
+    ,mmode :: TVar (Maybe Mode)
+    ,mposttimeout :: TVar (Maybe Double)
+    ,mthreadtimeout :: TVar (Maybe Double)
+    }
 
-data CaptchaType = CaptchaPosting | CaptchaCloudflare
+data CaptchaType
+    = CaptchaPosting
+    | CaptchaCloudflare
 
-data CaptchaAnswer = Answer !String !(OriginStamp -> IO ())
-                   | ReloadCaptcha
-                   | AbortCaptcha
+data CaptchaAnswer
+    = Answer !String !(OriginStamp -> IO ())
+    | ReloadCaptcha
+    | AbortCaptcha
 
-data OriginStamp = OriginStamp {oTime :: !ZonedTime
-                               ,oProxy :: !BlastProxy
-                               ,oBoard :: !Board
-                               ,oMode :: !Mode
-                               ,oThread :: !(Maybe Int)
-                               }
+data OriginStamp = OriginStamp
+    {oTime :: !ZonedTime
+    ,oProxy :: !BlastProxy
+    ,oBoard :: !Board
+    ,oMode :: !Mode
+    ,oThread :: !(Maybe Int)
+    }
 
-data Message = OutcomeMessage !Outcome
-             | LogMessage !String
-             | SupplyCaptcha {captchaType :: !CaptchaType
-                             ,captchaBytes :: !LByteString
-                             ,captchaSend :: !(CaptchaAnswer -> IO ())
-                             }
-             | NoPastas
-             | NoImages
+data SupplyCaptcha = SupplyCaptcha
+    {captchaType :: !CaptchaType
+    ,captchaBytes :: !LByteString
+    ,captchaSend :: !(CaptchaAnswer -> IO ())
+    ,captchaConf :: !CaptchaConf
+    }
+
+data Message
+    = OutcomeMessage !Outcome
+    | LogMessage !String
+    | SolveCaptcha !SupplyCaptcha
+    | NoPastas
+    | NoImages
 
 data OutMessage = OutMessage !OriginStamp !Message
 
-data LogDetail = Log
-               | Don'tLog
-    deriving (Eq, Show, Ord, Enum, Bounded)
+data LogDetail
+    = Log
+    | Don'tLog
+  deriving (Eq, Show, Ord, Enum, Bounded)
 
-data ProxySettings = ProxyS {psharedCookies :: !(TMVar CookieJar)
-                            ,pcloudflareCaptchaLock :: !(TMVar ())
-                            }
+data ProxySettings = ProxyS
+    {psharedCookies :: !(TMVar CookieJar)
+    ,pcloudflareCaptchaLock :: !(TMVar ())
+    }
 
 data BlastLogData = BlastLogData
-        {bldProxy :: !BlastProxy
-        ,bldBoard :: !Board
-        ,bldLogD :: !LogDetail
-        ,bldShS :: !ShSettings
-        ,bldMuS :: !MuSettings
-        ,bldPrS :: !ProxySettings
-        ,bldOut :: !(OutMessage -> IO ())
-        }
+    {bldProxy :: !BlastProxy
+    ,bldBoard :: !Board
+    ,bldLogD :: !LogDetail
+    ,bldShS :: !ShSettings
+    ,bldMuS :: !MuSettings
+    ,bldPrS :: !ProxySettings
+    ,bldOut :: !(OutMessage -> IO ())
+    }
 
-data OriginInfo = OriginInfo {gmode :: !Mode, gthread :: !(Maybe Int)}
-
-type BlastLog = ReaderT BlastLogData (StateT OriginInfo Blast)
+data OriginInfo = OriginInfo
+    {gmode :: !Mode
+    ,gthread :: !(Maybe Int)
+    }
+                                            -- | Kludge
+type BlastLog = ReaderT BlastLogData (StateT (OriginInfo, Bool) Blast)
 
 instance Show CaptchaAnswer where
     show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
@@ -123,7 +136,7 @@ instance Show OriginStamp where
 instance Show Message where
     show (OutcomeMessage o) = show o
     show (LogMessage o) = o
-    show SupplyCaptcha{} = "SupplyCaptcha"
+    show SolveCaptcha{} = "SolveCaptcha"
     show NoPastas = "NoPastas"
     show NoImages = "NoImages"
 
@@ -142,10 +155,15 @@ instance NFData CaptchaAnswer where
 instance NFData OriginStamp where
     rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
 
+instance NFData CaptchaConf
+
+instance NFData SupplyCaptcha where
+    rnf (SupplyCaptcha a b c d) = rnf(a,b,c,d)
+
 instance NFData Message where
     rnf (OutcomeMessage o) = rnf o
     rnf (LogMessage s) = rnf s
-    rnf (SupplyCaptcha c b s) = rnf (c, b) `deepseq` s `seq` ()
+    rnf (SolveCaptcha s) = s `deepseq` ()
     rnf _ = ()
 
 instance NFData OutMessage where
@@ -174,9 +192,9 @@ defPrS = atomically $ do
     return ProxyS{..}
 
 runBlastLog :: BlastLogData -> BlastLog a -> Blast a
-runBlastLog d m = evalStateT (runReaderT m d) def
+runBlastLog d m = evalStateT (runReaderT m d) (def, False)
 
-runBlastLogSt :: BlastLogData -> OriginInfo -> BlastLog a -> Blast a
+runBlastLogSt :: BlastLogData -> (OriginInfo, Bool) -> BlastLog a -> Blast a
 runBlastLogSt d o m = evalStateT (runReaderT m d) o
 
 blast :: Blast a -> BlastLog a
@@ -192,13 +210,19 @@ askLogD :: BlastLog LogDetail
 askLogD = asks bldLogD
 
 askOrI :: BlastLog OriginInfo
-askOrI = lift get
+askOrI = fst <$> lift get
 
 askShS :: BlastLog ShSettings
 askShS = asks bldShS
 
 askBSM :: BlastLog (Board, ShSettings, MuSettings)
 askBSM = asks $ \b -> (bldBoard b, bldShS b, bldMuS b)
+
+askAdaptive :: BlastLog Bool
+askAdaptive = snd <$> lift get
+
+setAdaptive :: Bool -> BlastLog ()
+setAdaptive n = lift $ get >>= \(s, _) -> put (s, n)
 
 askProxyS :: BlastLog ProxySettings
 askProxyS = asks bldPrS
@@ -207,10 +231,10 @@ askOut :: BlastLog (OutMessage -> IO ())
 askOut = asks bldOut
 
 recMode :: Mode -> BlastLog ()
-recMode m = lift get >>= \s -> lift $ put s{gmode=m}
+recMode m = lift get >>= \(s, a) -> lift $ put (s{gmode=m}, a)
 
 recThread :: (Maybe Int) -> BlastLog ()
-recThread t = lift get >>= \s -> lift $ put s{gthread=t}
+recThread t = lift get >>= \(s, a) -> lift $ put (s{gthread=t}, a)
 
 genOriginStamp :: BlastLog OriginStamp
 genOriginStamp = do
@@ -256,7 +280,9 @@ blastPostData mode getThread mpastapage thread = do
         s <- lift get
         st <- blast getBrowserState
         manager <- blast getManager
-        liftIO $ pastagen (runBlast manager st . runBlastLogSt r s . getThread) mpastapage thread
+        liftIO $ pastagen
+            (runBlast manager st . runBlastLogSt r s . getThread)
+                    mpastapage thread
     {-when nopastas $ do
         blastOut NoPastas
         blastLog "threw NoPastas"-}
@@ -268,9 +294,9 @@ blastPostData mode getThread mpastapage thread = do
         if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode) && not nopastas
             then return (False, Nothing)
             else second Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
-    when noimages $ do
+    {-when noimages $ do
         blastOut NoImages
-        blastLog "threw NoImages"
+        blastLog "threw NoImages"-}
     junkImage <- case cleanImage of
         Nothing -> do
             blastLog "chose no image"
@@ -285,27 +311,31 @@ blastPostData mode getThread mpastapage thread = do
     let final = PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd
     final `deepseq` return final
 
-blastCaptcha :: String -> Maybe Int -> BlastLog (Bool, String, Maybe (String, (OriginStamp -> IO ())))
+blastCaptcha :: String -> Maybe Int -> BlastLog (Bool, Maybe (CAnswer, (OriginStamp -> IO ())))
 blastCaptcha wakabapl thread = do
     board <- askBoard
-    chKey <- blast $ getChallengeKey ssachRecaptchaKey
-    blastLog "Downloading captcha"
-    mbbytes <- blast $ ssachGetCaptcha board thread ssachRecaptchaKey chKey
+    blastLog "Fetching challenge"
+    mbbytes <- blast $ getNewCaptcha board thread ""
     case mbbytes of
-        Nothing -> do
-            blastLog $ "Couldn't download captcha " ++ show chKey
-            return (False, chKey, Just ("", const $ return ()))
-        Just bytes -> do
+        Left f -> do
+            blastLog $ "Got presolved captcha " ++ show f
+            return (False, Just (f, const $ return ()))
+        Right chKey -> do
+            blastLog "Downloadng captcha"
+            (bytes, ct) <- blast $ getCaptchaImage $ chKey `asTypeOf` currentSsachCaptchaType
+            cconf <- blast $ getCaptchaConf chKey
             blastLog "Got captcha image, sending captcha mvar"
             m <- newEmptyMVar
-            blastOut $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!)
+            blastOut $ SolveCaptcha $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!) cconf
             blastLog "blocking on captcha mvar"
             a <- takeMVar m
             blastLog $ "got captcha mvar, answer is... " ++ show a
             case a of
-                Answer s r -> return (True, chKey, Just (s, r))
+                Answer s r -> do
+                    f <- blast $ applyCaptcha chKey s
+                    return (True, Just (f, r))
                 ReloadCaptcha -> blastCaptcha wakabapl thread
-                AbortCaptcha -> return (True, chKey, Nothing)
+                AbortCaptcha -> return (True, Nothing)
 
 -- TODO Should be buggy as hell.
 -- FIXME Code duplication with "post"
@@ -347,11 +377,12 @@ blastCloudflare md whatrsp url = do
                                 liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
                                 throwIO a) $ do
                     blastLog "locked cloudflare captcha"
-                    chKey <- blast $ getChallengeKey cloudflareRecaptchaKey
-                    bytes <- blast $ getCaptchaImage chKey
+                    chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
+                    (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
+                    cconf <- blast $ getCaptchaConf $ Recaptcha chKey
                     m <- newEmptyMVar
                     -- FIXME wait, why the hell don't we use blastCaptcha?
-                    blastOut $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!)
+                    blastOut $ SolveCaptcha $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!) cconf
                     a <- takeMVar m
                     case a of
                         Answer s _ -> do
@@ -386,18 +417,21 @@ blastCloudflare md whatrsp url = do
 blastPost :: POSIXTime -> Bool -> POSIXTime -> POSIXTime -> (String, [Field]) -> Mode -> Maybe Int -> PostData -> BlastLog (POSIXTime, POSIXTime)
 blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode thread postdata = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
-    (neededcaptcha, chKey, mcap) <-
-        if cap || mode==CreateNew || not ssachAdaptivity
+    adaptive <- askAdaptive
+    (neededcaptcha, mcap) <-
+        if cap || mode==CreateNew || not adaptive
             then do
                 blastLog "querying captcha"
                 blastCaptcha wakabapl thread
             else do
                 blastLog "skipping captcha"
-                return (False, "", Just ("", const $ return ()))
+                return (False, Just (def, const $ return ()))
     case mcap of
-        Nothing -> return (lthreadtime, lposttime)
+        Nothing -> do
+            blastLog "Refused to solve captcha, aborting post"
+            return (lthreadtime, lposttime)
         Just (captcha, reportbad) -> do
-            p <- blast $ prepare board thread postdata chKey captcha wakabapl
+            p <- blast $ prepare board thread postdata captcha wakabapl
                                  otherfields ssachLengthLimit
             posttimeout <- maybeSTM mposttimeout realToFrac $
                             maybeSTM tposttimeout realToFrac $
@@ -428,7 +462,11 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
             (out, _) <- blast $ post p
             afterPost <- liftIO $ getPOSIXTime --pessimistic
             blastOut (OutcomeMessage out)
-            when (successOutcome out) $ blastLog "post succeded"
+            when (successOutcome out) $ do
+                if not neededcaptcha && not adaptive
+                    then setAdaptive True
+                    else when (neededcaptcha && adaptive) $ setAdaptive False
+                blastLog "post succeded"
             let (!nthreadtime, !nposttime) =
                     if mode == CreateNew
                         then (afterPost, lposttime) --pessimistic
@@ -461,16 +499,6 @@ blastPost threadtimeout cap lthreadtime lposttime w@(wakabapl, otherfields) mode
 blastLoop :: (String, [Field]) -> POSIXTime -> POSIXTime -> BlastLog ()
 blastLoop w lthreadtime lposttime = do
     (board, ShSettings{..}, MuSettings{..}) <- askBSM
-    let getPage p = do
-            let url = ssachPage board p
-            let chkStatus _ _ = Nothing
-            blastLog $ "getPage: going to page " ++ show p
-            blastCloudflare (return . parsePage board . responseBody)
-                (blast $ httpReqStrTags $
-                    (fromJust $ parseUrl url){checkStatus=chkStatus}) url
-    let getThread i = do
-            blastLog $ "Going into " ++ show i ++ " thread for pasta"
-            blast $ headNote "PastaHead fail" . fst . parseThreads <$> httpGetStrTags (ssachThread board (Just i))
     now <- liftIO $ getPOSIXTime
     threadtimeout <- maybeSTM mthreadtimeout realToFrac $
                         maybeSTM tthreadtimeout realToFrac $
@@ -480,7 +508,7 @@ blastLoop w lthreadtime lposttime = do
                         (return False)
     mp0 <- flMaybeSTM mthread (const $ return Nothing) $ do
                 blastLog "mp0: Getting first page."
-                Just <$> getPage 0
+                Just <$> getPage board 0
     flip (maybe $ blastLog "Thread chosen, ommitting page parsing") mp0 $ \p0 ->
         blastLog $ "page params:\n" ++
                    "page id: " ++ show (pageId p0) ++ "\n" ++
@@ -499,14 +527,28 @@ blastLoop w lthreadtime lposttime = do
         (\t -> do blastLog $ "Got mthread " ++ show t
                   return (Just t, Nothing)) $ do
         blastLog "Choosing thread..."
-        second Just <$> chooseThread board mode getPage
+        second Just <$> chooseThread board mode (getPage board)
             (fromMaybe (error "Page is Nothing while thread specified") mp0)
     recThread thread
     blastLog $ "chose thread " ++ show thread
-    postdata <- blastPostData mode getThread mpastapage thread
+    postdata <- blastPostData mode (getThread board) mpastapage thread
     (nthreadtime, nposttime) <- blastPost threadtimeout False lthreadtime lposttime
                                     w mode thread postdata
     blastLoop w nthreadtime nposttime
+  where
+    getPage board p = do
+        let url = ssachPage board p
+        let chkStatus _ _ = Nothing
+        blastLog $ "getPage: going to page " ++ show p
+        blastCloudflare (return . parsePage board . responseBody)
+            (blast $ httpReqStrTags $
+                (fromJust $ parseUrl url){checkStatus=chkStatus})
+            url
+
+    getThread board i = do
+        blastLog $ "Going into " ++ show i ++ " thread for pasta"
+        blast $ headNote "PastaHead fail" . fst . parseThreads <$>
+            httpGetStrTags (ssachThread board (Just i))
 
 -- | Entry point should always be forked.
 --

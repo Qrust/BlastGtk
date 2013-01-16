@@ -59,8 +59,8 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-prepare :: (MonadChoice m, Failure HttpException m) => Board -> Maybe Int -> PostData -> String -> String -> String -> [Field] -> Int -> m (Request a, Outcome)
-prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfields maxlength = do
+prepare :: (MonadChoice m, Failure HttpException m) => Board -> Maybe Int -> PostData -> CAnswer -> String -> [Field] -> Int -> m (Request a, Outcome)
+prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) wakabapl otherfields maxlength = do
     --print =<< liftIO $ getCurrentTime
     let (unesctext, rest) = case splitAt maxlength unesctext' of
                                     (ut, []) -> (ut, [])
@@ -81,12 +81,6 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
                 [(hContentType, maybe defaultMimeType contentType image)]
                 (maybe mempty bytes image)
             ]) ++
-            (if not $ null captcha
-                then
-                    [field "recaptcha_challenge_field" (fromString chKey)
-                    ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack captcha)]
-                else []
-            ) ++
             (if sage
                 then [field "nabiki" "sage"
                      ,field "sage" "on"]
@@ -95,6 +89,8 @@ prepare board thread PostData{text=unesctext',..} chKey captcha wakabapl otherfi
             (if makewatermark
                 then [field "makewatermark" "on"]
                 else []
+            ) ++
+            (captchafields
             ))
             `union`
             (otherfields)

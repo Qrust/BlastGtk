@@ -83,41 +83,49 @@ displayCaptchaCounters ready all = go 0 0
         threadDelay 100000
         go rd al
 
-antigate :: String -> BlastProxy -> Blast (String, String, Image, BrowserState, IO ())
-antigate key p = httpWithProxy NoProxy $ do
+antigate :: Board -> String -> BlastProxy -> Blast (CAnswer, Image, BrowserState, IO ())
+antigate board key p = httpGetProxy >>= \oldProxy -> httpWithProxy NoProxy $ do
     m <- getManager
-    chKey <- getChallengeKey ssachRecaptchaKey
-    captchaBytes <- getCaptchaImage chKey
-    (cid, str) <-
-        solveCaptcha (3*1000000) (3*1000000)
-                     key recaptchaCaptchaConf
-                     "recaptcha.jpg" captchaBytes m
-    st <- getBrowserState
-    return
-        (chKey
-        ,str
-        ,Image "shinku.jpg" "image/jpeg" captchaBytes
-        ,st
-        ,do runResourceT $ reportBad key cid m
-            putStrLn $ "Reported bad captcha for proxy {" ++ show p ++ "}")
+    nc <- do
+        nc <- getNewCaptcha board Nothing ""
+        case nc of
+            Left (CAnswer{cAdaptive=True}) -> do
+                httpWithProxy oldProxy $ getNewCaptcha board Nothing ""
+            x -> return x
+    case nc of
+        Left a -> do
+            -- filler image from recaptcha
+            rc <- recaptchaChallengeKey cloudflareRecaptchaKey
+            (img, ct) <- getCaptchaImage $ Recaptcha rc
+            st <- getBrowserState
+            gen <- mkImageFileName ct
+            return (a, Image gen ct img, st,
+                putStrLn $ if cAdaptive a
+                    then "Adaptive captcha failed"
+                    else "Guessed captcha, but it was wrong: " ++ show  a)
+        Right chKey -> do
+            (captchaBytes, ct) <- getCaptchaImage $ chKey `asTypeOf` currentSsachCaptchaType
+            gen <- mkImageFileName ct
+            (cid, str) <-
+                solveCaptcha (3*1000000) (3*1000000) key recaptchaCaptchaConf
+                    gen captchaBytes m
+            st <- getBrowserState
+            a <- applyCaptcha chKey str
+            return
+                (a
+                ,Image gen ct captchaBytes
+                ,st
+                ,do runResourceT $ reportBad key cid m
+                    putStrLn $ "Reported bad captcha for proxy {" ++ show p ++ "}")
   where
-    -- assuming recaptcha
-    recaptchaCaptchaConf =
-        def {phrase = True
-            ,regsense = False
-            ,numeric = Nothing
-            ,calc = False
-            ,min_len = 0
-            ,max_len = 0
-            ,is_russian = False
-            ,max_bid = Nothing
-            }
+    -- assuming recaptcha or simillar
+    recaptchaCaptchaConf = def {phrase = True}
 
-antigateThread :: (IO (), IO ()) -> Board -> String -> BlastProxy -> Manager -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO ()
+antigateThread :: (IO (), IO ()) -> Board -> String -> BlastProxy -> Manager -> MVar (Maybe (CAnswer, Image, BrowserState, IO ())) -> IO ()
 antigateThread (success, fail) board antigateKey p manager mvar = do
     x <- try $ runBlastNew manager $ do
             void $ httpWithProxy p $ httpGetLbs $ ssachBoard board -- try to make a request to filter out dead.
-            antigate antigateKey p
+            antigate board antigateKey p
     case x of
       Right a -> do
         putMVar mvar $ Just a
@@ -127,7 +135,7 @@ antigateThread (success, fail) board antigateKey p manager mvar = do
         putStrLn $ "{" ++ show p ++"} Failed to get captcha, exception was: " ++ show e
         fail
 
-collectCaptcha :: M [(BlastProxy, MVar (Maybe (String, String, Image, BrowserState, IO ())))]
+collectCaptcha :: M [(BlastProxy, MVar (Maybe (CAnswer, Image, BrowserState, IO ())))]
 collectCaptcha = do
     State{..} <- ask
     liftIO $ do
@@ -145,7 +153,7 @@ collectCaptcha = do
         putStrLn "BLAST IT WITH PISS"
         return res
 
-createThread :: Bool -> String -> Manager -> Board -> BlastProxy -> MVar (Maybe (String, String, Image, BrowserState, IO ())) -> IO (MVar ())
+createThread :: Bool -> String -> Manager -> Board -> BlastProxy -> MVar (Maybe (CAnswer, Image, BrowserState, IO ())) -> IO (MVar ())
 createThread retrycaptcha key manager board proxy mvar = do
     putStrLn $ "Creating thread {" ++ show proxy ++ "}"
     m <- newEmptyMVar
@@ -157,13 +165,13 @@ createThread retrycaptcha key manager board proxy mvar = do
             Just _x -> go m _x
     return m
   where
-    go m (chKey, answer, image, st, badCaptcha) = do
+    go m (cAnswer, image, st, badCaptcha) = do
         handle (\(e::SomeException) -> liftIO $ print e) $ do
             putStrLn $ "{" ++ show proxy ++ "} Started."
             txt <- generateSymbolString 300
             let (wakabapl, otherfields) = ssachLastRecordedWakabaplAndFields board
             req <- prepare board Nothing (PostData "" txt (Just image) False False False False)
-                    chKey answer wakabapl otherfields ssachLengthLimit
+                    cAnswer wakabapl otherfields ssachLengthLimit
             fix $ \goto -> do
                 outcome <- fmap fst $ runBlast manager st $ do
                     httpSetProxy proxy
@@ -176,7 +184,7 @@ createThread retrycaptcha key manager board proxy mvar = do
                         badCaptcha
                         when retrycaptcha $ do
                             putStrLn $ "Retrying captcha for {" ++ show proxy ++ "}"
-                            r <- runBlast manager st $ antigate key proxy
+                            r <- runBlast manager st $ antigate board key proxy
                             go m r
                     _ -> return ()
         putMVar m ()

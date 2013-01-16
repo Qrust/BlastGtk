@@ -1,33 +1,154 @@
-module BlastItWithPiss.Captcha where
+module BlastItWithPiss.Captcha
+    (
+     module Text.Recognition.Antigate
+    
+    ,currentSsachCaptchaType
+
+    ,ssachRecaptchaKey
+    ,cloudflareRecaptchaKey
+    ,ssachSolveMediaKey
+
+    ,CAnswer(..)
+
+    ,Captcha(..)
+
+    ,Recaptcha(..)
+    ,recaptchaChallengeKey
+
+    ,Yandex(..)
+
+    ,makabaCaptcha
+    ) where
 import Import
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Board
 import BlastItWithPiss.Blast
+import BlastItWithPiss.MultipartFormData
 import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Control.Failure
-{-
+import Network.Mime
+import Text.Recognition.Antigate
+
+ssachRecaptchaKey :: String
+ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
+
+cloudflareRecaptchaKey :: String
+cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
+
+ssachSolveMediaKey :: String
+ssachSolveMediaKey = "oIzJ06xKCH-H6PKr8OLVMa26G06kK3qh"
+
 type UserCode = String
 
-class ChallengeKey a where
-    -- | Check if any captcha is needed and return new challenge key.
-    -- If no captcha is needed return Nothing, otherwise 'throw' up.
-    getChallengeKey :: Board -> Maybe Int -> UserCode -> Blast (Maybe a)
-    -- | 
-    reloadCaptcha :: a -> Blast ()
+currentSsachCaptchaType :: Yandex
+currentSsachCaptchaType = undefined
+
+data CAnswer = CAnswer
+    { cAdaptive :: {-# UNPACK #-} !Bool -- ^ Adaptive captcha?
+    , cFields :: [Field]
+    }
+  deriving Show
+
+-- | Kludge
+instance Default CAnswer where
+    def = CAnswer True []
+
+class Captcha a where
+    -- | Check if any captcha is needed and return either premade fields or key
+    -- needed to solve challenge.
+    getNewCaptcha :: Board -> Maybe Int -> UserCode -> Blast (Either CAnswer a)
+    -- | If they use systems like recaptcha or solveMedia, then we know their
+    -- public key before hand, so we don't have to query makaba to get our challenge.
+    unsafeGenNewCaptcha :: Maybe (Blast a)
+    unsafeGenNewCaptcha = Nothing
+    -- reloadCaptcha :: a -> Blast ()
+    getCaptchaImage :: a -> Blast (LByteString, MimeType)
+    applyCaptcha :: a -> String -> Blast CAnswer
+    getCaptchaConf :: a -> Blast CaptchaConf
+
+newtype Recaptcha = Recaptcha {recaptchaKey :: String}
+
+instance Captcha Recaptcha where
+    getNewCaptcha board thread usercode = do
+        res <- makabaCaptcha board thread usercode
+        if T.isInfixOf "OK" res || T.isInfixOf "VIP" res
+          then return $ Left $ CAnswer True []
+          else Right . Recaptcha <$> recaptchaChallengeKey ssachRecaptchaKey
+
+    unsafeGenNewCaptcha =
+        Just (Recaptcha <$> recaptchaChallengeKey ssachRecaptchaKey)
+{-
+    reloadCaptcha (Recaptcha chKey) = do
+        void $ httpGet $
+            "http://www.google.com/recaptcha/api/reload?c=" ++ chKey ++ "&k=" ++
+                ssachRecaptchaKey ++ "&reason=r&type=image&lang=en"
 -}
+    getCaptchaImage (Recaptcha chKey) = do
+        res <- httpGetLbs $
+            "http://www.google.com/recaptcha/api/image?c=" ++ chKey
+        return (res, "image/jpg")
+
+    applyCaptcha (Recaptcha chKey) answer = return $ CAnswer False $
+        [field "recaptcha_challenge_field" (fromString chKey)
+        ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack answer)]
+
+    getCaptchaConf _ = return $ def {phrase = True}
+
+newtype Yandex = Yandex {yandexKey :: String}
+
+instance Captcha Yandex where
+    getNewCaptcha board thread usercode = do
+        res <- makabaCaptcha board thread usercode
+        if T.isInfixOf "OK" res || T.isInfixOf "VIP" res
+          then return $ Left $ CAnswer True []
+          else
+            let !str = T.unpack res
+            in return $ Right $ Yandex $ lastNote (yandexerr str) $ lines str
+      where yandexerr a = "Yandex captcha: Challenge ID not found in \"" ++ a ++
+                            "\". Update code."
+
+    unsafeGenNewCaptcha = Nothing
+
+    getCaptchaImage (Yandex chKey) = do
+        res <- httpGetLbs $ "http://i.captcha.yandex.net/image?key=" ++ chKey
+        return (res, "image/gif")
+
+    applyCaptcha (Yandex chKey) answer = return $ CAnswer False $
+        [field "captcha" (fromString chKey)
+        ,field "captcha_value" (fromString answer)
+        ]
+
+    getCaptchaConf _ = return $ def {numeric=Just True}
+
+
 -- | Query adaptive captcha state
-doWeNeedCaptcha :: Board -> Maybe Int -> String -> Blast Bool
-doWeNeedCaptcha board thread usercode = do
-    let code = if not $ null usercode then "?code=" ++ usercode else []
-    cd <- responseBody <$> httpReqStr
+makabaCaptcha :: Board -> Maybe Int -> String -> Blast Text
+makabaCaptcha _board _thread usercode = do
+    let code = if not $ null usercode then "?usercode=" ++ usercode else []
+    responseBody <$> httpReqStr
         (fromJust $ parseUrl $ ssach ++ "/makaba/captcha.fcgi" ++ code)
             {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
                               ,("X-Requested-With", "XMLHttpRequest")
-                              ,(hReferer, ssachThread board thread)]}
-    return $ not (T.isInfixOf "OK" cd || T.isInfixOf "VIP" cd)
+                            -- ,(hReferer, ssachThread board thread)
+                              ]}
 
+recaptchaChallengeKey :: String -> Blast String
+recaptchaChallengeKey key = do
+    rawjsstr <- T.unpack <$> httpGetStr recaptchaUrl
+    return $ fromMaybe (error $ fatalErrorMsg ++ ": " ++ rawjsstr) $
+            findMap getChallenge $ lines rawjsstr
+  where getChallenge s =
+            takeUntil (=='\'') <$>
+                stripPrefix "challenge : \'" (dropWhile isSpace s)
+        fatalErrorMsg =
+            "FATAL ERROR: getNewCaptcha: Recaptcha changed their "
+            ++ "JSON formatting, update code"
+        recaptchaUrl =
+            "http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en"
+
+{-
 getChallengeKey :: String -> Blast String
 getChallengeKey key = do
     rawjsstr <- T.unpack <$> httpGetStr ("http://api.recaptcha.net/challenge?k=" ++ key ++ "&lang=en")
@@ -52,3 +173,51 @@ ssachGetCaptcha board thread key chKey =
         (do reloadCaptcha key chKey
             Just <$> getCaptchaImage chKey)
         (return Nothing)
+-}
+
+{-
+
+data SolveMedia = SolveMedia
+    {solveMediaKey :: String
+    ,solveMediaMagic :: String
+    ,solveMediaTStamp :: !Int
+    ,solveMediaChalStamp :: !Int
+    ,solveMediaCallbacks :: !(IORef Int) -- ^ How many times we reloaded captcha
+    ,solveMediaFwv :: String
+    ,solveMediaChid :: !(IORef String)
+    }
+
+instance Captcha SolveMedia where
+    getNewCaptcha board thread usercode = do
+        res <- makabaCaptcha board thread usercode
+        if T.isInfixOf "OK" res || T.isInfixOf "VIP" res
+          then return $ Left $ CAnswer True []
+          else do
+            let ckey = fromMaybe ssachSolveMediaKey $ atMay $ lines res
+
+            chScriptLines <- fmap (lines . T.unpack) $ accept $ httpGetLbs $
+                "http://api.solvemedia.com/papi/challenge.script?k=" ++ ckey
+
+            let
+              !magic = fromMaybe (magicerr $ unlines chScriptLines) $
+                flip findMap chScriptLines $ \x ->
+                  takeUntil (=='\'') . tail . dropUntil (=='\'') <$>
+                    stripPrefix "magic" (dropWhile isSpace x)
+            
+              !chalstamp = fromMaybe (chalstamperr $ unlines chScriptLines) $
+                flip findMap chScriptLines $ \x ->
+                  readMay . takeUntil (==',') . dropUntil isNumber =<<
+                    stripPrefix "chalstamp" (dropWhile isSpace x)
+
+            _puzzle <- accept $ httpGetLbs "http://api.solvemedia.com/papi/_puzzle.js"
+
+            fwid <- take 4 <$> getRandomRs ('a', 'z')
+            ctx_bN :: Int <- getRandomR (10, 99)
+      where
+        accept = withOverrideHeader (hAccept, "*/*")
+        magicerr = error . ("SolveMedia: Couldn't read magic from " ++)
+        chalstamperr = error . ("SolveMedia: Couldn't read chalstamp from " ++)
+
+    unsafeGenNewCaptcha = Just $ 
+
+-}

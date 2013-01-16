@@ -24,13 +24,13 @@ windowszip="BlastItWithPiss-windows-x86-$currentversion.zip"
 echo "Linux archive will be \"$linuxzip\""
 echo "DOS archive will be \"$windowszip\""
 (echo "Packaging Linux";
- sh build-production.sh &&\
+ bash build-production.bash &&\
  cd linux-dist && zip -r ../$linuxzip BlastItWithPiss/) &&\
  (echo "Packaging DOS";
  # Running any msys binary does strange things to my linux shell,
  # input doesn't get echoed and 'echo' output is printed without a newline.
  # So instead, we'll use following workaround.
- sh build-production.sh _ wine &&\
+ bash build-production.bash _ wine &&\
  cd dos-dist && zip -r ../$windowszip BlastItWithPiss/)
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then

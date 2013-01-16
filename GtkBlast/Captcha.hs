@@ -27,7 +27,7 @@ cmFromBool :: Bool -> CaptchaMode
 cmFromBool False = Gui
 cmFromBool True = Antigate
 
-addCaptcha :: (OriginStamp, Message) -> E ()
+addCaptcha :: (OriginStamp, SupplyCaptcha) -> E ()
 addCaptcha sp = do
     cm <- get =<< asks captchaMode
     case cm of
@@ -42,11 +42,11 @@ killAllCaptcha = do
         Gui -> killGuiCaptcha
         Antigate -> killAntigateCaptcha
 
-deactivateCaptcha :: CaptchaMode -> E [(OriginStamp, Message)]
+deactivateCaptcha :: CaptchaMode -> E [(OriginStamp, SupplyCaptcha)]
 deactivateCaptcha Gui = deactivateGuiCaptcha
 deactivateCaptcha Antigate = deactivateAntigateCaptcha
 
-addCaptchas :: CaptchaMode -> [(OriginStamp, Message)] -> E ()
+addCaptchas :: CaptchaMode -> [(OriginStamp, SupplyCaptcha)] -> E ()
 addCaptchas Gui = addGuiCaptchas
 addCaptchas Antigate = addAntigateCaptchas
 
