@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.8.zip",
-                "1aca73776577d70d6f75a6f6e6e3a0ba"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.10.zip",
+                "451276ee25ee7ba11cbc59fe614ad5c9"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.8.zip",
-                "87fd9b60d0392e536f8aecb1f63b6031"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.10.zip",
+                "2b725dcf055e93f256e1e18c6b0b0a04"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.10",
+            "Запилил яндекс-капчу. Пофиксил пару багов и крашей."
+        ],
         [
             "1.1.8",
             "Медленно(?)фикс капчи, вайпалка теперь работает"
@@ -114,5 +118,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.8"
+    "version": "1.1.10"
 }
