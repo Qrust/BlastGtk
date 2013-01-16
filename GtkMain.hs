@@ -6,7 +6,7 @@ import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
 import GtkBlast.Mainloop (setMainLoop)
 import Graphics.UI.Gtk hiding (get)
-import System.Environment.UTF8
+import System.Environment (getArgs)
 import System.Exit
 import System.FilePath
 import Network (withSocketsDo)

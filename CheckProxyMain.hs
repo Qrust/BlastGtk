@@ -9,7 +9,7 @@ import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
 import System.Environment
 import Network.Socket
-import System.IO.UTF8 (readFile, writeFile, appendFile)
+import System.IO (readFile, writeFile, appendFile)
 import System.IO (print, putStrLn)
 import Paths_blast_it_with_piss
 

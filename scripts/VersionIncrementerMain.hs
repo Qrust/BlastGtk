@@ -3,7 +3,7 @@ import Import
 import Data.Version
 import Text.ParserCombinators.ReadP
 import System.Environment
-import System.IO.UTF8 hiding (putStrLn, putStr)
+import System.IO hiding (putStrLn, putStr)
 
 -- HORRIBLE HACK but i don't care.
 

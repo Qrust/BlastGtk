@@ -22,12 +22,13 @@ import GtkBlast.GtkUtils
 import System.Directory
 import System.Random.Shuffle
 import Control.Concurrent.STM
-import System.IO.UTF8 (readFile)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (get)
 
 readPasta :: FilePath -> IO [String]
-readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" <$> readFile f
+readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" . T.unpack <$> T.readFile f
 
 {-# INLINE generateRandomString #-}
 generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String

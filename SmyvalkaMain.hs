@@ -12,7 +12,8 @@ import Data.Version
 import Control.Concurrent
 import System.Environment
 import Network.Socket
-import System.IO.UTF8 (readFile)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Paths_blast_it_with_piss
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
@@ -214,7 +215,7 @@ main = withSocketsDo $ do
         Config{..} <- cmdArgsRun md
         let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду, возможно вы имели ввиду \"/" ++ strBoard ++ "/\"?") $
                         readBoard $ strBoard
-        rawIps <- nub . filter (not . null) . lines <$> readFile proxyFile
+        rawIps <- nub . filter (not . null) . lines . T.unpack <$> T.readFile proxyFile
         let (errors, proxies) =
                 partitionEithers $
                     map (\x -> maybe (Left x) Right $ readBlastProxy socks x)
