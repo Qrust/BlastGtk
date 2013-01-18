@@ -5,12 +5,13 @@ module BlastItWithPiss.Board
 
     -- * Ssach
     ,ssachBoardsSortedByPostRate
-    ,ssachLastRecordedWakabaplAndFields
+    ,ssachLastRecordedFields
     ,allSsachBoards
     ,ssach
     ,ssachBoard
     ,ssachThread
     ,ssachPage
+    ,ssachPostUrl
     ,ssachLengthLimit
     ,ssachThreadTimeout
     ,ssachPostTimeout
@@ -23,7 +24,7 @@ module BlastItWithPiss.Board
     ,hoptoparashaPage
     ) where
 import Import
-import BlastItWithPiss.MultipartFormData
+import Network.HTTP.Conduit.MultipartFormData
 
 -- | Sosach boards.
 data Board = A
@@ -255,6 +256,9 @@ ssachPage :: (Monoid a, IsString a) => Board -> Int -> a
 ssachPage b 0 = ssachBoard b <> "wakaba.html"
 ssachPage b i = ssachBoard b <> show i <> ".html"
 
+ssachPostUrl :: (Monoid a, IsString a) => Board -> Maybe Int -> a
+ssachPostUrl b _ = ssachBoard b <> "wakaba.pl"
+
 ssachLengthLimit :: Num a => a
 ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
                         -- bytes instead of unicode chars.
@@ -268,17 +272,17 @@ ssachBumpLimit :: Num a => Board -> a
 ssachBumpLimit B = 513
 ssachBumpLimit _ = 1000 -- TODO ssachbumplimit
 
-ssachLastRecordedWakabaplAndFields :: Board -> (String, [Field])
-ssachLastRecordedWakabaplAndFields board =
-    (ssachBoard board ++ "wakaba.pl",
-        [field "task" "\209\128\208\190st"
-        ,field "name" ""
-        ,field "link" ""
-        ,field "akane" ""
-        ,field "sage" ""
-        ,field "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
-        ,field "video" ""
-        ] ++ [field "anon_icon" "-1"|board==PO])
+ssachLastRecordedFields :: (Monad m, Monad m') => Board -> [Part m m']
+ssachLastRecordedFields board =
+    [partBS "task" "\209\128\208\190st"
+    ,partBS "name" ""
+    ,partBS "link" ""
+    ,partBS "akane" ""
+    ,partBS "sage" ""
+    ,partBS "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
+    ,partBS "video" ""
+    ] ++
+    [partBS "anon_icon" "-1" | board==PO]
 
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"

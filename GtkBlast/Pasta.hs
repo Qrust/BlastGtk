@@ -23,12 +23,14 @@ import System.Directory
 import System.Random.Shuffle
 import Control.Concurrent.STM
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import qualified Data.ByteString as B
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (get)
 
 readPasta :: FilePath -> IO [String]
-readPasta f = filter (not . all isSpace) . delimitByLE "\n\n\n\n" . T.unpack <$> T.readFile f
+readPasta f =
+    filter (not . all isSpace) . delimitByLE "\n\n\n\n" .
+        T.unpack . decodeUtf8 <$> B.readFile f
 
 {-# INLINE generateRandomString #-}
 generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String

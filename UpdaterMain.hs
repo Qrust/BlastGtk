@@ -90,7 +90,7 @@ needUpdate um = version um > Paths.version
 downloadManifest :: IO UpdateManifest
 downloadManifest = do
     let req = fromJust $ parseUrl manifestUrl
-    m <- withManager $ httpLbs req{responseTimeout = Just $ 1500000} -- 1.5 seconds
+    m <- withManager $ httpLbs req{responseTimeout = Just $ 5000000} -- 5 seconds
     maybe (throwIO UnparseableManifest) return $ decode' $ responseBody m
 
 doesFSExist :: FilePath -> IO Bool

@@ -2,6 +2,7 @@ module BlastItWithPiss.Blast
     (module Control.Exception.Lifted
     ,module Network.HTTP.Conduit
     ,module Network.HTTP.Conduit.Browser
+    ,module Network.HTTP.Conduit.MultipartFormData
     ,module Network.Mime
     ,module Network.HTTP.Types
     ,Blast
@@ -33,6 +34,7 @@ import Network.Socket.Internal
 import Network.Socks5
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.Browser
+import Network.HTTP.Conduit.MultipartFormData
 import qualified Text.Show as Show
 import Control.Monad.Trans.Resource
 

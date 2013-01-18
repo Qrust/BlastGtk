@@ -35,6 +35,7 @@ module Import
     ,untilNothing
     ,fromTrySome
     ,modifyIORefM
+    ,decodeUtf8
     ) where
 #ifdef TEST
 import Debug.Trace as A
@@ -63,6 +64,8 @@ import Control.Exception.Lifted as A
 import Data.ByteString as A (ByteString)
 import qualified Data.ByteString.Lazy as LB
 import Data.Text as A (Text)
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TE
 import qualified Data.Text.Lazy as LT
 import qualified Text.Show as S
 
@@ -250,3 +253,7 @@ findWithSurroundingsLE = find' []
             | Just ts <- stripPrefix pr l =
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
+
+{-# INLINE decodeUtf8 #-}
+decodeUtf8 :: ByteString -> Text
+decodeUtf8 = TE.decodeUtf8With TE.lenientDecode

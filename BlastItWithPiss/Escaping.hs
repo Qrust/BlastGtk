@@ -37,11 +37,12 @@ wordfilter =
     ,"Колчан"
     ,"нульча"
     ,"Нульча"
-    ,"0chan.ru"
-    ,"1chan.ru"
+    ,"0ch"
+    ,"1ch"
     ,"2ch"
     ,"2-ch"
     ,"2--ch"
+    ,"chan"
     ,"моч"
     ,"Моч"
     ,"моча"
@@ -73,16 +74,30 @@ wordfilter =
     ,"инач"
     ,"Инали"
     ,"инали"
+    ,"Елизаве"
+    ,"елизаве"
+    ,"Elizabe"
+    ,"Харк"
+    ,"харк"
+    ,"Харч"
+    ,"харч"
+    ,"ола"
+    ,"Ола"
+    ,"очко"
+    ,"Очко"
+    ,"петух"
     ]
--- FIXME "Fatal error: word \"" ++ str ++ "\" has no characters that can be substituted by equivalents."
 
 -- | List of invisble symbols
 invisibleSymbols :: [Char]
-invisibleSymbols = "\8290\8291\8289\8288\8203\8206"
+invisibleSymbols = "\8290\8291\8289\8288\8203\8206\65279\173\8237"
 
 -- | TODO zalgo
 zalgo :: [Char]
 zalgo = []
+
+-- TODO Math symbols
+-- TODO diacretics
 
 -- | Simillar letters in Cyrillic, Latin and Greek.
 simillars :: [(Char, Char)]
@@ -98,6 +113,8 @@ simillars =
     ,('E', 'Е')
     ,('ë', 'ё')
     ,('Ë', 'Ё')
+    ,('ɜ', 'з')
+    ,('ʜ', 'н')
     ,('H', 'Н')
     ,('Η', 'Н')
     ,('i', 'і')
@@ -106,11 +123,16 @@ simillars =
     ,('K', 'К')
     ,('M', 'М')
     ,('ᴎ', 'и')
+    ,('𐑍', 'и')
     ,('o', 'о')
     ,('O', 'O')
+    ,('ο', 'о')
+    ,('Ο', 'О')
     ,('p', 'р')
     ,('P', 'Р')
+    ,('Ρ', 'Р')
     ,('T', 'Т')
+    ,('Τ', 'Т')
     ,('x', 'х')
     ,('X', 'Х')
     ,('϶', 'э')

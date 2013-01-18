@@ -30,13 +30,14 @@ module BlastItWithPiss.Parsing
     ) where
 import Import
 import BlastItWithPiss.Board
-import BlastItWithPiss.MultipartFormData (Field(..), field)
 import qualified Text.Show as S
 
 import Text.HTML.TagSoup
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+
+import Network.HTTP.Conduit.MultipartFormData
 
 {-
 import qualified Text.HTML.TagStream.Types as G
@@ -208,7 +209,7 @@ parsePage board html =
          }
 
 -- Only valid within one board.
-parseForm :: String -> [Tag Text] -> (String, [Field])
+parseForm :: (Monad m, Monad m') => String -> [Tag Text] -> (String, [Part m m'])
 parseForm host tags =
     dropUntil (~== tgOpen "form" [("id", "postform")]) tags >$>
         \(f:html) -> (getWakabaPl f,
@@ -221,8 +222,8 @@ parseForm host tags =
               | otherwise
                 = t ~== tgOpen "input" [("name", "")]
         inputToField tag =
-            field (T.encodeUtf8 $ fromAttrib "name" tag)
-                  (T.encodeUtf8 $ fromAttrib "value" tag)
+            partBS (fromAttrib "name" tag)
+                   (T.encodeUtf8 $ fromAttrib "value" tag)
 
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)

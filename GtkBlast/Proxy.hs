@@ -12,7 +12,8 @@ import BlastItWithPiss.Blast
 import qualified Data.Map as M
 import Graphics.UI.Gtk hiding (get, set)
 import System.Directory
-import System.IO (readFile)
+import qualified Data.Text as T
+import qualified Data.ByteString as B (readFile)
 
 regenerateProxies :: E ()
 regenerateProxies = do
@@ -27,7 +28,7 @@ regenerateProxies = do
                             writeLog $ "regen " ++ if isSocks then "socks" else "http" ++ " proxy"
                             set proxymod nd
                             nps <- catMaybes . map (readBlastProxy isSocks) . lines <$>
-                                    appFile [] readFile pf
+                                    appFile [] (fmap (T.unpack . decodeUtf8) . B.readFile) pf
                             set proxylast nps
                             return nps
                         else get proxylast)

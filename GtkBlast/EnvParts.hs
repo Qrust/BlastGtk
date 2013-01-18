@@ -89,9 +89,9 @@ envParts b =
                 ps <- get previousPageSize
                 pu <- get previousUpper
                 v <- adjustmentGetValue wad
-                when (v >= (pu - ps) || ps <= 0) $ do
-                    size <- adjustmentGetPageSize wad
-                    upper <- adjustmentGetUpper wad
+                size <- adjustmentGetPageSize wad
+                upper <- adjustmentGetUpper wad
+                when (v >= (pu - ps) || ps <= 0 || size <= 0 || v >= (upper - ps) || v >= (upper - size)) $ do
                     set previousPageSize size
                     set previousUpper upper
                     adjustmentSetValue wad $ upper - size

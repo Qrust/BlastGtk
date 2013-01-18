@@ -8,7 +8,6 @@ import Import
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Board
 import BlastItWithPiss.Escaping
-import BlastItWithPiss.MultipartFormData
 import BlastItWithPiss.Image
 import BlastItWithPiss.Captcha
 import BlastItWithPiss.Blast
@@ -16,6 +15,7 @@ import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Control.Failure
+import Data.CaseInsensitive
 
 
 import BlastItWithPiss.Parsing
@@ -40,6 +40,9 @@ instance NFData (RequestBody a) where
     rnf (RequestBodyBuilder i b) = i `seq` b `seq` ()
     rnf _ = ()
 
+instance NFData a => NFData (CI a) where
+    rnf ci = original ci `deepseq` foldedCase ci `deepseq` ()
+
 instance NFData (Request a) where
     rnf r =
         method r `deepseq` 
@@ -59,65 +62,56 @@ instance NFData (Request a) where
         responseTimeout r `deepseq`
         ()
 
-prepare :: (MonadChoice m, Failure HttpException m) => Board -> Maybe Int -> PostData -> CAnswer -> String -> [Field] -> Int -> m (Request a, Outcome)
-prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) wakabapl otherfields maxlength = do
-    --print =<< liftIO $ getCurrentTime
-    let (unesctext, rest) = case splitAt maxlength unesctext' of
-                                    (ut, []) -> (ut, [])
-                                    (ut, r) -> (ut, r)
-    let escapingFunction True True = escape maxlength wordfilter
-        escapingFunction True False = escapeExceptWordfilter maxlength
-        escapingFunction False True = escapeWordfilter maxlength wordfilter
-        escapingFunction False False = return
+prepare :: (MonadChoice m, Failure HttpException m, MonadResource m') => Board -> Maybe Int -> PostData -> CAnswer m m' -> [Part m m'] -> Int -> m (Request m', Outcome)
+prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) otherfields maxlength = do
+    let (unesctext, rest) =
+          case splitAt maxlength unesctext' of
+            (ut, []) -> (ut, [])
+            (ut, r) -> (ut, r)
     text <- escapingFunction escapeInv escapeWrd unesctext
     let fields = (
-            ([field "parent" (maybe "" show thread)
-             ,field "kasumi" (T.encodeUtf8 $ T.pack subject)
-             ,field "shampoo" (T.encodeUtf8 $ T.pack text)
-            ]) ++
-            ([Field
-                [("name", "file")
-                ,("filename", maybe mempty (T.encodeUtf8 . T.pack . filename) image)]
-                [(hContentType, maybe defaultMimeType contentType image)]
-                (maybe mempty bytes image)
+            ([partBS "parent" (maybe "" show thread)
+             ,partBS "kasumi" (T.encodeUtf8 $ T.pack subject)
+             ,partBS "shampoo" (T.encodeUtf8 $ T.pack text)
+             ,partFileRequestBody "file"
+                (maybe mempty filename image)
+                -- HACK upload image source
+                (RequestBodyLBS $ maybe mempty bytes image)
             ]) ++
             (if sage
-                then [field "nabiki" "sage"
-                     ,field "sage" "on"]
-                else [field "nabiki" mempty]
+                then [partBS "nabiki" "sage"
+                     ,partBS "sage" "on"]
+                else [partBS "nabiki" mempty]
             ) ++
             (if makewatermark
-                then [field "makewatermark" "on"]
+                then [partBS "makewatermark" "on"]
                 else []
             ) ++
             (captchafields
             ))
-            `union`
+            `union'`
             (otherfields)
-    boundary <- randomBoundary
-    let body = formatMultipart boundary fields
-    {-
-    liftIO $ putStrLn $ UTF8.toString $ (\(RequestBodyLBS a) -> a) $ body
-    undefined
-    -}
-    req' <- parseUrl wakabapl
-    let req = req' {
-                    method = methodPost
-                   ,requestHeaders =
-                        [(hContentType, "multipart/form-data; boundary=" <> boundary)
-                        ,(hReferer, ssachThread board thread)
-                        ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                        ,(hAcceptLanguage, "ru,en;q=0.5")
-                        ]
-                   ,requestBody = body
-
-                   ,responseTimeout = Just 30
-                   ,redirectCount = 0
-                   ,checkStatus = \_ _ -> Nothing
-                   }
+    rreq <- parseUrl $ ssachPostUrl board thread
+    let req' = rreq {
+          requestHeaders =
+           [(hReferer, ssachThread board thread)
+           ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+           ,(hAcceptLanguage, "ru,en;q=0.5")]   
+          ,responseTimeout = Just 30
+          ,redirectCount = 0
+          ,checkStatus = \_ _ -> Nothing
+          }
+    req <- formDataBody fields req'
     let final = (req, if null rest then Success else SuccessLongPost rest)
-    --liftIO $ print =<< getCurrentTime
     final `deepseq` return final
+  where
+    escapingFunction True True = escape maxlength wordfilter
+    escapingFunction True False = escapeExceptWordfilter maxlength
+    escapingFunction False True = escapeWordfilter maxlength wordfilter
+    escapingFunction False False = return
+
+    union' :: [Part m m'] -> [Part m m'] -> [Part m m']
+    union' = unionBy ((==) `on` partName)
 
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do

@@ -9,7 +9,9 @@ import System.Console.CmdArgs.Implicit hiding (def)
 import Control.Concurrent
 import System.Environment
 import Network.Socket
-import System.IO (readFile, writeFile, appendFile)
+import qualified Data.ByteString as B
+import qualified Data.Text as T
+import Data.Text.Encoding (encodeUtf8)
 import System.IO (print, putStrLn)
 import Paths_blast_it_with_piss
 
@@ -60,7 +62,7 @@ mainloop _ _ _ [] [] = putStrLn "Ну вот и всё, ребята." >> return
 mainloop manager board Config{..} ips mvs = do
     let ape f s = do
             unless quiet $ putStr ("Записываем в файл \"" ++ f ++ "\" :" ++ s ++ "\n")
-            appendFile f (s ++ "\n")
+            B.appendFile f $ encodeUtf8 $ T.pack $ s ++ "\n"
     unless quiet $
         putStrLn $ "Опрашиваем прокси... Проксей для опроса: " ++ show (length mvs)
     nmvs <- flip filterM mvs $ \(ip, mv) -> do
@@ -103,11 +105,10 @@ mainloop manager board Config{..} ips mvs = do
             maybe (error $ "Couldn't parse as a proxy \"" ++ ip ++ "\"")
                 httpSetProxy (readBlastProxy socks ip)
             unless quiet $ liftIO $ putStrLn $ ip ++ ": Поcтим"
-            let (a, b) = ssachLastRecordedWakabaplAndFields board
             liftIO . putMVar m . fst =<<
                 post =<< prepare board (Just thread)
                     (PostData "САЖА" txt Nothing True False False False) def -- FUCK "03AHJ_VutW6y0VOt928pITpHtSRO6mM4Vk-iou_VVxKkC5MCxKKU-rSCdQT-yqaGxHg0y-YZNKDD_n_-bUNFSVDB-G_db5J4RbLIvI-ysf8fd2dXj4Xt6bwG0CRLRgmDrc-NmKQBn89GXVTpEZa2iTJF3Hny3F8e5aNw" "reading speed"
-                    a b ssachLengthLimit
+                    (ssachLastRecordedFields board) ssachLengthLimit
         return (ip, m)
     unless quiet $ putStrLn $ "Передышка: " ++ show timeout ++ " секунд..., Ещё не запущено: " ++ show (length ni) ++ " проксей."
     threadDelay $ timeout * 1000000
@@ -121,11 +122,11 @@ main = withSocketsDo $ do
         conf@Config{..} <- cmdArgsRun md
         let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду, возможно вы имели ввиду \"/"++ strBoard ++ "/\"?") $
                         readBoard $ strBoard
-        ip <- nub . filter (not . null) . lines <$> readFile input
+        ip <- nub . filter (not . null) . lines . T.unpack . decodeUtf8 <$> B.readFile input
         unless quiet $ print conf
         let eraseFile f = do
                 unless quiet $ putStrLn $ "erasing file " ++ f
-                writeFile f ""
+                B.writeFile f ""
         unless append $ do
             eraseFile output
             eraseFile banned

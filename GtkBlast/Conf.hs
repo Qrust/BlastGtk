@@ -71,7 +71,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
 instance Default Conf where
     def = Conf
          {
-          coActiveBoards = [{-A, -}B{-, BB, VN, SOC, SEX, MMO, PER-}]
+          coActiveBoards = []
          ,coPastaSet = FromThread
          ,coCreateThreads = True
          ,coImageFolder = "images"
@@ -100,7 +100,7 @@ instance Default Conf where
          ,coPastaFile = resourceFile "mocha"
          ,coEscapeInv = True
          ,coEscapeWrd = True
-         ,coPostAgitka = True
+         ,coPostAgitka = False
          ,coSortingByAlphabet = True
          ,coShuffleReposts = True
          ,coRandomQuote = False
@@ -109,7 +109,7 @@ instance Default Conf where
          ,coUseThreadTimeout = False
          ,coThreadTimeout = ssachThreadTimeout B
          ,coUseFluctuation = False
-         ,coFluctuation = 20
+         ,coFluctuation = 10
          }
 
 -- HACK Those are quite dangerous orphans

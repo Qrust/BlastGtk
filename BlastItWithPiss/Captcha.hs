@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes, ExistentialQuantification #-}
 module BlastItWithPiss.Captcha
     (
      module Text.Recognition.Antigate
@@ -23,13 +24,14 @@ import Import
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Board
 import BlastItWithPiss.Blast
-import BlastItWithPiss.MultipartFormData
 import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Control.Failure
 import Network.Mime
 import Text.Recognition.Antigate
+
+import Text.Show
 
 ssachRecaptchaKey :: String
 ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
@@ -45,27 +47,27 @@ type UserCode = String
 currentSsachCaptchaType :: Yandex
 currentSsachCaptchaType = undefined
 
-data CAnswer = CAnswer
-    { cAdaptive :: {-# UNPACK #-} !Bool -- ^ Adaptive captcha?
-    , cFields :: [Field]
+data CAnswer m m' = CAnswer
+    { cAdaptive :: !Bool -- ^ Adaptive captcha?
+    , cFields :: [Part m m']
     }
   deriving Show
 
 -- | Kludge
-instance Default CAnswer where
+instance Default (CAnswer m m') where
     def = CAnswer True []
 
 class Captcha a where
     -- | Check if any captcha is needed and return either premade fields or key
     -- needed to solve challenge.
-    getNewCaptcha :: Board -> Maybe Int -> UserCode -> Blast (Either CAnswer a)
+    getNewCaptcha :: (MonadChoice m, MonadResource m') => Board -> Maybe Int -> UserCode -> Blast (Either (CAnswer m m') a)
     -- | If they use systems like recaptcha or solveMedia, then we know their
     -- public key before hand, so we don't have to query makaba to get our challenge.
     unsafeGenNewCaptcha :: Maybe (Blast a)
     unsafeGenNewCaptcha = Nothing
     -- reloadCaptcha :: a -> Blast ()
     getCaptchaImage :: a -> Blast (LByteString, MimeType)
-    applyCaptcha :: a -> String -> Blast CAnswer
+    applyCaptcha :: (MonadChoice m, MonadResource m') => a -> String -> Blast (CAnswer m m')
     getCaptchaConf :: a -> Blast CaptchaConf
 
 newtype Recaptcha = Recaptcha {recaptchaKey :: String}
@@ -91,8 +93,8 @@ instance Captcha Recaptcha where
         return (res, "image/jpg")
 
     applyCaptcha (Recaptcha chKey) answer = return $ CAnswer False $
-        [field "recaptcha_challenge_field" (fromString chKey)
-        ,field "recaptcha_response_field" (T.encodeUtf8 $ T.pack answer)]
+        [partBS "recaptcha_challenge_field" (fromString chKey)
+        ,partBS "recaptcha_response_field" (T.encodeUtf8 $ T.pack answer)]
 
     getCaptchaConf _ = return $ def {phrase = True}
 
@@ -116,8 +118,8 @@ instance Captcha Yandex where
         return (res, "image/gif")
 
     applyCaptcha (Yandex chKey) answer = return $ CAnswer False $
-        [field "captcha" (fromString chKey)
-        ,field "captcha_value" (fromString answer)
+        [partBS "captcha" (fromString chKey)
+        ,partBS "captcha_value" (fromString answer)
         ]
 
     getCaptchaConf _ = return $ def {numeric=Just True}

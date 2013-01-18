@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.11.zip",
-                "03e25042269bda8781bf541e759b20ea"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.12.zip",
+                "eae890e541dca240a963e817b38a9c55"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.11.zip",
-                "16b1fef14bbff5255068489dbbf56a63"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.12.zip",
+                "bc478725ad63897b1ae776d0b9aef124"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.12",
+            "Улучшил обход вордфильтра(не тестировал). Починил работу с адаптивностью. Подкрутил настройки по-умолчанию. Пофиксил кодировку которую опять разъебал в прошлом релизе."
+        ],
         [
             "1.1.11",
             "Запилил капчу яндекса. Пофиксил пару багов и зависаний."
@@ -118,5 +122,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.11"
+    "version": "1.1.12"
 }

@@ -66,14 +66,18 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
+-- URGENT Fix updater manifest fetch timeout
 
+-- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
+
+-- URGENT JunkImage type
+-- URGENT image upload via conduit source
 -- URGENT Fix proxychecker
 
--- URGENT repeat on 503, database error, once on http
 -- URGENT капча на несколько постов вперед.
+-- URGENT repeat on 503, database error, once on http
 
-
--- URGENT Настройка тема и поле имя/трипкод, + видео
+-- URGENT Настройка темы, поле имя/трипкод, видео
 -- URGENT Разделить цитату номера поста и цитату содержимого
 -- URGENT табовый интерфейс
 -- URGENT вставлять ссылку на тред, не только номер

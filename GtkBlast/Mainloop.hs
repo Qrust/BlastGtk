@@ -250,7 +250,7 @@ setMainLoop env configfile setConf = do
     void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $ do
             progressBarPulse $ wprogresswipe env
-        return True) priorityDefaultIdle 10
+        return True) priorityLow 30
     void $ timeoutAddFull (do
         runE env mainloop
         return True) priorityDefaultIdle 50 --kiloseconds, 20 fps.

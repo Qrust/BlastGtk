@@ -13,7 +13,7 @@ import Control.Concurrent
 import System.Environment
 import Network.Socket
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import qualified Data.ByteString as B
 import Paths_blast_it_with_piss
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
@@ -84,13 +84,13 @@ displayCaptchaCounters ready all = go 0 0
         threadDelay 100000
         go rd al
 
-antigate :: Board -> String -> BlastProxy -> Blast (CAnswer, Image, BrowserState, IO ())
+antigate :: Board -> String -> BlastProxy -> Blast (CAnswer IO (ResourceT IO), Image, BrowserState, IO ())
 antigate board key p = httpGetProxy >>= \oldProxy -> httpWithProxy NoProxy $ do
     m <- getManager
     nc <- do
         nc <- getNewCaptcha board Nothing ""
         case nc of
-            Left (CAnswer{cAdaptive=True}) -> do
+            Left (CAnswer {cAdaptive=True}) -> do
                 httpWithProxy oldProxy $ getNewCaptcha board Nothing ""
             x -> return x
     case nc of
@@ -122,7 +122,7 @@ antigate board key p = httpGetProxy >>= \oldProxy -> httpWithProxy NoProxy $ do
     -- assuming recaptcha or simillar
     recaptchaCaptchaConf = def {phrase = True}
 
-antigateThread :: (IO (), IO ()) -> Board -> String -> BlastProxy -> Manager -> MVar (Maybe (CAnswer, Image, BrowserState, IO ())) -> IO ()
+antigateThread :: (IO (), IO ()) -> Board -> String -> BlastProxy -> Manager -> MVar (Maybe (CAnswer IO (ResourceT IO), Image, BrowserState, IO ())) -> IO ()
 antigateThread (success, fail) board antigateKey p manager mvar = do
     x <- try $ runBlastNew manager $ do
             void $ httpWithProxy p $ httpGetLbs $ ssachBoard board -- try to make a request to filter out dead.
@@ -136,7 +136,7 @@ antigateThread (success, fail) board antigateKey p manager mvar = do
         putStrLn $ "{" ++ show p ++"} Failed to get captcha, exception was: " ++ show e
         fail
 
-collectCaptcha :: M [(BlastProxy, MVar (Maybe (CAnswer, Image, BrowserState, IO ())))]
+collectCaptcha :: M [(BlastProxy, MVar (Maybe (CAnswer IO (ResourceT IO), Image, BrowserState, IO ())))]
 collectCaptcha = do
     State{..} <- ask
     liftIO $ do
@@ -154,7 +154,7 @@ collectCaptcha = do
         putStrLn "BLAST IT WITH PISS"
         return res
 
-createThread :: Bool -> String -> Manager -> Board -> BlastProxy -> MVar (Maybe (CAnswer, Image, BrowserState, IO ())) -> IO (MVar ())
+createThread :: Bool -> String -> Manager -> Board -> BlastProxy -> MVar (Maybe (CAnswer IO (ResourceT IO), Image, BrowserState, IO ())) -> IO (MVar ())
 createThread retrycaptcha key manager board proxy mvar = do
     putStrLn $ "Creating thread {" ++ show proxy ++ "}"
     m <- newEmptyMVar
@@ -170,9 +170,9 @@ createThread retrycaptcha key manager board proxy mvar = do
         handle (\(e::SomeException) -> liftIO $ print e) $ do
             putStrLn $ "{" ++ show proxy ++ "} Started."
             txt <- generateSymbolString 300
-            let (wakabapl, otherfields) = ssachLastRecordedWakabaplAndFields board
+            let otherfields = ssachLastRecordedFields board
             req <- prepare board Nothing (PostData "" txt (Just image) False False False False)
-                    cAnswer wakabapl otherfields ssachLengthLimit
+                    cAnswer otherfields ssachLengthLimit
             fix $ \goto -> do
                 outcome <- fmap fst $ runBlast manager st $ do
                     httpSetProxy proxy
@@ -215,7 +215,7 @@ main = withSocketsDo $ do
         Config{..} <- cmdArgsRun md
         let board = fromMaybe (error $ "Не смог прочитать \"" ++ strBoard ++ "\" как борду, возможно вы имели ввиду \"/" ++ strBoard ++ "/\"?") $
                         readBoard $ strBoard
-        rawIps <- nub . filter (not . null) . lines . T.unpack <$> T.readFile proxyFile
+        rawIps <- nub . filter (not . null) . lines . T.unpack . decodeUtf8 <$> B.readFile proxyFile
         let (errors, proxies) =
                 partitionEithers $
                     map (\x -> maybe (Left x) Right $ readBlastProxy socks x)
