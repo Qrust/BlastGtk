@@ -48,24 +48,15 @@ import Data.Version
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
 --      So it'll lag anyway, unless we move workers to different process.
--- FIXME We need a threadscope profile before we can decide on anything
--- TODO System.Random is abysmally slow, and might cause some lag on escaping. marsenne-random, mws-random?
+-- TODO System.Random is slow, and might cause some lag on escaping. marsenne-random, mws-random?
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
--- WTF snoyman's requestTimeout creates a new haskell thread for every request
---     it also appears that with HTTP package we can have many simultaneous threads with requests
---     without needing to link with threaded runtime, while http-conduit needs obligatory -threaded(?)
---     CLARIFY wait, what'd happen if i put thousands of connections on one manager? [Nothing happens, at least nothing different from when you put thousands of connections on different managers]
---             >May be used concurrently by multiple threads.
---             seems to indicate that this is what we need.
---     CLARIFY Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
--- WTF "getAddrInfo: does not exist (Name or service not known)" — when connecting with more than 500 threads at the same time.(DNS antiDOS?)
---     "socket: resource exhausted (Too many open files)" — when connecting with more than 500 threads at the same time.
 -- TODO DNS caching in http-conduit
 
 -- == 2.0 RELEASE ==
 
+-- URGENT build linux version without text-icu dep
 -- URGENT Fix updater manifest fetch timeout
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
