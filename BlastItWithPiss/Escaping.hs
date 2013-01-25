@@ -86,6 +86,8 @@ wordfilter =
     ,"очко"
     ,"Очко"
     ,"петух"
+    ,"Биборан"
+    ,"биборан"
     ]
 
 -- | List of invisble symbols
