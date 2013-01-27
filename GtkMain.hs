@@ -21,12 +21,9 @@ import Data.Version
 
 
 
--- FUUUUUUUUUUUCK
--- Github removes downloads
--- 
+
 -- https://github.com/blog/1302-goodbye-uploads
 --
--- QUICK DO SOMETHING
 -- dropbox, git-annex?
 -- bitbucket has Downloads section, we can setup a mirror there.
 
@@ -34,15 +31,9 @@ import Data.Version
 
 
 
-
---- /\  FIXMES /\
--- /==\ TODOS /==\
--- \==/ NOTES \==/
---  \/  PLANS  \/
-
 -- == PERFORMANCE ==
 -- TODO benchmark fast-tagsoup
---      vs. tagstream-conduit → entities → conv-tagsoup-types (NOTE tagstream is not lazy, that won't work)
+--      vs. tagstream-conduit → entities → conv-to-tagsoup-types (NOTE tagstream is not lazy, that won't work)
 --      vs. regular expressions
 -- TODO benchmark fast-tagsoup LByteString & LText vs. ByteString & Text
 -- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
@@ -58,6 +49,7 @@ import Data.Version
 
 -- URGENT build linux version without text-icu dep
 -- URGENT Fix updater manifest fetch timeout
+-- URGENT move pasta to separate dir.
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 
@@ -257,35 +249,3 @@ main = withSocketsDo $ do
         -- say good bye
 
         rawPutLog =<< ("Finished wipe session, current time is " ++) . show <$> getZonedTime
-
-mochanNames :: [String]
-mochanNames =
-    ["мочан"
-    ,"сосач"
-    ,"ссач"
-    ,"педальчан"
-    ,"уринач"
-    ,"мочеиспускач"
-    ,"абучан"
-    ,"двасо"
-    ,"хачан"
-    ,"мочепарашу"
-    ,"мочепарашу 2ch.so"
-    ,"педальный обоссач"
-    ,"педальный уринач"
-    ,"педальный абучан"
-    ,"педальный хачан"
-    ,"педальную мочепарашу"
-    ,"педальную мочепарашу 2ch.so"
-    ,"уринальный мочеиспускач"
-    ,"уринальный абучан"
-    ,"уринальный хачан"
-    ,"уринальную мочепарашу"
-    ,"уринальную мочепарашу 2ch.so"
-    ,"трипфажный обоссач"
-    ,"трипфажный мочан"
-    ,"трипфажный мочеиспускач"
-    ,"трипфажный абучан"
-    ,"трипфажную мочепарашу"
-    ,"трипфажную мочепарашу 2ch.so"
-    ]
