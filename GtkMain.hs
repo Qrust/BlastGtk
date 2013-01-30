@@ -45,6 +45,9 @@ import Data.Version
 
 -- TODO DNS caching in http-conduit
 
+-- FIXME Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
+         There is, see https://github.com/snoyberg/http-conduit/issues/97#issuecomment-12858211
+
 -- == 2.0 RELEASE ==
 
 -- URGENT build linux version without text-icu dep
