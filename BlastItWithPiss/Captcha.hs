@@ -83,7 +83,7 @@ instance Captcha Recaptcha where
         Just (Recaptcha <$> recaptchaChallengeKey ssachRecaptchaKey)
 {-
     reloadCaptcha (Recaptcha chKey) = do
-        void $ httpGet $
+        void $ httpGetLbs $
             "http://www.google.com/recaptcha/api/reload?c=" ++ chKey ++ "&k=" ++
                 ssachRecaptchaKey ++ "&reason=r&type=image&lang=en"
 -}
