@@ -44,7 +44,8 @@ import Data.Version
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
 -- TODO http-conduit:
---  Unify proxy types
+--  Move checkStatus query to httpRedirect
+--  Unify proxy types / Define proxy chains
 --  DNS caching
 --  Time caching
 
