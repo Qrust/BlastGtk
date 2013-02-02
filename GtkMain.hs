@@ -43,10 +43,13 @@ import Data.Version
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
--- TODO DNS caching in http-conduit
+-- TODO http-conduit:
+--  Unify proxy types
+--  DNS caching
+--  Time caching
 
 -- FIXME Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
-         There is, see https://github.com/snoyberg/http-conduit/issues/97#issuecomment-12858211
+--       There is, see https://github.com/snoyberg/http-conduit/issues/97#issuecomment-12858211
 
 -- == 2.0 RELEASE ==
 
