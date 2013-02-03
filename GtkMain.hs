@@ -54,6 +54,10 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
+-- URGENT disable sage
+-- URGENT add back NoPasta
+-- URGENT post videos
+
 -- URGENT build linux version without text-icu dep
 -- URGENT Fix updater manifest fetch timeout
 -- URGENT move pasta to separate dir.
