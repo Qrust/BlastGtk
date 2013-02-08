@@ -559,7 +559,7 @@ blastLoop = forever $ do
                    "speed: " ++ show (speed p0) ++ "\n" ++
                    "threads: " ++ show (length $ threads p0) ++ "\n" ++
                    "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
-    mode <- flMaybeSTM mmode (\m -> do blastLog $ "Got mmode " ++ show m; return m) $ 
+    mode <- flMaybeSTM mmode (\m -> do blastLog $ "Got mmode " ++ show m; return m) $
         maybe (do blastLog "No page, throwing a dice for SagePopular/BumpUnpopular"
                   chooseFromList [SagePopular, BumpUnpopular])
               (\p0 -> do blastLog "Choosing mode..."

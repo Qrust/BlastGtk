@@ -59,6 +59,12 @@ import Data.Version
 -- URGENT post videos
 
 -- URGENT build linux version without text-icu dep
+
+-- URGENT Captchabot, Decaptcher, ExpertDecoders, ImageTyperz, DeathByCaptcha, all use antigate API.
+--        BypassCaptcha
+--        Pixodrom uses antigate API, except file-extension is .aspx, not .php.
+-- URGENT recog-services cli tool
+
 -- URGENT Fix updater manifest fetch timeout
 -- URGENT move pasta to separate dir.
 
@@ -158,7 +164,6 @@ import Data.Version
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
 -- TODO add multipart/form-data to http-conduit
--- TODO support alternatives to antigate — CAPTCHABOT, DECAPTCHER etc.
 -- TODO add zip file permissions to zip-archive
 -- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
 -- TODO i18n (represent messages by types + typeclass?)
