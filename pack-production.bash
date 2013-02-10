@@ -11,6 +11,13 @@ case "$@" in
         ./VersionIncrementerMain;;
 esac
 case "$@" in
+    *llvm*)
+        echo "LLVM Enabled"
+        llvm=llvm;;
+    *)
+        llvm="";;
+esac
+case "$@" in
     *delete*)
         delete=True;;
 esac
@@ -24,13 +31,13 @@ windowszip="BlastItWithPiss-windows-x86-$currentversion.zip"
 echo "Linux archive will be \"$linuxzip\""
 echo "DOS archive will be \"$windowszip\""
 (echo "Packaging Linux";
- bash build-production.bash &&\
+ bash build-production.bash $llvm &&\
  cd linux-dist && zip -r ../$linuxzip BlastItWithPiss/) &&\
  (echo "Packaging DOS";
  # Running any msys binary does strange things to my linux shell,
  # input doesn't get echoed and 'echo' output is printed without a newline.
  # So instead, we'll use following workaround.
- bash build-production.bash _ wine &&\
+ bash build-production.bash "${llvm}wine" &&\
  cd dos-dist && zip -r ../$windowszip BlastItWithPiss/)
 if [ -r $linuxzip ] && [ -r $windowszip ]
     then

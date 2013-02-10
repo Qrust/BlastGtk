@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
 description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
-version: 1.1.12
+version: 1.1.13
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -13,18 +13,20 @@ stability: experimental
 build-type: Simple
 cabal-version: >= 1.15
 tested-with: GHC == 7.4.1
-data-files: build-production.bash
-           ,resources/blast.glade
-           ,resources/2ch.so.png
-           ,resources/mocha
-           ,resources/analniy-sadism
-           ,resources/nihuya
-           ,resources/agitka.png
-           ,images/jew-swede.jpg
-           ,images/sad-monkey.jpg
-           ,images/newscreen.png
-           ,README.md
-           ,COMPILEGUIDE.md
+data-files:
+    build-production.bash
+   ,README.md
+   ,COMPILEGUIDE.md
+   ,resources/blast.glade
+   ,resources/2ch.so.png
+   ,resources/agitka.png
+   ,images/jew-swede.jpg
+   ,images/sad-monkey.jpg
+   ,images/newscreen.png
+   ,pasta/mocha
+   ,pasta/shizik
+   ,pasta/analniy-sadism
+   ,pasta/nihuya
 
 source-repository head
     type: git
@@ -62,8 +64,8 @@ library
                   ,monad-control
                   ,transformers
                   ,network
-                  ,http-conduit >= 1.8.7
-                  ,http-conduit-browser >= 1.7.1.2
+                  ,http-conduit >= 1.8.7.1
+                  ,http-conduit-browser >= 1.8
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -74,8 +76,8 @@ library
                   ,deepseq
                   ,failure
                   ,tagsoup
-                  ,fast-tagsoup >= 1.0.4
-                  ,antigate
+                  ,fast-tagsoup-utf8-only >= 1.0.4
+                  ,antigate >= 0.4 && < 0.5
 
     exposed-modules:
                    BlastItWithPiss
@@ -146,7 +148,7 @@ executable gtkblast
                   ,Paths_blast_it_with_piss
     
     build-depends: base
-                  ,antigate >= 0.2.1
+                  ,antigate >= 0.4 && < 0.5
                   ,filepath
                   ,directory
                   ,containers
@@ -173,8 +175,8 @@ executable gtkblast
                   ,safe
                   ,filepath
                   ,MonadRandom
-                  ,http-conduit >= 1.8.7
-                  ,http-conduit-browser >= 1.7.1.2
+                  ,http-conduit >= 1.8.7.1
+                  ,http-conduit-browser >= 1.8
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -183,7 +185,7 @@ executable gtkblast
                   ,resourcet
                   ,case-insensitive
                   ,tagsoup
-                  ,fast-tagsoup
+                  ,fast-tagsoup-utf8-only >= 1.0.4
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -239,8 +241,8 @@ executable proxychecker
                   ,containers
                   ,filepath
                   ,MonadRandom
-                  ,http-conduit >= 1.8.7
-                  ,http-conduit-browser >= 1.7.1.2
+                  ,http-conduit >= 1.8.7.1
+                  ,http-conduit-browser >= 1.8
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -249,8 +251,8 @@ executable proxychecker
                   ,resourcet
                   ,case-insensitive
                   ,tagsoup
-                  ,fast-tagsoup
-                  ,antigate
+                  ,fast-tagsoup-utf8-only >= 1.0.4
+                  ,antigate >= 0.4 && < 0.5
 
     if flag(gtkonly)
         buildable: False
@@ -309,8 +311,8 @@ executable smyvalka
                   ,containers
                   ,filepath
                   ,MonadRandom
-                  ,http-conduit >= 1.8.7
-                  ,http-conduit-browser >= 1.7.1.2
+                  ,http-conduit >= 1.8.7.1
+                  ,http-conduit-browser >= 1.8
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -319,9 +321,9 @@ executable smyvalka
                   ,resourcet
                   ,case-insensitive
                   ,tagsoup
-                  ,fast-tagsoup
+                  ,fast-tagsoup-utf8-only >= 1.0.4
                   ,random-shuffle
-                  ,antigate
+                  ,antigate >= 0.4 && < 0.5
 
     if flag(gtkonly)
         buildable: False

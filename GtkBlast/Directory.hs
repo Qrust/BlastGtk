@@ -1,6 +1,6 @@
 module GtkBlast.Directory
     (ModificationTime
-    ,resourceFile
+    ,bundledFile
     ,configDir
     ,nullTime
     ,timeRightNow
@@ -24,11 +24,11 @@ type ModificationTime = UTCTime
 type ModificationTime = ClockTime
 #endif
 
-resourceFile :: String -> String
+bundledFile :: String -> String
 #if defined(BINDIST)||defined(TEST)
-resourceFile x = "resources" </> x
+bundledFile x = x
 #else
-resourceFile x = U.unsafePerformIO $ getDataFileName $ "resources" </> x
+bundledFile x = U.unsafePerformIO $ getDataFileName x
 #endif
 
 configDir :: IO String

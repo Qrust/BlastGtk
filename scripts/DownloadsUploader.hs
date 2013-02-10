@@ -2,10 +2,10 @@
 module Main (main) where
 import Import
 import Updater.Manifest
-import BlastItWithPiss.MultipartFormData
 import System.Environment
 import Network.HTTP.Types
 import Network.HTTP.Conduit
+import Network.HTTP.Conduit.MultipartFormData
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Aeson.Encode.Pretty
@@ -22,6 +22,7 @@ import Text.ParserCombinators.ReadP
 import Crypto.Classes hiding (encode)
 import Data.Version
 import Control.Concurrent
+import Control.Monad.Identity
 
 username :: IsString a => a
 username = "exbb2"
@@ -66,37 +67,32 @@ fromJsonParser lbs m =
            id $
            flip parseEither (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) m)
 
-parseGithubDownloadsPart1Response :: LByteString -> ByteString -> FilePath -> LByteString -> (Request a, Int)
+parseGithubDownloadsPart1Response :: Monad a => LByteString -> ByteString -> FilePath -> LByteString -> (Request a, Int)
 parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
     fromJsonParser lbs $ \o -> do
-    let corr s3 part1 = field s3 <$> o .: part1
+    let corr s3 part1 = partBS s3 <$> o .: part1
     fields <- sequence
         [corr "key" "path"
         ,corr "acl" "acl"
-        ,return $ field "success_action_status" "201"
+        ,return $ partBS "success_action_status" "201"
         ,corr "Filename" "name"
         ,corr "AWSAccessKeyId" "accesskeyid"
         ,corr "Policy" "policy"
         ,corr "Signature" "signature"
         ,corr "Content-Type" "mime_type"
-        ,return $ Field
-               [("name", "file") ,("filename", encodeUtf8 $ T.pack arcfilename)]
-               [(hContentType, "application/zip")]
-               arcbytes
+        ,return $ partFileRequestBody "file" arcfilename $ RequestBodyLBS arcbytes
         ]
     rurl <- fromJust . parseUrl <$> o .: "s3_url"
     id <- o .: "id"
-    return $ (rurl
+    return $ (formDataBodyPure boundary fields $ rurl
         {method = methodPost
-        ,requestHeaders = [(hContentType, "multipart/form-data; boundary=" <> boundary)
-                          ,(hUserAgent, "http-conduit")]
-        ,requestBody = formatMultipart boundary fields
+        ,requestHeaders = [(hUserAgent, "http-conduit")]
         ,checkStatus = only201
         }
         , id)
 
-uploadZip :: Text -> String -> ByteString -> Text -> IO ()
-uploadZip pass arcfilename arcbytes desc = withManager $ \m -> do
+uploadZip :: Text -> String -> Text -> ByteString -> IO ()
+uploadZip pass arcfilename desc arcbytes = withManager $ \m -> do
     let req = applyBasicAuth username (encodeUtf8 pass) $
                 (fromJust $ parseUrl $
                     "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads")
@@ -112,9 +108,9 @@ uploadZip pass arcfilename arcbytes desc = withManager $ \m -> do
     liftIO $ putStrLn "Part1"
     lbs <- responseBody <$> httpLbs req m
     liftIO $ putStrLn "Part2"
-    boundary <- liftIO $ randomBoundary
+    boundary <- liftIO $ webkitBoundary
     let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
-    http req m
+    void $ httpLbs req m
     liftIO $ putStrLn "Success."
 
 deleteDownloads :: Text -> Version -> IO ()
@@ -132,6 +128,13 @@ deleteDownloads pass v = do
             Nothing -> do
                 putStrLn $ "Passing by " ++ show (name, id)
 
+getPassword :: String -> IO Text
+getPassword desc = do
+    hSetEcho stdin False
+    password <- maybe (error "Пароль обязателен") T.pack <$> readline (desc ++ "\n")
+    hSetEcho stdin True
+    return password
+
 main :: IO ()
 main = do
     [rv,la,wa,dogit,delold] <- getArgs
@@ -143,7 +146,6 @@ main = do
         (\(_::SomeException) -> emptyUpdate)
         (fromMaybe emptyUpdate . decode . toLBS) <$>
             try (B.readFile "UPDATE_MANIFEST")
-    hSetEcho stdin True
     chlog <- map (\x -> if x==';' then '\n' else x) .
                 fromMaybe (error "Please write changelog") <$>
                     readline "Changes in this version:\n"
@@ -162,12 +164,11 @@ main = do
                             }
     L.writeFile "UPDATE_MANIFEST" $ encodePretty manifest
     putStrLn "Updated manifest..."
-    hSetEcho stdin False
-    password <- maybe (error "Пароль обязателен") T.pack <$> readline "Пароль гитхаба:\n"
+    password <- getPassword "Пароль гитхаба:"
     putStrLn "Прыщи..."
-    uploadZip password lafilename labytes "Прыщи"
+    uploadZip password lafilename "Прыщи" labytes
     putStrLn "Сперма..."
-    uploadZip password wafilename wabytes "Сперма"
+    uploadZip password wafilename "Сперма" wabytes
     putStrLn "Загрузилось наконец."
     when (read dogit) $ do
         putStrLn "git commit"

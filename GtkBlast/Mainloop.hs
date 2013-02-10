@@ -195,6 +195,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 NeedCaptcha -> writeLog $ stamp $ "NeedCaptcha"
                 WrongCaptcha -> writeLog $ stamp $ "WrongCaptcha"
                 LongPost -> tempError 1 $ stamp $ "Запостил слишком длинный пост"
+                EmptyPost -> tempError 2 $ stamp $ "Вы ничего не написали в сообщении и не прикрепили картинку"
                 CorruptedImage -> tempError 2 $ stamp $ "Запостил поврежденное изображение"
                 PostRejected -> writeLog $ stamp $ "PostRejected"
                 OtherError x -> tempError 4 $ stamp $ "" ++ show x

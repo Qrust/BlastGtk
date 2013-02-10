@@ -44,10 +44,10 @@ import Data.Version
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
 -- TODO http-conduit:
---  Move checkStatus query to httpRedirect
+--  Connection timeout
 --  Unify proxy types / Define proxy chains
+--  Cookie filter/map, cookie helpers
 --  DNS caching
---  Time caching
 
 -- FIXME Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
 --       There is, see https://github.com/snoyberg/http-conduit/issues/97#issuecomment-12858211
@@ -55,18 +55,14 @@ import Data.Version
 -- == 2.0 RELEASE ==
 
 -- URGENT disable sage
--- URGENT add back NoPasta
 -- URGENT post videos
 
--- URGENT build linux version without text-icu dep
+-- URGENT global useragent makes all proxies share useragent
+-- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 
--- URGENT Captchabot, Decaptcher, ExpertDecoders, ImageTyperz, DeathByCaptcha, all use antigate API.
---        BypassCaptcha
---        Pixodrom uses antigate API, except file-extension is .aspx, not .php.
 -- URGENT recog-services cli tool
 
 -- URGENT Fix updater manifest fetch timeout
--- URGENT move pasta to separate dir.
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 
@@ -83,7 +79,6 @@ import Data.Version
 -- URGENT вставлять ссылку на тред, не только номер
 -- URGENT blastitwithpiss.github.com
 
--- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 -- URGENT
 --  Синхронизация юнитов, кэширование страниц(не только нулевой) между проксями
 --  на одной борде. Записывать какие треды бампнули с штампом чтобы не бампать
@@ -95,7 +90,6 @@ import Data.Version
 -- URGNET blastCloudflare → withCloudflare
 -- URGENT ControlCenter type/class which controls wipe units, WipeUnit type.
 -- URGENT Remove "{" ++ "}"
--- URGENT global useragent makes all proxies share useragent
 -- URGENT parse less often if board is slow
 
 -- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
@@ -233,7 +227,7 @@ main = withSocketsDo $ do
 
         void $ initGUI
         builder <- builderNew
-        builderAddFromFile builder $ resourceFile "blast.glade"
+        builderAddFromFile builder $ bundledFile "resources/blast.glade"
 
         (env, setConf) <- createWidgetsAndFillEnv builder conf
 

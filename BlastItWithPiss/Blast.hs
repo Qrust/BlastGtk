@@ -39,7 +39,7 @@ import qualified Text.Show as Show
 import Control.Monad.Trans.Resource
 
 import Text.HTML.TagSoup (Tag)
-import Text.HTML.TagSoup.Fast
+import Text.HTML.TagSoup.Fast.Utf8Only
 
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -233,7 +233,7 @@ generateNewBrowser = do
     setMaxRedirects Nothing
     setMaxRetryCount 1
     setTimeout $ Just $ 10 * 1000000
-    setUserAgent $ Just userAgent
+    setDefaultHeader hUserAgent $ Just userAgent
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
                        ,(hConnection, "keep-alive")]
     --

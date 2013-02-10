@@ -1,6 +1,7 @@
 module GtkBlast.BoardSettingsGuiXML where
 import Import
 import BlastItWithPiss.Board
+import GtkBlast.Directory
 
 boardSettingsGuiXML :: Board -> String
 boardSettingsGuiXML board =
@@ -27,7 +28,7 @@ boardSettingsGuiXML board =
     <property name=\"can_focus\">False</property>\
     <property name=\"title\" translatable=\"yes\">Настройки " ++ renderBoard board ++ "</property>\
     <property name=\"role\">wipe-board-settings-" ++ renderBoard board ++ "</property>\
-    <property name=\"icon\">resources/2ch.so.png</property>\
+    <property name=\"icon\">" ++ bundledFile "resources/2ch.so.png" ++ "</property>\
     <property name=\"skip_taskbar_hint\">True</property>\
     <child>\
       <object class=\"GtkAlignment\" id=\"alignment1\">\

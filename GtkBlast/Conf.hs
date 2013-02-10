@@ -51,6 +51,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coUseNoProxy :: !Bool
                  ,coCaptchaMode :: !CaptchaMode
                  ,coAntigateKey :: !String
+                 ,coAntigateHost :: !String
                  ,coLastVersion :: !Version
                  ,coPastaFile :: !String
                  ,coEscapeInv :: !Bool
@@ -85,7 +86,7 @@ instance Default Conf where
          ,coTray = True
 #endif
          ,coWatermark = False
-         ,coSettingsShown = False
+         ,coSettingsShown = True
          ,coAdditionalShown = False
          ,coLogShown = False
          ,coFirstLaunch = True
@@ -96,10 +97,11 @@ instance Default Conf where
          ,coUseNoProxy = True
          ,coCaptchaMode = Gui
          ,coAntigateKey = []
+         ,coAntigateHost = "antigate.com"
          ,coLastVersion = version
-         ,coPastaFile = resourceFile "mocha"
-         ,coEscapeInv = True
-         ,coEscapeWrd = True
+         ,coPastaFile = bundledFile "pasta/mocha"
+         ,coEscapeInv = False
+         ,coEscapeWrd = False
          ,coPostAgitka = False
          ,coSortingByAlphabet = True
          ,coShuffleReposts = True
@@ -183,6 +185,7 @@ instance FromJSON (Conf, String) where
         F(coUseNoProxy)
         F(coCaptchaMode)
         F(coAntigateKey)
+        F(coAntigateHost)
         F(coLastVersion)
         F(coPastaFile)
         F(coEscapeInv)

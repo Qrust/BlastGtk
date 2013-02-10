@@ -7,32 +7,64 @@ module GtkBlast.AntigateCaptcha
     ,maintainAntigateCaptcha
     ) where
 import Import hiding (on, mod)
+
+import BlastItWithPiss.Board
+import BlastItWithPiss.Blast
+import BlastItWithPiss
+
+import GtkBlast.Type_CaptchaMode
 import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvPart
-import BlastItWithPiss
-import BlastItWithPiss.Board
-import BlastItWithPiss.Blast
+
+import Text.Recognition.Antigate
 import Graphics.UI.Gtk hiding (get, set)
+
 import GHC.Conc
 import Control.Concurrent.STM
-import Text.Recognition.Antigate
-import qualified Data.Map as M
-import Control.Monad.Trans.Resource
+import Data.Time.Clock.POSIX
 
-antigateThread :: Manager -> (OriginStamp, SupplyCaptcha) -> TQueue (Either String String) -> String -> IO ()
+import Control.Monad.Trans.Resource
+import qualified Data.Map as M
+
+antigateThread :: Manager -> (OriginStamp, SupplyCaptcha) -> TQueue (Either String String) -> ApiKey -> IO ()
 antigateThread connection (st, SupplyCaptcha{..}) tq key =
     runResourceT $ flip catches hands $ do
-        -- FIXME we assume recaptcha
-        (cid, str) <- solveCaptcha (3*1000000) (3*1000000) key captchaConf "recaptcha.jpg" captchaBytes connection
+        ut <- io $ newIORef 0
+        now <- io getPOSIXTime
+        let sconf =
+              def {api_counter = counter ut now
+                  ,api_upload_callback = upcallback ut now}
+
+        (cid, str) <- solveCaptcha sconf key captchaConf captchaFilename
+                        captchaBytes connection
+
         lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
-        io $ captchaSend $ Answer str (handle errex . report cid)
+        io $ captchaSend $ Answer str (handle errex . void . report cid)
+
         lg $ "Antigate thread finished for " ++ renderCompactStamp st
   where lg :: MonadIO m => String -> m ()
         lg = io . atomically . writeTQueue tq . Right
+        upcallback uploadtime then' cid = do
+            now <- getPOSIXTime
+            set uploadtime now
+            lg $ "Got captcha id for " ++ renderCompactStamp st ++ ": " ++
+                show cid ++ ". Spent " ++ show (now-then') ++ " on uploading"
+        counter _ _ _ 0 = return ()
+        counter uploadtime then' phase c = do
+            ut <- get uploadtime
+            now <- getPOSIXTime
+            lg $ "Retry #" ++ show c ++ " of " ++ show phase ++ " for " ++
+                renderCompactStamp st ++ ": spent " ++
+                    (case phase of
+                        CheckPhase ->
+                          show (now - then') ++ " solving captcha, " ++
+                            "with " ++ show (now - ut) ++ " spent on checking"
+                        UploadPhase -> show (now - then') ++ " on uploading"
+                    )
         err :: MonadIO m => String -> m ()
         err = io . atomically . writeTQueue tq . Left
         report cid nst = do
@@ -60,7 +92,11 @@ startAntigateThread :: (OriginStamp, SupplyCaptcha) -> E (ThreadId, (OriginStamp
 startAntigateThread c@(OriginStamp{..},_) = do
     E{..} <- ask
     writeLog $ "Spawning antigate thread for {" ++ show oProxy ++ "} " ++ renderBoard oBoard
-    i <- io . forkIO . antigateThread connection c antigateLogQueue =<< get wentryantigatekey
+    apikey <- do
+        weak <- get wentryantigatekey
+        weah <- get wentryantigatehost
+        return ApiKey {api_host=weah, api_key=weak}
+    i <- io $ forkIO $ antigateThread connection c antigateLogQueue apikey
     return (i, c)
 
 addAntigateCaptchas :: [(OriginStamp, SupplyCaptcha)] -> E ()
@@ -138,13 +174,30 @@ antigateCaptchaEnvPart :: Builder -> EnvPart
 antigateCaptchaEnvPart b = EP
     (\e c -> do
         wentryantigatekey <- (rec coAntigateKey $ builderGetObject b castToEntry "entryantigatekey") e c
+        wentryantigatehost <- (rec coAntigateHost $ builderGetObject b castToEntry "entryantigatehost") e c
 
         pendingAntigateCaptchas <- newIORef []
         antigateLogQueue <- atomically newTQueue
 
-        return (wentryantigatekey, pendingAntigateCaptchas, antigateLogQueue))
-    (\(v,_,_) c -> get v ? \a -> c{coAntigateKey=a})
-    (\(weak,pac,alq) e -> e{wentryantigatekey=weak
-                           ,pendingAntigateCaptchas=pac
-                           ,antigateLogQueue=alq
-                           })
+        let restart = do
+                E{..} <- ask
+                whenM ((==Antigate) <$> get captchaMode) $ do
+                    addAntigateCaptchas =<< deactivateAntigateCaptcha
+
+        void $ on wentryantigatekey entryActivate $ runE e restart
+        void $ on wentryantigatehost entryActivate $ runE e restart
+
+        return (wentryantigatekey, wentryantigatehost,
+                pendingAntigateCaptchas, antigateLogQueue))
+    (\(wak,wah,_,_) c -> do
+        cak <- get wak
+        cah <- get wah
+        return $ c{coAntigateKey=cak
+                  ,coAntigateHost=cah
+                  })
+    (\(weak,weah,pac,alq) e ->
+        e{wentryantigatekey=weak
+         ,wentryantigatehost=weah
+         ,pendingAntigateCaptchas=pac
+         ,antigateLogQueue=alq
+         })

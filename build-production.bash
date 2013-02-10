@@ -12,8 +12,8 @@ case `uname` in
         cbl="cabal"
         cr=`pwd`;;
     *)
-        case $2 in
-            wine*)
+        case $1 in
+            *wine*)
                 lbdir="dos"
                 foldr="dos-dist"
                 cbl="wine cabal"
@@ -26,16 +26,12 @@ case `uname` in
         esac;;
 esac
 case $1 in
-    fast*)
+    *fast*)
         optimi="--ghc-options=-O0 --disable-optimization";;
+    *llvm*)
+        optimi="--ghc-options=-O2 --ghc-options=-fllvm --enable-optimization=2";;
     *)
-        case `uname` in
-            MINGW*) optimi="--ghc-options=-O2 --enable-optimization=2";;
-            *) case $2 in
-                wine*) optimi="--ghc-options=-O2 --enable-optimization=2";;
-                *) optimi="--ghc-options=-O2 --enable-optimization=2";;
-               esac;;
-        esac;;
+        optimi="--ghc-options=-O2 --enable-optimization=2";;
 esac
 echo $lbdir
 echo $foldr

@@ -6,4 +6,5 @@ import Prelude
 data PastaSet = PastaFile
               | Symbol
               | FromThread
+              | NoPasta
     deriving (Eq, Show, Ord, Read, Enum, Bounded)

@@ -43,7 +43,7 @@ imageGen connection imagefolder agitka use = do
         if use
             then fromIOEM (return []) $ filterImages . map (imagefolder </>) <$> getDirectoryContents imagefolder
             else return []
-    let agitkafile = resourceFile "agitka.png"
+    let agitkafile = bundledFile "resources/agitka.png"
     ifM ((agitka &&) <$> doesFileExist agitkafile)
         (do let eq = 100 / (fromIntegral $ length images + 1)
             (,) False <$> (readImageWithoutJunk =<< fromList ((agitkafile, 15) : map (\i -> (i, eq)) images)))

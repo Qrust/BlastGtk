@@ -80,6 +80,7 @@ data Env = E
     ,wentrysocksproxyfile :: Entry
     ,wchecknoproxy :: CheckButton
     ,wentryantigatekey :: Entry
+    ,wentryantigatehost :: Entry
     ,wentrypastafile :: Entry
     ,wcheckescapeinv :: CheckButton
     ,wcheckescapewrd :: CheckButton
@@ -138,6 +139,7 @@ instance NFData Env where
         `seq` wentrysocksproxyfile
         `seq` wchecknoproxy
         `seq` wentryantigatekey
+        `seq` wentryantigatehost
         `seq` wentrypastafile
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd

@@ -14,6 +14,9 @@ module BlastItWithPiss
     ,defPrS
     ,entryPoint
     ,sortSsachBoardsByPopularity
+
+    -- FIXME
+    ,TempBlastCaptchaChannel(..)
     ) where
 import Import
 
@@ -24,6 +27,8 @@ import BlastItWithPiss.Parsing
 import BlastItWithPiss.Choice
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Post
+
+import Text.Recognition.Antigate
 
 import Control.Concurrent.Lifted
 import Control.Concurrent.STM
@@ -39,7 +44,7 @@ import qualified Text.Show as Show
 import Text.HTML.TagSoup(Tag)
 
 data ShSettings = ShSettings
-    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO ((Bool, ((Bool, Bool), String))))
+    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
     ,timagegen :: TVar (Bool -> IO (Bool, Image))
     --NOTE all browser state accumulated in gens is lost.
     ,tuseimages :: TVar Bool
@@ -80,6 +85,7 @@ data SupplyCaptcha = SupplyCaptcha
     ,captchaBytes :: !LByteString
     ,captchaSend :: !(CaptchaAnswer -> IO ())
     ,captchaConf :: !CaptchaConf
+    ,captchaFilename :: !String
     }
 
 data Message
@@ -170,7 +176,7 @@ instance NFData OriginStamp where
 instance NFData CaptchaConf
 
 instance NFData SupplyCaptcha where
-    rnf (SupplyCaptcha a b c d) = rnf(a,b,c,d)
+    rnf (SupplyCaptcha a b c d e) = rnf(a,b,c,d,e)
 
 instance NFData Message where
     rnf (OutcomeMessage o) = rnf o
@@ -291,11 +297,17 @@ abortWithOutcome o = do
     throwIO (AbortOutcome o)
 -- /HACK
 
+data TempBlastCaptchaChannel =
+    TBCC{nopastas :: Bool
+        ,escinv :: Bool
+        ,escwrd :: Bool
+        ,pasta :: String} 
+
 blastPostData :: Mode -> (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog PostData
 blastPostData mode getThread mpastapage thread = do
     ShSettings{..} <- askShS
     blastLog "Choosing pasta..."
-    (nopastas, ((escinv, escwrd), pasta)) <- do
+    TBCC{..} <- do
         pastagen <- liftIO $ readTVarIO tpastagen
         r <- ask
         s <- lift get
@@ -342,12 +354,15 @@ blastCaptcha thread = do
             blastLog $ "Got presolved captcha " ++ show f
             return (False, Just (f, const $ return ()))
         Right chKey -> do
+            let _ = chKey `asTypeOf` currentSsachCaptchaType
             blastLog "Downloadng captcha"
-            (bytes, ct) <- blast $ getCaptchaImage $ chKey `asTypeOf` currentSsachCaptchaType
+            (bytes, ct) <- blast $ getCaptchaImage chKey
             cconf <- blast $ getCaptchaConf chKey
+            fname <- mkImageFileName ct
             blastLog "Got captcha image, sending captcha mvar"
             m <- newEmptyMVar
-            blastOut $ SolveCaptcha $ SupplyCaptcha CaptchaPosting bytes (putMVar m $!!) cconf
+            blastOut $ SolveCaptcha $
+                SupplyCaptcha CaptchaPosting bytes (putMVar m $!!) cconf fname
             blastLog "blocking on captcha mvar"
             a <- takeMVar m
             blastLog $ "got captcha mvar, answer is... " ++ show a
@@ -401,9 +416,11 @@ blastCloudflare md whatrsp url = do
                     chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
                     (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
                     cconf <- blast $ getCaptchaConf $ Recaptcha chKey
+                    fname <- mkImageFileName ct
                     m <- newEmptyMVar
                     -- FIXME wait, why the hell don't we use blastCaptcha?
-                    blastOut $ SolveCaptcha $ SupplyCaptcha CaptchaCloudflare bytes (putMVar m $!!) cconf
+                    blastOut $ SolveCaptcha $ SupplyCaptcha
+                            CaptchaCloudflare bytes (putMVar m $!!) cconf fname
                     a <- takeMVar m
                     case a of
                         Answer s _ -> do

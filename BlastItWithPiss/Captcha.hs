@@ -1,9 +1,6 @@
 {-# LANGUAGE RankNTypes, ExistentialQuantification #-}
 module BlastItWithPiss.Captcha
-    (
-     module Text.Recognition.Antigate
-    
-    ,currentSsachCaptchaType
+    (currentSsachCaptchaType
 
     ,ssachRecaptchaKey
     ,cloudflareRecaptchaKey

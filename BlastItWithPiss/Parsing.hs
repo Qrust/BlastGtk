@@ -252,6 +252,7 @@ data Outcome = Success
              | WrongCaptcha
              | RecaptchaBan
              | LongPost
+             | EmptyPost
              | CorruptedImage
              | PostRejected
              | CloudflareCaptcha
@@ -339,6 +340,8 @@ detectOutcome tags
                 -> LongPost
               | T.isInfixOf "Загружаемый вами тип файла не поддерживается" err
                 -> CorruptedImage
+              | T.isInfixOf "ничего не написали в сообщении" err
+                -> EmptyPost
               | otherwise
                 -> OtherError (Err $ T.unpack err)
     | otherwise = UnknownError

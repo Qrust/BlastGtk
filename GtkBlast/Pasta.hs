@@ -49,29 +49,40 @@ generateSymbolString maxlength = do
     spc <- generateRandomString (0, plength) (' ', ' ')
     shuffleM (num++beng++seng++brus++srus++spc)
 
-pastaChooser :: [String] -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
-pastaChooser pastas = do
+generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
+generatePastaGen PastaFile = do
     E{..} <- ask
-    rquoter <- ifM (get wcheckrandomquote) (return $ genPastaRandomQuote 100 0) (return $ \_ _ _ -> return)
-    e <- (,) <$> get wcheckescapeinv <*> get wcheckescapewrd
-    return $ \a b c -> do
-        (,) (null pastas) . (,) e <$> (rquoter a b c =<< mchooseFromList pastas)
-
-generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO (Bool, ((Bool, Bool), String)))
-generatePastaGen PastaFile =
-    pastaChooser =<< appFile [] readPasta =<< get =<< asks wentrypastafile
+    pastas <- appFile [] readPasta =<< get wentrypastafile
+    toQuote <- get wcheckrandomquote
+    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
+    ei <- get wcheckescapeinv
+    ew <- get wcheckescapewrd
+    let x a b c = fmap (TBCC (null pastas) ei ew) $
+                    rquoter a b c =<< mchooseFromList pastas
+    return x
 generatePastaGen Symbol = do
     E{..} <- ask
-    rquoter <- ifM (get wcheckrandomquote) (return $ genPastaRandomQuote 100 0) (return $ \_ _ _ -> return)
-    return $ \a b c -> (,) False . (,) (False, False) <$>
-        (rquoter a b c =<< generateSymbolString 5000)
+    toQuote <- get wcheckrandomquote
+    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
+    return $ \a b c -> fmap (TBCC False False False) $
+        rquoter a b c =<< generateSymbolString 5000
 generatePastaGen FromThread = do
     E{..} <- ask
-    shuf <- ifM (get wcheckshufflereposts)
-                (pure $ fmap unwords . shuffleM . words)
-                (pure return)
+
+    toShuf <- get wcheckshufflereposts
+    let shuf = if toShuf then shuf' else return
+
     quote <- get wcheckrandomquote
-    return $ \a b c -> (,) False . (,) (False, False) <$> (shuf =<< genPastaFromReposts quote a b c)
+
+    let x a b c = fmap (TBCC False False False) $ shuf =<< genPastaFromReposts quote a b c
+    return x
+  where
+    shuf' = fmap unwords . shuffleM . words
+generatePastaGen NoPasta = do
+    E{..} <- ask
+    toQuote <- get wcheckrandomquote
+    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
+    return $ \a b c -> TBCC False False False <$> rquoter a b c ""
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
@@ -124,11 +135,13 @@ pastaEnvPart b = EP
         wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
         wradiosym <- builderGetObject b castToRadioButton "radio-symbol"
         wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
+        wradionopasta <- builderGetObject b castToRadioButton "radio-nopasta"
     
         let pastaradio =
                 [(FromThread, wradiofromthread)
                 ,(Symbol, wradiosym)
                 ,(PastaFile, wradiopastafile)
+                ,(NoPasta, wradionopasta)
                 ]
 
         pwcei <- newIORef =<< get wcheckescapeinv
