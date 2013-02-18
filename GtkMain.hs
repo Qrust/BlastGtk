@@ -30,6 +30,10 @@ import Data.Version
 
 
 
+-- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
+
+
+
 
 -- == PERFORMANCE ==
 -- TODO benchmark fast-tagsoup
@@ -44,9 +48,8 @@ import Data.Version
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 
 -- TODO http-conduit:
---  Connection timeout
 --  Unify proxy types / Define proxy chains
---  Cookie filter/map, cookie helpers
+--  Cookie filter / map, cookie helpers
 --  DNS caching
 
 -- FIXME Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
@@ -56,7 +59,9 @@ import Data.Version
 
 -- URGENT disable sage
 -- URGENT post videos
+-- URGENT synchronize pastas and images/videos
 
+-- URGENT Avoid reopening log handle
 -- URGENT global useragent makes all proxies share useragent
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
 

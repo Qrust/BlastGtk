@@ -98,7 +98,6 @@
         <child>
           <object class="GtkButton" id="buttoncaptchaok">
             <property name="label">gtk-ok</property>
-            <property name="use_action_appearance">False</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="can_default">True</property>
@@ -115,7 +114,6 @@
         <child>
           <object class="GtkButton" id="buttoncaptchacancel">
             <property name="label">gtk-cancel</property>
-            <property name="use_action_appearance">False</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
@@ -202,7 +200,6 @@
                     <child>
                       <object class="GtkButton" id="wipebutton">
                         <property name="label" translatable="yes">Начать _Вайп</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="height_request">41</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -454,7 +451,6 @@
                                 <child>
                                   <object class="GtkButton" id="buttonselectall">
                                     <property name="label" translatable="yes">Выбрать все</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
@@ -469,7 +465,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkCheckButton" id="checksort">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -486,7 +481,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkButton" id="buttonselectnone">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
@@ -547,7 +541,6 @@
                             <child>
                               <object class="GtkCheckButton" id="checkantigate">
                                 <property name="label" translatable="yes">Использовать антиге_йт</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -657,10 +650,10 @@
                                   <object class="GtkCheckButton" id="check-tray">
                                     <property name="label" translatable="yes">_Сворачивать в трей
 вместо закрытия</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Если у вас нет трея, то вайпалка закроется даже если эта опция включена.</property>
                                     <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
@@ -745,7 +738,6 @@
                                         <child>
                                           <object class="GtkRadioButton" id="radio-fromthread">
                                             <property name="label" translatable="yes">Посты из _тредов</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
@@ -764,7 +756,6 @@
                                         <child>
                                           <object class="GtkRadioButton" id="radio-symbol">
                                             <property name="label" translatable="yes">Случайн_ые символы</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
@@ -783,7 +774,6 @@
                                         <child>
                                           <object class="GtkRadioButton" id="radio-pastafile">
                                             <property name="label" translatable="yes">Паста из _файла</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
@@ -802,7 +792,6 @@
                                         <child>
                                           <object class="GtkRadioButton" id="radio-nopasta">
                                             <property name="label" translatable="yes">Пустой пост</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
@@ -887,7 +876,6 @@
                                             </child>
                                             <child>
                                               <object class="GtkButton" id="buttonpastafile">
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
@@ -926,7 +914,6 @@
                                   <object class="GtkCheckButton" id="checkshufflereposts">
                                     <property name="label" translatable="yes">Перемешивать слова
 (Посты из тредов)</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -942,7 +929,6 @@
                                   <object class="GtkCheckButton" id="checkescapeall">
                                     <property name="label" translatable="yes">Обходить вордфильтр
 (АВТОБАН, Паста из файла)</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -957,7 +943,6 @@
                                 <child>
                                   <object class="GtkCheckButton" id="checkrandomquote">
                                     <property name="label" translatable="yes">Рандомно _цитировать</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -975,7 +960,6 @@
                                 <child>
                                   <object class="GtkCheckButton" id="check-thread">
                                     <property name="label" translatable="yes">Со_здавать треды</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -993,10 +977,10 @@
                                   <object class="GtkCheckButton" id="checkfluctuation">
                                     <property name="label" translatable="yes">Маскироваться под
 _ручной вайп</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Случайно добавлять перерывы между постами в вайпе, максимальная длинна перерыва настраивается в "Дополнительно→Макс. маскировочный перерыв"</property>
                                     <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
@@ -1109,7 +1093,6 @@ _ручной вайп</property>
                                                 </child>
                                                 <child>
                                                   <object class="GtkButton" id="buttonimagefolder">
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
@@ -1159,12 +1142,10 @@ _ручной вайп</property>
                                     <child>
                                       <object class="GtkCheckButton" id="check-images">
                                         <property name="label" translatable="yes">Прикреплять _картинки</property>
-                                        <property name="use_action_appearance">False</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
-                                        <property name="tooltip_text" translatable="yes">Вы можете отключить постинг картинок если у вас слабый интернет.
-Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
+                                        <property name="tooltip_text" translatable="yes">Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
                                         <property name="use_underline">True</property>
                                         <property name="draw_indicator">True</property>
                                       </object>
@@ -1335,10 +1316,11 @@ _ручной вайп</property>
                             <child>
                               <object class="GtkCheckButton" id="checkagitka">
                                 <property name="label" translatable="yes">Постить а_гитку</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">Постить resources/agitka.png вместо картинок из папки с вероятностью 15%.
+Агитка зазывает сосачеров на вайп, наверное.</property>
                                 <property name="use_underline">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
@@ -1351,7 +1333,6 @@ _ручной вайп</property>
                             <child>
                               <object class="GtkCheckButton" id="check-watermark">
                                 <property name="label" translatable="yes">Мо_чемарка</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -1369,7 +1350,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="checkescapeinv">
                                 <property name="label" translatable="yes">Невидимые символы
 (АВТОБАН, Паста из файла)</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -1385,7 +1365,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="checkescapewrd">
                                 <property name="label" translatable="yes">Заменять на латиницу
 (АВТОБАН, Паста из файла)</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -1404,7 +1383,6 @@ _ручной вайп</property>
                                 <child>
                                   <object class="GtkCheckButton" id="checkposttimeout">
                                     <property name="label" translatable="yes">Перерыв между постами</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -1459,7 +1437,6 @@ _ручной вайп</property>
                                 <child>
                                   <object class="GtkCheckButton" id="checkthreadtimeout">
                                     <property name="label" translatable="yes">Перерыв между тредами</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -1610,7 +1587,6 @@ _ручной вайп</property>
                                   <object class="GtkCheckButton" id="checkhttpproxy">
                                     <property name="label" translatable="yes">Использовать H_TTP
 прокси</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -1674,7 +1650,6 @@ _ручной вайп</property>
                                             </child>
                                             <child>
                                               <object class="GtkButton" id="buttonhttpproxyfile">
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
@@ -1737,7 +1712,6 @@ _ручной вайп</property>
                                   <object class="GtkCheckButton" id="checksocksproxy">
                                     <property name="label" translatable="yes">Использовать SOCKS_5
 прокси</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -1803,7 +1777,6 @@ _ручной вайп</property>
                                             </child>
                                             <child>
                                               <object class="GtkButton" id="buttonsocksproxyfile">
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
@@ -1862,7 +1835,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="checknoproxy">
                                 <property name="label" translatable="yes">К тому _же постить без
 прокси</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -1918,7 +1890,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="check-annoyerrors">
                                 <property name="label" translatable="yes">Разворачивать окно при
 о_шибках</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
@@ -1935,7 +1906,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="check-annoy">
                                 <property name="label" translatable="yes">_Разворачивать окно при
 капче или бане</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="width_request">1</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
@@ -1953,7 +1923,6 @@ _ручной вайп</property>
                               <object class="GtkCheckButton" id="checkhideonsubmit">
                                 <property name="label" translatable="yes">Сворачивать после ввода
 всей капчи</property>
-                                <property name="use_action_appearance">False</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
