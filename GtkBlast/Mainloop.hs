@@ -131,7 +131,7 @@ maintainBoardUnits = do
         ifM (M.null <$> get proxies)
             (redMessage "Нет проксей, выберите прокси для вайпа или вайпайте без прокси")
             (if banned > 0 || dead > 0
-                then uncAnnoyMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
+                then return () -- uncAnnoyMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
                 else redMessage "Выберите доски для вайпа")
     return (bannedl++deadl)
 
@@ -156,7 +156,7 @@ killWipe = do
     killAllCaptcha
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0
-    uncMessage "Вайп ещё не начат"
+    --uncMessage "Вайп ещё не начат"
 
 setBanned :: Board -> BlastProxy -> E ()
 setBanned board proxy = do
