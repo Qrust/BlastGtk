@@ -57,6 +57,9 @@ import Data.Version
 
 -- == 2.0 RELEASE ==
 
+-- URGENT To add a new option you need to edit at least 3 files.
+--  This is the worst peace of software i heard of.
+
 -- URGENT disable sage
 -- URGENT post videos
 -- URGENT synchronize pastas and images/videos

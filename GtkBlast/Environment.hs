@@ -86,6 +86,7 @@ data Env = E
     ,wcheckescapewrd :: CheckButton
     ,wcheckshufflereposts :: CheckButton
     ,wcheckrandomquote :: CheckButton
+    ,wchecksage :: CheckButton
     }
 
 type E = ReaderT Env IO
@@ -144,6 +145,7 @@ instance NFData Env where
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd
         `seq` wcheckshufflereposts
+        `seq` wchecksage
         `seq` ()
 
 runE :: Env -> E a -> IO a

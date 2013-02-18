@@ -162,6 +162,7 @@ envParts b =
             wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
             wcheckfluctuation <- (rec coUseFluctuation $ build castToCheckButton "checkfluctuation") e c
             wspinfluctuation <- (rec coFluctuation $ build castToSpinButton "spinfluctuation") e c
+            wchecksage <- (rec coSage $ build castToCheckButton "checksage") e c
 
             tqOut <- atomically $ newTQueue
 
@@ -174,9 +175,10 @@ envParts b =
             tposttimeout <- tvarSpinCheck get wcheckposttimeout wspinposttimeout
             tthreadtimeout <- tvarSpinCheck get wcheckthreadtimeout wspinthreadtimeout
             tfluctuation <- tvarSpinCheck get wcheckfluctuation wspinfluctuation
+            tsage <- tvarCheck get wchecksage
 
-            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation))
-        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf) c -> do
+            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation, wchecksage))
+        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf,wcs) c -> do
             ct <- get wct
             ci <- get wci
             cw <- get wcw
@@ -186,6 +188,7 @@ envParts b =
             stt <- get wstt
             cf <- get wcf
             sf <- get wsf
+            cs <- get wcs
             return c{coCreateThreads=ct
                     ,coAttachImages=ci
                     ,coWatermark=cw
@@ -194,11 +197,13 @@ envParts b =
                     ,coUseThreadTimeout=ctt
                     ,coThreadTimeout=stt
                     ,coUseFluctuation=cf
-                    ,coFluctuation=sf})
-        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_,_,_) e ->
+                    ,coFluctuation=sf
+                    ,coSage=cs})
+        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_,_,_,wchecksage) e ->
             e{tqOut=tqOut
              ,shS=shS
              ,wcheckimages=wcheckimages
+             ,wchecksage=wchecksage
              })
     ,EP
         (rec coAnnoy $ build castToCheckButton "check-annoy")

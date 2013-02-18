@@ -54,6 +54,7 @@ data ShSettings = ShSettings
     ,tposttimeout :: TVar (Maybe Double)
     ,tthreadtimeout :: TVar (Maybe Double)
     ,tfluctuation :: TVar (Maybe Double)
+    ,tsage :: TVar Bool
     }
 
 data MuSettings = MuSettings
@@ -588,7 +589,8 @@ blastLoop = forever $ do
                 chooseFromList [SagePopular, BumpUnpopular]
             Just p0 -> do
                 blastLog "Choosing mode..."
-                chooseMode board canmakethread p0
+                sage' <- liftIO $ readTVarIO tsage
+                chooseMode board canmakethread sage' p0
     recMode mode
     blastLog $ "chose mode " ++ show mode
     (thread, mpastapage) <- flMaybeSTM mthread

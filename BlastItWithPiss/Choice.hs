@@ -219,9 +219,9 @@ tooFast :: Int -> Bool
 tooFast s = s >= 200
 
 -- | We take a look at the front page, and adjust our strategy depending on what we see.
-adjustStrategy :: Strategy -> Bool -> Page -> Strategy
-adjustStrategy strategy canmakethread Page{..}
-    --inb4 >kokoko
+adjustStrategy :: Strategy -> Bool -> Bool -> Page -> Strategy
+adjustStrategy strategy canmakethread sage Page{..}
+    -- >kokoko
     | !len <- fromIntegral $ length threads
     , if len /= 0
         then True
@@ -241,10 +241,12 @@ adjustStrategy strategy canmakethread Page{..}
     = map aux (filter goodStrategy strategy)
   where
     goodStrategy (st, _) =
-        notElem st $ [CreateNew | not canmakethread] ++
-                     [ShitupSticky | not (any unlockedSticky threads)]
+        notElem st $
+            [CreateNew | not canmakethread] ++
+            [SagePopular | not sage] ++
+            [ShitupSticky | not (any unlockedSticky threads)]
 
-chooseStrategy :: Board -> Bool -> Page -> Strategy
+chooseStrategy :: Board -> Bool -> Bool -> Page -> Strategy
 chooseStrategy board =
     adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
 
@@ -252,13 +254,13 @@ chooseModeStrategy :: MonadRandom m => Strategy -> m Mode
 chooseModeStrategy [] = error "chooseModeStrategy: empty list"
 chooseModeStrategy a = fromList a
 
-chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
-chooseMode a b c = chooseModeStrategy $ chooseStrategy a b c
+chooseMode :: MonadRandom m => Board -> Bool -> Bool -> Page -> m Mode
+chooseMode a b c d = chooseModeStrategy $ chooseStrategy a b c d
 
 chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
 chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
 chooseThread' board canfail mode Page{..}
-    --inb4 >kokoko
+    -- >kokoko
     | thrds' <- if mode == ShitupSticky
                 then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
                 else let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies

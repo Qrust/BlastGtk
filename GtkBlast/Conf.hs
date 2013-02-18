@@ -66,6 +66,7 @@ data Conf = Conf {coActiveBoards :: ![Board]
                  ,coThreadTimeout :: !Double
                  ,coUseFluctuation :: !Bool
                  ,coFluctuation :: !Double
+                 ,coSage :: !Bool
                  }
     deriving (Eq, Show, Ord, Generic)
 
@@ -112,6 +113,7 @@ instance Default Conf where
          ,coThreadTimeout = ssachThreadTimeout B
          ,coUseFluctuation = False
          ,coFluctuation = 10
+         ,coSage = True
          }
 
 -- HACK Those are quite dangerous orphans
@@ -200,6 +202,7 @@ instance FromJSON (Conf, String) where
         F(coThreadTimeout)
         F(coUseFluctuation)
         F(coFluctuation)
+        F(coSage)
 #undef F
         return Conf{..}
     parseJSON _ = mzero
