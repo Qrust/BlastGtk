@@ -82,7 +82,7 @@ generatePastaGen NoPasta = do
     E{..} <- ask
     toQuote <- get wcheckrandomquote
     let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
-    return $ \a b c -> TBCC False False False <$> rquoter a b c ""
+    return $ \a b c -> TBCC True False False <$> rquoter a b c ""
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
