@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
 description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
-version: 1.1.13
+version: 1.1.14
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -49,7 +49,7 @@ flag test
     default: False
 
 library
-    build-depends: base >= 4.6 && < 5
+    build-depends: base >= 4.5 && < 5
                   ,lifted-base
                   ,stm >= 2.4
                   ,data-default
@@ -65,7 +65,7 @@ library
                   ,transformers
                   ,network
                   ,http-conduit >= 1.9.0
-                  ,http-conduit-browser >= 1.8
+                  ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -147,7 +147,7 @@ executable gtkblast
                   ,GtkBlast.BoardSettingsGuiXML
                   ,Paths_blast_it_with_piss
     
-    build-depends: base >= 4.6 && < 5
+    build-depends: base >= 4.5 && < 5
                   ,antigate >= 0.4 && < 0.5
                   ,filepath
                   ,directory
@@ -176,7 +176,7 @@ executable gtkblast
                   ,filepath
                   ,MonadRandom
                   ,http-conduit >= 1.9.0
-                  ,http-conduit-browser >= 1.8
+                  ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -223,7 +223,7 @@ executable proxychecker
 
     other-modules: Import
     
-    build-depends: base >= 4.6 && < 5
+    build-depends: base >= 4.5 && < 5
                   ,cmdargs
                   ,network
                   ,time
@@ -242,7 +242,7 @@ executable proxychecker
                   ,filepath
                   ,MonadRandom
                   ,http-conduit >= 1.9.0
-                  ,http-conduit-browser >= 1.8
+                  ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -293,7 +293,7 @@ executable smyvalka
 
     other-modules: Import
     
-    build-depends: base >= 4.6 && < 5
+    build-depends: base >= 4.5 && < 5
                   ,cmdargs
                   ,network
                   ,time
@@ -312,7 +312,7 @@ executable smyvalka
                   ,filepath
                   ,MonadRandom
                   ,http-conduit >= 1.9.0
-                  ,http-conduit-browser >= 1.8
+                  ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
                   ,conduit
                   ,http-types
@@ -361,7 +361,7 @@ executable smyvalka
 
 --~executable cliblast
 --~    main-is: CliMain.hs
---~    build-depends: base >= 4.6 && < 5
+--~    build-depends: base >= 4.5 && < 5
 --~                  ,process
 --~                  ,network
 --~                  ,stm

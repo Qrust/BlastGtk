@@ -5,27 +5,36 @@ if [ -d "cabal-dev" ]
     else
         _cabal="cabal"
 fi
+if [ -d ".cabal-sandbox" ]
+    then
+        _configure="sandbox-configure"
+    else
+        _configure="configure"
+fi
 case `uname` in
     MINGW*)
         lbdir="dos"
         foldr="dos-dist"
         cbl="cabal"
+        cfgr="configure"
         cr=`pwd`;;
     *)
-        case $1 in
+        case "$@" in
             *wine*)
                 lbdir="dos"
                 foldr="dos-dist"
                 cbl="wine cabal"
+                cfgr="configure"
                 cr=`winepath -w \`pwd\``;;
             *)
                 lbdir="linux"
                 foldr="linux-dist"
                 cbl="$_cabal"
+                cfgr="$_configure"
                 cr=`pwd`;;
         esac;;
 esac
-case $1 in
+case "$@" in
     *fast*)
         optimi="--ghc-options=-O0 --disable-optimization";;
     *llvm*)
@@ -41,7 +50,7 @@ echo $cr
 rm -rfv $foldr
 mkdir $foldr
 mkdir $foldr/tempprefixdir
-$cbl configure --builddir=builddir/$foldr -f bindist --verbose\
+$cbl $cfgr --builddir=builddir/$foldr -f bindist --verbose\
  --enable-executable-stripping --disable-split-objs\
  --disable-library-profiling\
  --disable-executable-profiling\

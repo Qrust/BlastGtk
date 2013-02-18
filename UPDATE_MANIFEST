@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.13.zip",
-                "017e2f04050b9f4cbf57bde2f1102911"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.14.zip",
+                "22fbf39f3632398eb38cedb6c0582744"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.13.zip",
-                "ad992f316c1b5de28adb64f66f05b73c"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.14.zip",
+                "78198294963c00a10847ac28b7793e2d"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.14",
+            "Добавил чекбокс сажи"
+        ],
         [
             "1.1.13",
             "Можно использовать альтернативные сервисы с API антигейта, например капчабот\nДобавлена обратно опция постинга без текста сообщения\nУбрана зависимость от icu на прыщах\nДобавлена паста про шизика"
@@ -126,5 +130,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.13"
+    "version": "1.1.14"
 }
