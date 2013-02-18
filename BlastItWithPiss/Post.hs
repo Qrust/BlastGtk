@@ -40,9 +40,6 @@ instance NFData (RequestBody a) where
     rnf (RequestBodyBuilder i b) = i `seq` b `seq` ()
     rnf _ = ()
 
-instance NFData a => NFData (CI a) where
-    rnf ci = original ci `deepseq` foldedCase ci `deepseq` ()
-
 instance NFData (Request a) where
     rnf r =
         method r `deepseq` 
@@ -99,7 +96,7 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
            ,(hAcceptLanguage, "ru,en;q=0.5")]   
           ,responseTimeout = Just 30
           ,redirectCount = 0
-          ,checkStatus = \_ _ -> Nothing
+          ,checkStatus = \_ _ _ -> Nothing
           }
     req <- formDataBody fields req'
     let final = (req, if null rest then Success else SuccessLongPost rest)
@@ -117,7 +114,11 @@ post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
     let exc som = return (InternalError $ ErrorException $ toException som, Nothing)
     catches
-        (do Response st _ heads ~tags <- httpReqStrTags req
+        (do resp <- httpReqStrTags req
+            let !st = responseStatus resp
+                heads = responseHeaders resp
+                ~tags = responseBody resp
+                cj = responseCookieJar resp
             case()of
              _ | statusCode st == 303
                , Just loc <- T.decodeASCII <$> lookup "Location" heads
@@ -125,7 +126,7 @@ post (req, success) = do
                     then return (PostRejected, Nothing)
                     else if T.isInfixOf "res/" loc
                             then return (success, Nothing)
-                            else exc (StatusCodeException st heads)
+                            else exc (StatusCodeException st heads cj)
                | statusCode st == 503
                 -> return (Five'o'ThreeError, Nothing)
                | statusCode st == 403
@@ -137,7 +138,7 @@ post (req, success) = do
                | statusCode st >= 200 && statusCode st <= 300
                 -> return (detectOutcome tags, Just tags)
                | otherwise
-                -> exc (StatusCodeException st heads)
+                -> exc (StatusCodeException st heads cj)
             )
         [Handler $ \(async :: AsyncException) ->
             throwIO async

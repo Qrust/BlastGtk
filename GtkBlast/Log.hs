@@ -1,5 +1,5 @@
 module GtkBlast.Log
-    (rawPutLog
+    (putInvisibleLog
     ,writeLog
     ,showMessage
     ,tempError
@@ -8,7 +8,7 @@ module GtkBlast.Log
     ,uncMessage
     ,redMessage
     ,uncAnnoyMessage
-    ,appFile
+    ,appFile -- FIXME appFile shouldn't be here
     ) where
 import Import
 import GtkBlast.IO
@@ -16,40 +16,54 @@ import GtkBlast.Environment
 import GtkBlast.GtkUtils
 import Graphics.UI.Gtk
 
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+
 red :: String -> String
 red s = "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
 
 rawPutStdout :: String -> IO ()
 rawPutStdout s = 
-    whenM (hIsTerminalDevice stdout) $ do
+    fromIOEM (return ()) $ whenM (hIsTerminalDevice stdout) $ do
         putStrLn s
         hFlush stdout
 
-withOpenLog :: (String -> IO ()) -> FilePath -> String -> IO ()
-withOpenLog put logfile str = do
-    catch (withFile logfile AppendMode $ \h -> do
-            hSetEncoding h utf8
---          hSeek h SeekFromEnd 0
-            hPutStrLn h str
-          )
-    $ \(a::SomeException) -> do
-            put $ "Got exception while trying to write to log file \"" ++ logfile ++ "\": " ++ show a ++ "\nAttempted to write: " ++ str
+rawPutLog :: (String -> IO ()) -> FilePath -> String -> IO ()
+rawPutLog err' logfile str = do {
+    withFile logfile AppendMode $ \h -> do
+        hSetEncoding h utf8
+--      hSeek h SeekFromEnd 0
+        TIO.hPutStrLn h $ T.pack str
+    } `catch`
+        \(a :: IOException) ->
+            err' $ "Got exception while trying to write to log file \"" ++
+                    logfile ++ "\": " ++ show a ++ "\nAttempted to write: " ++
+                    str
 
-rawPutLog :: String -> IO ()
-rawPutLog s = do
-    withOpenLog rawPutStdout "log.txt" s
-    rawPutStdout s -- duplicate log to stdout for convinience
+rawGUILog :: TextBuffer -> String -> IO ()
+rawGUILog wbuf msg = do
+    e <- textBufferGetEndIter wbuf
+    textBufferInsert wbuf e (msg++"\n")
 
 writeLogIO :: TextBuffer -> String -> IO ()
-writeLogIO wbuf raws = do
+writeLogIO wbuf rawmsg = do
     st <- show <$> getZonedTime
-    let s = ("[" ++ st ++ "]:\n  " ++ raws) 
-    rawPutLog s
-    e <- textBufferGetEndIter wbuf
-    textBufferInsert wbuf e (s++"\n")
+    let frmt = ("[" ++ st ++ "]:\n  " ++ rawmsg)
+    rawPutLog (\er -> do rawGUILog wbuf er; rawPutStdout er) "log.txt" frmt
+    rawPutStdout frmt
+    rawGUILog wbuf frmt
+
+-- | Write to logfile and stdout, but not to the GUI.
+-- Use only when GUI is uninitialized.
+putInvisibleLog :: String -> IO ()
+putInvisibleLog msg = do
+    rawPutLog rawPutStdout "log.txt" msg
+    rawPutStdout msg -- duplicate log to stdout for convinience
 
 writeLog :: String -> E ()
-writeLog s = ask >>= \w -> io $ writeLogIO (wbuf w) s
+writeLog s = do
+    buf <- asks wbuf
+    io $ writeLogIO buf s
 
 showMessage :: (Env -> CheckButton) -> String -> Maybe Int -> Bool -> String -> E ()
 showMessage getCheck msgname mUnlockT mkRed msg = do
@@ -66,7 +80,7 @@ showMessage getCheck msgname mUnlockT mkRed msg = do
         Just t -> 
             void $ io $ timeoutAdd (modifyIORef messageLocks (subtract 1) >> return False) (t * 1000)
         Nothing -> return ()
-    
+
 tempError :: Int -> String -> E ()
 tempError t s = do
     showMessage wcheckannoyerrors "Displayed error message" (Just t) True s
@@ -104,6 +118,10 @@ uncAnnoyMessage s = do
     io $ whenM ((||) <$> toggleButtonGetActive wcheckannoy <*> toggleButtonGetActive wcheckannoyerrors) $
         windowPopup window
 
+-- | Specialized 'fromIOEM' showing 'tempError' message on exceptions
 appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
-appFile d m f = fromIOEM (do tempError 3 $ "Невозможно прочитать файл \"" ++ f ++ "\""
-                             return d) $ io $ m f
+appFile def' ac file =
+    fromIOEM err $ io $ ac file
+  where err = do
+          tempError 3 $ "Невозможно прочитать файл \"" ++ file ++ "\""
+          return def'

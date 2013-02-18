@@ -64,6 +64,7 @@ import Data.Version
 -- URGENT Avoid reopening log handle
 -- URGENT global useragent makes all proxies share useragent
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
+-- URGENT shuffleM in pastagen is probably ungodly slow
 
 -- URGENT recog-services cli tool
 
@@ -213,19 +214,19 @@ main = withSocketsDo $ do
 #endif
     -- read configuration
 
-    rawPutLog =<< (("Starting gtkblast. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
+    putInvisibleLog =<< (("Starting gtkblast. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
 
     configfile <- (</> "config.json") <$> configDir
 
     conf <- readConfig configfile
 
-    rawPutLog $ "Loaded config: " ++ show conf
+    putInvisibleLog $ "Loaded config: " ++ show conf
 
     -- start
 
     handle (\(a::SomeException) -> do
             t <- getZonedTime
-            rawPutLog $ "Uncaught exception terminated program. Current time is " ++ show t ++ "\nException was: " ++ show a
+            putInvisibleLog $ "Uncaught exception terminated program. Current time is " ++ show t ++ "\nException was: " ++ show a
             exitFailure) $ do
 
         -- init
@@ -263,4 +264,4 @@ main = withSocketsDo $ do
 
         -- say good bye
 
-        rawPutLog =<< ("Finished wipe session, current time is " ++) . show <$> getZonedTime
+        putInvisibleLog =<< ("Finished wipe session, current time is " ++) . show <$> getZonedTime

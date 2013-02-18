@@ -48,10 +48,10 @@ emptyUpdate = UpdateManifest
     ,changelog = []
     }
 
-only201 :: Status -> ResponseHeaders -> Maybe SomeException
-only201 s e =
+only201 :: Status -> ResponseHeaders -> CookieJar -> Maybe SomeException
+only201 s e cj =
     if statusCode s /= 201
-        then Just $ toException $ StatusCodeException s e
+        then Just $ toException $ StatusCodeException s e cj
         else Nothing
 
 deleteDownload :: Text -> Int -> IO ()

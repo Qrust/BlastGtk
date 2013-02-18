@@ -211,19 +211,19 @@ readConfig configfile = do
     x <- try $ B.readFile $ configfile
     case x of
         Left (a::SomeException) -> do
-            rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" , loading defaults. Exception was: " ++ show a
+            putInvisibleLog $ "Couldn't read config from \"" ++ configfile ++ "\" , loading defaults. Exception was: " ++ show a
             return def
         Right c' -> do
             let c = toLBS c'
             case decode' c of
                 Nothing -> do
                     let confold = configfile <.> "old.faulty"
-                    rawPutLog $ "Couldn't read config from \"" ++ configfile ++ "\" because of syntax error, overwriting with defaults. Old version saved at \"" ++ confold ++ "\""
+                    putInvisibleLog $ "Couldn't read config from \"" ++ configfile ++ "\" because of syntax error, overwriting with defaults. Old version saved at \"" ++ confold ++ "\""
                     fromIOEM (return ()) $
                         LB.writeFile confold c
                     return def
                 Just (n, errs) -> do
-                    when (not $ null errs) $ rawPutLog errs
+                    when (not $ null errs) $ putInvisibleLog errs
                     return n
 
 writeConfig :: FilePath -> Conf -> E ()

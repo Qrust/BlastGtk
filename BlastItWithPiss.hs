@@ -326,7 +326,10 @@ blastPostData mode getThread mpastapage thread = do
         use <- liftIO $ readTVarIO tuseimages
         if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode) && not nopastas
             then return (False, Nothing)
-            else second Just <$> (liftIO . ($ use) =<< liftIO (readTVarIO timagegen))
+            else do
+                imagegen <- liftIO $ readTVarIO timagegen
+                (no, raw) <- liftIO $ imagegen use
+                return (no, Just raw)
     {-when noimages $ do
         blastOut NoImages
         blastLog "threw NoImages"-}
@@ -430,7 +433,7 @@ blastCloudflare md whatrsp url = do
                                     ,("message", "")
                                     ,("act", "captcha")
                                     ] $ (fromJust $ parseUrl url)
-                                        {checkStatus = \_ _ -> Nothing
+                                        {checkStatus = \_ _ _ -> Nothing
                                         ,redirectCount = 0}
                             void $ blast $ httpReq rq
                             ck <- blast $ getCookieJar
@@ -576,11 +579,16 @@ blastLoop = forever $ do
                    "speed: " ++ show (speed p0) ++ "\n" ++
                    "threads: " ++ show (length $ threads p0) ++ "\n" ++
                    "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
-    mode <- flMaybeSTM mmode (\m -> do blastLog $ "Got mmode " ++ show m; return m) $
-        maybe (do blastLog "No page, throwing a dice for SagePopular/BumpUnpopular"
-                  chooseFromList [SagePopular, BumpUnpopular])
-              (\p0 -> do blastLog "Choosing mode..."
-                         chooseMode board canmakethread p0) mp0
+    mode <- flMaybeSTM mmode (\m -> do
+                                blastLog $ "Got mmode " ++ show m
+                                return m) $ do
+        case mp0 of
+            Nothing -> do
+                blastLog "No page, throwing a dice for SagePopular/BumpUnpopular"
+                chooseFromList [SagePopular, BumpUnpopular]
+            Just p0 -> do
+                blastLog "Choosing mode..."
+                chooseMode board canmakethread p0
     recMode mode
     blastLog $ "chose mode " ++ show mode
     (thread, mpastapage) <- flMaybeSTM mthread
@@ -596,7 +604,7 @@ blastLoop = forever $ do
   where
     getPage board p = do
         let url = ssachPage board p
-        let chkStatus _ _ = Nothing
+        let chkStatus _ _ _ = Nothing
         blastLog $ "getPage: going to page " ++ show p
         blastCloudflare (return . parsePage board . responseBody)
             (blast $ httpReqStrTags $

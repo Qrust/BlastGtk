@@ -75,9 +75,11 @@ instance Eq SocksConf where
     (SocksConf h1 p1 v1) == (SocksConf h2 p2 v2) =
         h1==h2 && p1 == p2 && v1 == v2
 
+#if !MIN_VERSION_http_conduit(1,9,0)
 instance Ord Proxy where
     compare (Proxy h1 p1) (Proxy h2 p2) =
         compare h1 h2 <> compare p1 p2
+#endif
 
 instance Ord SocksConf where
     compare (SocksConf h1 p1 v1) (SocksConf h2 p2 v2) =
