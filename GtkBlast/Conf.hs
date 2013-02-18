@@ -99,7 +99,7 @@ instance Default Conf where
          ,coAntigateKey = []
          ,coAntigateHost = "antigate.com"
          ,coLastVersion = version
-         ,coPastaFile = bundledFile "pasta/mocha"
+         ,coPastaFile = bundledFile "pasta/shizik"
          ,coEscapeInv = False
          ,coEscapeWrd = False
          ,coPostAgitka = False
