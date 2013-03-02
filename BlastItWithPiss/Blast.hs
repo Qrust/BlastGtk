@@ -67,7 +67,7 @@ data BlastProxy = HttpProxy !Proxy
 instance Show BlastProxy where
     show (HttpProxy (Proxy h p)) =
         B8.unpack h ++ ":" ++ show p
-    show (SocksProxy (SocksConf h (PortNum p) _)) =
+    show (SocksProxy (SocksConf h p _)) =
         h ++ ":" ++ show p
     show NoProxy = "@"
 
@@ -104,7 +104,7 @@ readBlastProxy isSocks s =
     case break (==':') (dropWhile isSpace s) of
         (host@(_:_), (_:port)) ->
             if isSocks
-                then SocksProxy . defaultSocksConf host . PortNum <$> readMay port
+                then SocksProxy . defaultSocksConf host . (fromIntegral :: Int -> PortNumber) <$> readMay port
                 else HttpProxy . Proxy (fromString host) <$> readMay port
         _ -> Nothing
 
@@ -243,7 +243,7 @@ generateNewBrowser = do
     --
 
 runBlastNew :: Manager -> Blast a -> IO a
-runBlastNew m blast = 
+runBlastNew m blast =
     runResourceT $ browse m $ do
         generateNewBrowser
         blast

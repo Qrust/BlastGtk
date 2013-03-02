@@ -115,8 +115,8 @@ instance Captcha Yandex where
         return (res, "image/gif")
 
     applyCaptcha (Yandex chKey) answer = return $ CAnswer False $
-        [partBS "captcha" (fromString chKey)
-        ,partBS "captcha_value" (fromString answer)
+        [partBS "captcha_id_02" (fromString chKey)
+        ,partBS "captcha_value_id_02" (fromString answer)
         ]
 
     getCaptchaConf _ = return $ def {numeric=Just True}
@@ -202,7 +202,7 @@ instance Captcha SolveMedia where
                 flip findMap chScriptLines $ \x ->
                   takeUntil (=='\'') . tail . dropUntil (=='\'') <$>
                     stripPrefix "magic" (dropWhile isSpace x)
-            
+
               !chalstamp = fromMaybe (chalstamperr $ unlines chScriptLines) $
                 flip findMap chScriptLines $ \x ->
                   readMay . takeUntil (==',') . dropUntil isNumber =<<
@@ -217,6 +217,6 @@ instance Captcha SolveMedia where
         magicerr = error . ("SolveMedia: Couldn't read magic from " ++)
         chalstamperr = error . ("SolveMedia: Couldn't read chalstamp from " ++)
 
-    unsafeGenNewCaptcha = Just $ 
+    unsafeGenNewCaptcha = Just $
 
 -}
