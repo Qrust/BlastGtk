@@ -3,20 +3,28 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.16.zip",
-                "dbc2a05b9d1de0197d0e3d164da5f4cb"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.17.zip",
+                "0f93bb9265752bd8af83fefdd682039b"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.16.zip",
-                "c407d6a3a4453d44106bdc3c6d417a40"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.17.zip",
+                "18b87e8ef897209f5ae209637b2662f1"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.17",
+            "Потыкал веточкой проксичекер."
+        ],
+        [
+            "1.1.17",
+            "Потыкал веточкой проксичекер"
+        ],
         [
             "1.1.16",
             "Пофиксил постинг, теперь соксы вроде работают."
@@ -138,5 +146,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.16"
+    "version": "1.1.17"
 }

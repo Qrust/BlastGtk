@@ -19,8 +19,8 @@ import GtkBlast.EnvPart
 import GtkBlast.Log
 import GtkBlast.Type_PastaSet
 import GtkBlast.GtkUtils
-import System.Directory
 import System.Random.Shuffle
+import System.Directory
 import Control.Concurrent.STM
 import qualified Data.Text as T
 import qualified Data.ByteString as B
@@ -31,23 +31,6 @@ readPasta :: FilePath -> IO [String]
 readPasta f =
     filter (not . all isSpace) . delimitByLE "\n\n\n\n" .
         T.unpack . decodeUtf8 <$> B.readFile f
-
-{-# INLINE generateRandomString #-}
-generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String
-generateRandomString lengthBounds charBounds = do
-    len <- getRandomR lengthBounds
-    take len <$> getRandomRs charBounds
-
-generateSymbolString :: MonadChoice m => Int -> m String
-generateSymbolString maxlength = do
-    let plength = maxlength `div` 6
-    num <- generateRandomString (0, plength) ('0', '9')
-    beng <- generateRandomString (0, plength) ('A', 'Z')
-    seng <- generateRandomString (0, plength) ('a', 'z')
-    brus <- generateRandomString (0, plength) ('А', 'Я')
-    srus <- generateRandomString (0, plength) ('а', 'я')
-    spc <- generateRandomString (0, plength) (' ', ' ')
-    shuffleM (num++beng++seng++brus++srus++spc)
 
 generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
 generatePastaGen PastaFile = do
@@ -136,7 +119,7 @@ pastaEnvPart b = EP
         wradiosym <- builderGetObject b castToRadioButton "radio-symbol"
         wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
         wradionopasta <- builderGetObject b castToRadioButton "radio-nopasta"
-    
+
         let pastaradio =
                 [(FromThread, wradiofromthread)
                 ,(Symbol, wradiosym)

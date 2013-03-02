@@ -19,25 +19,6 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
 import System.Random.Shuffle
 
--- FIXME Shouldn't be here
-{-# INLINE generateRandomString #-}
-generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String
-generateRandomString lengthBounds charBounds = do
-    len <- getRandomR lengthBounds
-    take len <$> getRandomRs charBounds
-
-generateSymbolString :: MonadChoice m => Int -> m String
-generateSymbolString maxlength = do
-    let plength = maxlength `div` 6
-    num <- generateRandomString (0, plength) ('0', '9')
-    beng <- generateRandomString (0, plength) ('A', 'Z')
-    seng <- generateRandomString (0, plength) ('a', 'z')
-    brus <- generateRandomString (0, plength) ('А', 'Я')
-    srus <- generateRandomString (0, plength) ('а', 'я')
-    spc <- generateRandomString (0, plength) (' ', ' ')
-    shuffleM (num++beng++seng++brus++srus++spc)
--- /FIXME Shouldn't be here
-
 data Config = Config
     {socks :: Bool
     ,strBoard :: String

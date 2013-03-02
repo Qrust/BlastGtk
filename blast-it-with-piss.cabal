@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
 description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
-version: 1.1.16
+version: 1.1.17
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -61,6 +61,7 @@ library
                   ,safe
                   ,filepath
                   ,MonadRandom
+                  ,random-shuffle
                   ,monad-control
                   ,transformers
                   ,network
@@ -104,7 +105,7 @@ library
     if flag(test)
         cpp-options: -DTEST
 
-    ghc-options: -Wall -threaded 
+    ghc-options: -Wall -threaded
 
     default-language: Haskell2010
 
@@ -146,7 +147,7 @@ executable gtkblast
                   ,GtkBlast.Type_PastaSet
                   ,GtkBlast.BoardSettingsGuiXML
                   ,Paths_blast_it_with_piss
-    
+
     build-depends: base >= 4.5 && < 5
                   ,antigate >= 0.4 && < 0.5
                   ,filepath
@@ -222,7 +223,7 @@ executable proxychecker
     main-is: CheckProxyMain.hs
 
     other-modules: Import
-    
+
     build-depends: base >= 4.5 && < 5
                   ,cmdargs
                   ,network
@@ -241,6 +242,7 @@ executable proxychecker
                   ,containers
                   ,filepath
                   ,MonadRandom
+                  ,random-shuffle
                   ,http-conduit >= 1.9.0
                   ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
@@ -265,7 +267,7 @@ executable proxychecker
     if flag(test)
         cpp-options: -DTEST
 
-    ghc-options: -Wall -threaded 
+    ghc-options: -Wall -threaded
 
     default-language: Haskell2010
 
@@ -292,7 +294,7 @@ executable smyvalka
     main-is: SmyvalkaMain.hs
 
     other-modules: Import
-    
+
     build-depends: base >= 4.5 && < 5
                   ,cmdargs
                   ,network
@@ -311,6 +313,7 @@ executable smyvalka
                   ,containers
                   ,filepath
                   ,MonadRandom
+                  ,random-shuffle
                   ,http-conduit >= 1.9.0
                   ,http-conduit-browser >= 1.8.2
                   ,certificate >= 1.3.1
@@ -322,7 +325,6 @@ executable smyvalka
                   ,case-insensitive >= 1 && < 2
                   ,tagsoup
                   ,fast-tagsoup-utf8-only >= 1.0.4
-                  ,random-shuffle
                   ,antigate >= 0.4 && < 0.5
 
     if flag(gtkonly)
@@ -336,7 +338,7 @@ executable smyvalka
     if flag(test)
         cpp-options: -DTEST
 
-    ghc-options: -Wall -threaded 
+    ghc-options: -Wall -threaded
 
     default-language: Haskell2010
 
@@ -375,7 +377,7 @@ executable smyvalka
 --~        cpp-options: -DBINDIST
 --~        build-depends: executable-path
 --~
---~    ghc-options: -Wall -threaded 
+--~    ghc-options: -Wall -threaded
 --~
 --~    default-language: Haskell2010
 --~
@@ -441,7 +443,7 @@ executable BlastItWithPiss
     if flag(test)
         cpp-options: -DTEST
 
-    ghc-options: -Wall -threaded 
+    ghc-options: -Wall -threaded
 
     default-language: Haskell2010
 

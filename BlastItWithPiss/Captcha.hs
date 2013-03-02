@@ -2,6 +2,8 @@
 module BlastItWithPiss.Captcha
     (currentSsachCaptchaType
 
+    ,unsafeMakeYandexCaptchaAnswer
+
     ,ssachRecaptchaKey
     ,cloudflareRecaptchaKey
     ,ssachSolveMediaKey
@@ -114,13 +116,17 @@ instance Captcha Yandex where
         res <- httpGetLbs $ "http://i.captcha.yandex.net/image?key=" ++ chKey
         return (res, "image/gif")
 
-    applyCaptcha (Yandex chKey) answer = return $ CAnswer False $
-        [partBS "captcha_id_02" (fromString chKey)
-        ,partBS "captcha_value_id_02" (fromString answer)
-        ]
+    applyCaptcha (Yandex chKey) answer =
+        return $ unsafeMakeYandexCaptchaAnswer chKey answer
 
     getCaptchaConf _ = return $ def {numeric=Just True}
 
+unsafeMakeYandexCaptchaAnswer :: (Monad m, Monad m') => String -> String -> CAnswer m m'
+unsafeMakeYandexCaptchaAnswer chKey answer =
+    CAnswer False
+        [partBS "captcha_id_02" (fromString chKey)
+        ,partBS "captcha_value_id_02" (fromString answer)
+        ]
 
 -- | Query adaptive captcha state
 makabaCaptcha :: Board -> Maybe Int -> String -> Blast Text
