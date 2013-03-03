@@ -124,8 +124,8 @@ instance Captcha Yandex where
 unsafeMakeYandexCaptchaAnswer :: (Monad m, Monad m') => String -> String -> CAnswer m m'
 unsafeMakeYandexCaptchaAnswer chKey answer =
     CAnswer False
-        [partBS "captcha_id_02" (fromString chKey)
-        ,partBS "captcha_value_id_02" (fromString answer)
+        [partBS "captcha" (fromString chKey)
+        ,partBS "captcha_value" (fromString answer)
         ]
 
 -- | Query adaptive captcha state

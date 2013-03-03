@@ -56,7 +56,12 @@ $cbl $cfgr --builddir=builddir/$foldr -f bindist --verbose\
  --disable-executable-profiling\
  --ghc-options=-rtsopts\
  $optimi\
- --prefix=$cr/$foldr/tempprefixdir --bindir=$foldr/BlastItWithPiss --datadir=$foldr/BlastItWithPiss --datasubdir=. --docdir=$foldr/BlastItWithPiss &&\
+ --ghc-options=-Llibs/$lbdir/\
+ --prefix=$cr/$foldr/tempprefixdir\
+ --bindir=$foldr/BlastItWithPiss\
+ --datadir=$foldr/BlastItWithPiss\
+ --datasubdir=.\
+ --docdir=$foldr/BlastItWithPiss &&\
  if $cbl build --builddir=builddir/$foldr --verbose
  then
   $cbl copy --builddir=builddir/$foldr --verbose
