@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.18.zip",
-                "6b25588167fe0813be4718907767b8b7"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.19.zip",
+                "32f0e2efc83691b63fd1ac538127f3b5"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.18.zip",
-                "92cd7b33893dbe1595489134e20d7241"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.19.zip",
+                "6635901e1301cccd4e231fa04aabd35c"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.19",
+            "Шнойман пофиксил ошибку InvalidStatusLine"
+        ],
         [
             "1.1.18",
             "Лолки опять поменяли капчу"
@@ -150,5 +154,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.18"
+    "version": "1.1.19"
 }
