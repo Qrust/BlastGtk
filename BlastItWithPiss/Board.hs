@@ -26,103 +26,106 @@ module BlastItWithPiss.Board
 import Import
 import Network.HTTP.Conduit.MultipartFormData
 
--- | Sosach boards.
-data Board = A
-           | AA
-           | ABU
-           | APP -- temp/hid
-           | ASYLUM -- temp/hid
-           | AU
-           | B
---           | BB
-           | BG
-           | BI
-           | BIZ
-           | BO
-           | C
-           | CG
-           | D
-           | DE
-           | DEV
-           | DI
-           | DIY
-           | DOM -- temp/hid
---           | DR -- temp/hid
-           | EM
-           | EW
-           | F
-           | FA
-           | FAG
-           | FD
-           | FG
-           | FIZ
-           | FL
-           | FTB -- temp/hid
-           | FUR
-           | G
-           | GA
-           | GB
-           | GD
-           | GIF -- temp/hid
-           | H
-           | HH -- temp/hid
-           | HI
-           | HO
-           | HW
-           | I
-           | INT
-           | IZD -- temp/hid
-           | JA
---           | LS
-           | MA
-           | MC
-           | MDK
-           | ME
-           | MG
-           | MLP
-           | MMO
-           | MO
-           | MOV -- temp/hid
-           | MU
-           | MUS
-           | NE
-           | O
-           | P
-           | PA
-           | PER
-           | PO
-           | PR
-           | PSY
-           | PVC -- temp/hid
-           | R
-           | RA
-           | RE
-           | RF
-           | RM
-           | S
-           | SCI
-           | SEX
-           | SF
-           | SN
-           | SOC
-           | SP
-           | SPC
-           | T
-           | TD
-           | TES
-           | TO
-           | TRV -- temp/hid
-           | TV
-           | UN
-           | VG
-           | VN
-           | W
-           | WEB -- temp/hid
-           | WH
-           | WM
-           | WP
-           | WR
-    deriving (Eq, Read, Show, Enum, Bounded, Ord)
+-- | Ssach boards.
+data Board
+    = SsachA
+    | SsachAA
+    | SsachABU
+    | SsachAPP -- temp/hid
+    | SsachASYLUM -- temp/hid
+    | SsachAU
+    | SsachB
+--  | SsachBB
+    | SsachBG
+    | SsachBI
+    | SsachBIZ
+    | SsachBO
+    | SsachC
+    | SsachCG
+    | SsachD
+    | SsachDE
+    | SsachDEV
+    | SsachDI
+    | SsachDIY
+    | SsachDOM -- temp/hid
+--  | SsachDR -- temp/hid
+    | SsachE
+    | SsachEM
+    | SsachEW
+    | SsachF
+    | SsachFA
+    | SsachFAG
+    | SsachFET
+    | SsachFD
+    | SsachFG
+    | SsachFIZ
+    | SsachFL
+    | SsachFTB -- temp/hid
+    | SsachFUR
+    | SsachG
+    | SsachGA
+    | SsachGB
+    | SsachGD
+    | SsachGIF -- temp/hid
+    | SsachH
+    | SsachHC
+    | SsachHH -- temp/hid
+    | SsachHI
+    | SsachHO
+    | SsachHW
+    | SsachI
+    | SsachINT
+    | SsachIZD -- temp/hid
+    | SsachJA
+--  | SsachLS
+    | SsachMA
+    | SsachMC
+    | SsachMDK
+    | SsachME
+    | SsachMG
+    | SsachMLP
+    | SsachMMO
+    | SsachMO
+    | SsachMOV -- temp/hid
+    | SsachMU
+    | SsachMUS
+    | SsachNE
+    | SsachO
+    | SsachP
+    | SsachPA
+    | SsachPO
+    | SsachPR
+    | SsachPSY
+    | SsachPVC -- temp/hid
+    | SsachR
+    | SsachRA
+    | SsachRE
+    | SsachRF
+    | SsachRM
+    | SsachS
+    | SsachSCI
+    | SsachSEX
+    | SsachSF
+    | SsachSN
+    | SsachSOC
+    | SsachSP
+    | SsachSPC
+    | SsachT
+    | SsachTD
+    | SsachTES
+    | SsachTO
+    | SsachTRV -- temp/hid
+    | SsachTV
+    | SsachUN
+    | SsachVG
+    | SsachVN
+    | SsachW
+    | SsachWEB -- temp/hid
+    | SsachWH
+    | SsachWM
+    | SsachWP
+    | SsachWR
+  deriving (Eq, Read, Show, Enum, Bounded, Ord)
 
 instance NFData Board
 
@@ -134,115 +137,111 @@ allSsachBoards = [minBound..maxBound]
 -- TODO update silently in app background
 ssachBoardsSortedByPostRate :: [(Board, Int)]
 ssachBoardsSortedByPostRate =
-    [(B,2067)
-    ,(VG,392)
-    ,(PO,188)
-    ,(MMO,112)
-    ,(T,106)
-    ,(DEV,95)
-    ,(A,88)
-    ,(AU,87)
-    ,(MLP,86)
-    ,(ASYLUM,83)
-    ,(SEX,71)
-    ,(MU,61)
-    ,(RF,59)
-    ,(FA,55)
---    ,(BB,45)
-    ,(SOC,39)
-    ,(GA,39)
-    ,(MOV,34)
-    ,(TV,26)
-    ,(FAG,26)
-    ,(ME,25)
-    ,(GIF,23)
-    ,(RE,22)
-    ,(FIZ,22)
-    ,(ABU,22)
-    ,(WM,21)
-    ,(G,21)
-    ,(HW,20)
-    ,(CG,20)
-    ,(FTB,16)
-    ,(D,16)
-    ,(S,13)
-    ,(BI,13)
-    ,(PR,10)
---    ,(DR,10)
-    ,(P,9)
-    ,(MA,9)
-    ,(DI,9)
-    ,(VN,7)
-    ,(MC,7)
-    ,(GD,7)
-    ,(PSY,6)
-    ,(PER,6)
-    ,(MUS,6)
-    ,(HI,6)
-    ,(WH,5)
-    ,(BO,5)
-    ,(HO,4)
-    ,(H,4)
-    ,(TES,3)
-    ,(SP,3)
-    ,(SN,3)
-    ,(SCI,3)
-    ,(FG,3)
-    ,(EW,3)
-    ,(DE,3)
-    ,(BIZ,3)
-    ,(BG,3)
-    ,(WEB,2)
-    ,(TO,2)
-    ,(RM,2)
-    ,(RA,2)
-    ,(R,2)
-    ,(O,2)
-    ,(MO,2)
-    ,(MDK,2)
-    ,(JA,2)
-    ,(INT,2)
-    ,(FL,2)
-    ,(DIY,2)
-    ,(C,2)
-    ,(APP,2)
-    ,(WR,1)
-    ,(WP,1)
-    ,(W,1)
-    ,(UN,1)
-    ,(TRV,1)
-    ,(TD,1)
-    ,(SPC,1)
-    ,(SF,1)
-    ,(PVC,1)
-    ,(PA,1)
-    ,(NE,1)
-    ,(MG,1)
---    ,(LS,1)
-    ,(I,1)
-    ,(HH,1)
-    ,(GB,1)
-    ,(FUR,1)
-    ,(FD,1)
-    ,(EM,1)
-    ,(DOM,1)
-    ,(AA,1)
-    ,(IZD,0)
-    ,(F,0)
-    ]
+    [(SsachB,2774)
+    ,(SsachMMO,594)
+    ,(SsachVG,486)
+    ,(SsachPO,215)
+    ,(SsachAU,169)
+    ,(SsachA,163)
+    ,(SsachMLP,132)
+    ,(SsachSOC,131)
+    ,(SsachSEX,122)
+    ,(SsachT,101)
+    ,(SsachFAG,66)
+    ,(SsachWM,61)
+    ,(SsachHW,53)
+    ,(SsachRF,48)
+    ,(SsachFTB,48)
+    ,(SsachGA,40)
+    ,(SsachFIZ,40)
+    ,(SsachMA,38)
+    ,(SsachCG,32)
+    ,(SsachMU,31)
+    ,(SsachDEV,31)
+    ,(SsachTV,29)
+    ,(SsachMOV,28)
+    ,(SsachS,25)
+    ,(SsachTES,23)
+    ,(SsachFA,22)
+    ,(SsachPA,19)
+    ,(SsachBO,18)
+    ,(SsachSPC,17)
+    ,(SsachMUS,16)
+    ,(SsachFET,16)
+    ,(SsachSP,15)
+    ,(SsachPR,14)
+    ,(SsachMC,14)
+    ,(SsachHI,14)
+    ,(SsachHC,14)
+    ,(SsachE,13)
+    ,(SsachPSY,11)
+    ,(SsachGD,11)
+    ,(SsachFD,11)
+    ,(SsachME,10)
+    ,(SsachG,10)
+    ,(SsachBIZ,10)
+    ,(SsachW,8)
+    ,(SsachWR,7)
+    ,(SsachRE,7)
+    ,(SsachP,7)
+    ,(SsachI,6)
+    ,(SsachEW,6)
+    ,(SsachBI,6)
+    ,(SsachUN,5)
+    ,(SsachFG,5)
+    ,(SsachD,5)
+    ,(SsachWP,4)
+    ,(SsachVN,4)
+    ,(SsachTO,4)
+    ,(SsachSN,4)
+    ,(SsachRA,4)
+    ,(SsachMO,4)
+    ,(SsachMG,4)
+    ,(SsachIZD,4)
+    ,(SsachGIF,4)
+    ,(SsachFUR,4)
+    ,(SsachFL,4)
+    ,(SsachDIY,4)
+    ,(SsachSF,3)
+    ,(SsachSCI,3)
+    ,(SsachNE,3)
+    ,(SsachEM,3)
+    ,(SsachDOM,3)
+    ,(SsachDI,3)
+    ,(SsachAPP,3)
+    ,(SsachAA,3)
+    ,(SsachWH,2)
+    ,(SsachWEB,2)
+    ,(SsachR,2)
+    ,(SsachPVC,2)
+    ,(SsachJA,2)
+    ,(SsachHH,2)
+    ,(SsachDE,2)
+    ,(SsachC,2)
+    ,(SsachBG,2)
+    ,(SsachTRV,1)
+    ,(SsachTD,1)
+    ,(SsachRM,1)
+    ,(SsachO,1)
+    ,(SsachMDK,1)
+    ,(SsachINT,1)
+    ,(SsachHO,1)
+    ,(SsachH,1)
+    ,(SsachGB,1)
+    ,(SsachF,1)
+    ,(SsachASYLUM,1)
+    ,(SsachABU,1)]
 
 readBoard :: String -> Maybe Board
 readBoard ('/':x@(_:_))
-    | last x == '/' = readMay $ map toUpper $ init x
+    | last x == '/' = readMay $ ("Ssach" ++) $ map toUpper $ init x
     | otherwise = Nothing
 readBoard _ = Nothing
 
 renderBoard :: (Monoid a, IsString a) => Board -> a
-renderBoard b = "/" <> fromString (map toLower $ show b) <> "/"
+renderBoard b = "/" <> fromString (map toLower $ fromJust $ stripPrefix "Ssach" $ show b) <> "/"
 
 ssach :: IsString a => a
---ssach = "http://2ch.so"
--- TODO update later, when they get their domain back
 ssach = "http://2ch.hk"
 
 ssachBoard :: (Monoid a, IsString a) => Board -> a
@@ -269,7 +268,7 @@ ssachPostTimeout :: Num a => Board -> a
 ssachPostTimeout _ = 10
 
 ssachBumpLimit :: Num a => Board -> a
-ssachBumpLimit B = 513
+ssachBumpLimit SsachB = 513
 ssachBumpLimit _ = 1000 -- TODO ssachbumplimit
 
 ssachLastRecordedFields :: (Monad m, Monad m') => Board -> [Part m m']
@@ -282,7 +281,7 @@ ssachLastRecordedFields board =
     ,partBS "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
     ,partBS "video" ""
     ] ++
-    [partBS "anon_icon" "-1" | board==PO]
+    [partBS "anon_icon" "-1" | board == SsachPO]
 
 hoptoparasha :: IsString a => a
 hoptoparasha = "http://hoptach.uni.me"

@@ -108,9 +108,9 @@ instance Default Conf where
          ,coShuffleReposts = True
          ,coRandomQuote = False
          ,coUsePostTimeout = False
-         ,coPostTimeout = ssachPostTimeout B
+         ,coPostTimeout = ssachPostTimeout SsachB
          ,coUseThreadTimeout = False
-         ,coThreadTimeout = ssachThreadTimeout B
+         ,coThreadTimeout = ssachThreadTimeout SsachB
          ,coUseFluctuation = False
          ,coFluctuation = 10
          ,coSage = True

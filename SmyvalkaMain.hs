@@ -17,7 +17,6 @@ import qualified Data.ByteString as B
 import Paths_blast_it_with_piss
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
-import System.Random.Shuffle
 
 data Config = Config
     {socks :: Bool

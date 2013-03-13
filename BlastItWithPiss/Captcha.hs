@@ -26,11 +26,7 @@ import BlastItWithPiss.Blast
 import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import Control.Failure
-import Network.Mime
 import Text.Recognition.Antigate
-
-import Text.Show
 
 ssachRecaptchaKey :: String
 ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
@@ -125,7 +121,7 @@ unsafeMakeYandexCaptchaAnswer :: (Monad m, Monad m') => String -> String -> CAns
 unsafeMakeYandexCaptchaAnswer chKey answer =
     CAnswer False
         [partBS "captcha" (fromString chKey)
-        ,partBS "captcha_value" (fromString answer)
+        ,partBS "captcha_value_id_06" (fromString answer)
         ]
 
 -- | Query adaptive captcha state

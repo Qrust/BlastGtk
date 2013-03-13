@@ -15,7 +15,6 @@ import Control.Monad.Trans.Resource
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Control.Failure
-import Data.CaseInsensitive
 
 
 import BlastItWithPiss.Parsing
@@ -42,20 +41,20 @@ instance NFData (RequestBody a) where
 
 instance NFData (Request a) where
     rnf r =
-        method r `deepseq` 
-        secure r `deepseq` 
-        host r `deepseq` 
-        port r `deepseq` 
-        path r `deepseq` 
-        queryString r `deepseq` 
-        requestHeaders r `deepseq` 
-        requestBody r `deepseq` 
-        proxy r `deepseq` 
-        socksProxy r `deepseq` 
-        rawBody r `deepseq` 
-        decompress r `deepseq` 
-        redirectCount r `deepseq` 
-        checkStatus r `deepseq` 
+        method r `deepseq`
+        secure r `deepseq`
+        host r `deepseq`
+        port r `deepseq`
+        path r `deepseq`
+        queryString r `deepseq`
+        requestHeaders r `deepseq`
+        requestBody r `deepseq`
+        proxy r `deepseq`
+        socksProxy r `deepseq`
+        rawBody r `deepseq`
+        decompress r `deepseq`
+        redirectCount r `deepseq`
+        checkStatus r `deepseq`
         responseTimeout r `deepseq`
         ()
 
@@ -93,7 +92,7 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
           requestHeaders =
            [(hReferer, ssachThread board thread)
            ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-           ,(hAcceptLanguage, "ru,en;q=0.5")]   
+           ,(hAcceptLanguage, "ru,en;q=0.5")]
           ,responseTimeout = Just 30
           ,redirectCount = 0
           ,checkStatus = \_ _ _ -> Nothing
