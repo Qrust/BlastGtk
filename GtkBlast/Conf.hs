@@ -27,8 +27,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text as T
 
--- CLARIFICATION Unfortunately, we can't use TH due to some obscure linking errors on winDOS.
-
 -- Fields are strict so it won't compile if anything is missing in Default or FromJSON instances
 data Conf = Conf {coActiveBoards :: ![Board]
                  ,coPastaSet :: !PastaSet
@@ -116,7 +114,6 @@ instance Default Conf where
          ,coSage = True
          }
 
--- HACK Those are quite dangerous orphans
 instance FromJSON Version where
     parseJSON (String s) = maybe mzero return $
         fst <$> lastMay (readP_to_S parseVersion $ T.unpack s)
@@ -124,7 +121,6 @@ instance FromJSON Version where
 
 instance ToJSON Version where
     toJSON = String . T.pack . showVersion
--- /HACK
 
 jsonReadInstance :: Read a => Value -> Parser a
 jsonReadInstance (String s) = maybe mzero return $ readMay $ T.unpack s
@@ -164,7 +160,6 @@ instance FromJSON (Conf, String) where
                         let v = _def
                         v <$ tell ("Couldn't parse field \"" ++ T.unpack name ++ "\", loading default value: " ++ show v ++ "\n")
 -- CLARIFICATION this macro relies on -traditional or cpphs.
---               -traditional is default on GHC.
 #define F(x) x <- parseWithDefault "x" $ x def
         F(coActiveBoards)
         F(coPastaSet)

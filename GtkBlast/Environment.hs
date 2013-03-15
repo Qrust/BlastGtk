@@ -19,18 +19,20 @@ import Control.Concurrent.STM
 import qualified Data.Map as M
 import Control.Monad.Trans.Reader
 
-data WipeUnit = WipeUnit {wuProxy :: !BlastProxy
-                         ,wuThreadId :: !ThreadId
-                         }
-    deriving (Eq)
+data WipeUnit = WipeUnit
+    {wuProxy :: !BlastProxy
+    ,wuThreadId :: !ThreadId
+    }
+  deriving Eq
 
-data BoardUnit = BoardUnit {buBoard :: !Board
-                           ,buWidget :: !CheckButton
-                           ,buWipeUnits :: !(IORef [WipeUnit])
-                           ,buBanned :: !(IORef [BlastProxy])
-                           ,buDead :: !(IORef [BlastProxy])
-                           ,buMuSettings :: MuSettings
-                           }
+data BoardUnit = BoardUnit
+    {buBoard :: !Board
+    ,buWidget :: !CheckButton
+    ,buWipeUnits :: !(IORef [WipeUnit])
+    ,buBanned :: !(IORef [BlastProxy])
+    ,buDead :: !(IORef [BlastProxy])
+    ,buMuSettings :: MuSettings
+    }
 
 data Env = E
     {
@@ -42,14 +44,17 @@ data Env = E
     ,pastaMod :: IORef ModificationTime
     ,imagefolderLast :: IORef FilePath
     ,proxies :: IORef (M.Map BlastProxy ProxySettings)
+
     ,httpproxyMod :: IORef ModificationTime
     ,httpproxyLast :: IORef [BlastProxy]
     ,socksproxyMod :: IORef ModificationTime
     ,socksproxyLast :: IORef [BlastProxy]
+
     ,captchaMode :: IORef CaptchaMode
     ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, SupplyCaptcha))]
     ,antigateLogQueue :: TQueue (Either String String)
     ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
+
     ,guiReportQueue :: TQueue OriginStamp
     ,boardUnits :: [BoardUnit]
 
@@ -112,11 +117,11 @@ instance NFData Env where
         `seq` pendingGuiCaptchas
         `seq` guiReportQueue
         `seq` boardUnits
-    
+
         `seq` tqOut
         `seq` shS
         `seq` connection
-    
+
         `seq` window
         `seq` wbuf
         `seq` wlabelmessage

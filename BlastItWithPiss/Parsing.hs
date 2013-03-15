@@ -211,19 +211,20 @@ parsePage board html =
 -- Only valid within one board.
 parseForm :: (Monad m, Monad m') => String -> [Tag Text] -> (String, [Part m m'])
 parseForm host tags =
-    dropUntil (~== tgOpen "form" [("id", "postform")]) tags >$>
-        \(f:html) -> (getWakabaPl f,
-                        map inputToField . filter aux $
-                            takeUntil (~== tgClose "form") html
-                     )
-  where getWakabaPl f = host <> T.unpack (fromAttrib "action" f)
-        aux t | t ~== tgOpen "input" [("type", "radio")]
-                = fromAttrib "checked" t == "checked"
-              | otherwise
-                = t ~== tgOpen "input" [("name", "")]
-        inputToField tag =
-            partBS (fromAttrib "name" tag)
-                   (T.encodeUtf8 $ fromAttrib "value" tag)
+    let (f:html) = dropUntil (~== tgOpen "form" [("id", "postform")]) tags
+    in  (getWakabaPl f
+        ,map inputToField . filter aux $ takeUntil (~== tgClose "form") html
+        )
+  where
+    getWakabaPl f =
+        host <> T.unpack (fromAttrib "action" f)
+    aux t
+      | t ~== tgOpen "input" [("type", "radio")]
+        = fromAttrib "checked" t == "checked"
+      | otherwise
+        = t ~== tgOpen "input" [("name", "")]
+    inputToField tag =
+        partBS (fromAttrib "name" tag) (T.encodeUtf8 $ fromAttrib "value" tag)
 
 newtype ErrorMessage = Err {unErrorMessage :: String}
     deriving (Eq, Ord)
@@ -373,7 +374,7 @@ fc :: [Content] -> Text
 fc [ContentText a] = a
 
 conduitParseForm :: (MonadResource m, MonadBaseControl IO m) => String -> ResumableSource m ByteString -> m (String, [Field])
-conduitParseForm host http = 
+conduitParseForm host http =
     http $$+- eventConduit =$ do
         awaitForm
   where awaitForm = do

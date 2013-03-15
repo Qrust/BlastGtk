@@ -1,37 +1,49 @@
+{-# LANGUAGE StandaloneDeriving #-}
 module BlastItWithPiss.Blast
     (module Control.Exception.Lifted
+
     ,module Network.HTTP.Conduit
-    ,module Network.HTTP.Conduit.Browser
     ,module Network.HTTP.Conduit.MultipartFormData
-    ,module Network.Mime
+    ,module Network.HTTP.Conduit.Browser
+
     ,module Network.HTTP.Types
-    ,Blast
-    ,BlastProxy(..)
-    ,readBlastProxy
-    ,maybeNoProxy
+
+    ,module Network.Mime
+
     ,userAgents
+
+    ,Blast
     ,generateNewBrowser
     ,runBlastNew
     ,runBlast
+
+    ,BlastProxy(..)
+    ,readBlastProxy
+    ,maybeNoProxy
+
+    ,httpGetProxy
     ,httpSetProxy
+    ,httpWithProxy
+
     ,httpReq
     ,httpReqLbs
     ,httpReqStr
     ,httpReqStrTags
+
     ,httpGet
     ,httpGetLbs
     ,httpGetStr
     ,httpGetStrTags
-    ,httpGetProxy
-    ,httpWithProxy
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
+
 import Control.Exception.Lifted
 import Network.Mime
 import Network.HTTP.Types
 import Network.Socket.Internal
 import Network.Socks5
+import Network.Socks5.Types
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.Browser
 import Network.HTTP.Conduit.MultipartFormData
@@ -42,20 +54,53 @@ import Text.HTML.TagSoup (Tag)
 import Text.HTML.TagSoup.Fast.Utf8Only
 
 import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
 import Data.Conduit
-import Data.Conduit.List as CL
+import Data.Conduit.List (consume)
+import qualified Data.Conduit.List as CL (map)
 
--- HACK unsafePerformIO
-import qualified System.IO.Unsafe as Unsafe
+import Numeric (showHex)
+
 -- HACK HACK HACK unsafePerformIO
+import qualified System.IO.Unsafe as Unsafe
 {-# NOINLINE userAgent #-}
 userAgent :: ByteString
 userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
+
+-- | Converts a HostAddress to a String in dot-decimal notation
+-- Cannibalized from https://github.com/vincenthz/hs-socks/commit/f4a032ce8aaaeed16d051e5ae0f8abadc2f0d0ba
+showHostAddress :: HostAddress -> String
+showHostAddress num =
+    concat [show q1, ".", show q2, ".", show q3, ".", show q4]
+  where
+    (num',  q1) = num    `quotRem` 256
+    (num'', q2) = num'   `quotRem` 256
+    (num''',q3) = num''  `quotRem` 256
+    (_,     q4) = num''' `quotRem` 256
+
+-- | Converts a IPv6 HostAddress6 to standard hex notation
+-- Cannibalized from https://github.com/vincenthz/hs-socks/commit/f4a032ce8aaaeed16d051e5ae0f8abadc2f0d0ba
+showHostAddress6 :: HostAddress6 -> String
+showHostAddress6 (a,b,c,d) =
+    (concat . intersperse ":" . map (flip showHex ""))
+        [p1, p2, p3, p4, p5, p6, p7, p8]
+  where
+    (a',p2) = a  `quotRem` 65536
+    (_, p1) = a' `quotRem` 65536
+    (b',p4) = b  `quotRem` 65536
+    (_, p3) = b' `quotRem` 65536
+    (c',p6) = c  `quotRem` 65536
+    (_, p5) = c' `quotRem` 65536
+    (d',p8) = d  `quotRem` 65536
+    (_, p7) = d' `quotRem` 65536
+
+renderSocksHost :: SocksHostAddress -> String
+renderSocksHost (SocksAddrDomainName bs) = B8.unpack bs
+renderSocksHost (SocksAddrIPV4 ip) = showHostAddress ip
+renderSocksHost (SocksAddrIPV6 ip) = showHostAddress6 ip
 
 type Blast = BrowserAction
 
@@ -67,23 +112,23 @@ data BlastProxy = HttpProxy !Proxy
 instance Show BlastProxy where
     show (HttpProxy (Proxy h p)) =
         B8.unpack h ++ ":" ++ show p
-    show (SocksProxy (SocksConf h p _)) =
-        h ++ ":" ++ show p
+    show (SocksProxy s) =
+        renderSocksHost (socksHost s) ++ ":" ++ show (socksPort s)
     show NoProxy = "@"
 
-instance Eq SocksConf where
-    (SocksConf h1 p1 v1) == (SocksConf h2 p2 v2) =
-        h1==h2 && p1 == p2 && v1 == v2
+deriving instance Ord SocksVersion
 
-#if !MIN_VERSION_http_conduit(1,9,0)
-instance Ord Proxy where
-    compare (Proxy h1 p1) (Proxy h2 p2) =
-        compare h1 h2 <> compare p1 p2
-#endif
+instance Eq SocksConf where
+    s1 == s2 =
+           socksHost s1 == socksHost s2
+        && socksPort s1 == socksPort s2
+        && socksVersion s1 == socksVersion s2
 
 instance Ord SocksConf where
-    compare (SocksConf h1 p1 v1) (SocksConf h2 p2 v2) =
-        compare h1 h2 <> compare p1 p2 <> compare v1 v2
+    compare s1 s2 =
+           compare (renderSocksHost (socksHost s1)) (renderSocksHost (socksHost s2))
+        <> compare (socksPort s1) (socksPort s2)
+        <> compare (socksVersion s1) (socksVersion s2)
 
 instance NFData Proxy where
     rnf (Proxy h p) = rnf (h,p)
@@ -91,8 +136,18 @@ instance NFData Proxy where
 instance NFData PortNumber where
     rnf (PortNum p) = rnf p
 
+instance NFData SocksHostAddress where
+    rnf (SocksAddrDomainName bs) = rnf bs
+    rnf (SocksAddrIPV4 ip) = rnf ip
+    rnf (SocksAddrIPV6 ip) = rnf ip
+
+instance NFData SocksVersion where
+
 instance NFData SocksConf where
-    rnf (SocksConf h p v) = rnf (h,p,v)
+    rnf s =       socksHost s
+        `deepseq` socksPort s
+        `deepseq` socksVersion s
+        `deepseq` ()
 
 instance NFData BlastProxy where
     rnf (HttpProxy p) = rnf p

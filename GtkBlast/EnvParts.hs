@@ -36,9 +36,6 @@ import Network.HTTP.Conduit(newManager, managerConnCount)
 
 envParts :: Builder -> [EnvPart]
 envParts b =
-    let build :: GObjectClass cls => (GObject -> cls) -> String -> IO cls
-        build f n = builderGetObject b f n
-    in
     [
      guiCaptchaEnvPart b
     ,antigateCaptchaEnvPart b
@@ -48,19 +45,19 @@ envParts b =
     ,pastaEnvPart b
     ,imageEnvPart b
     ,EP
-        (rec coSettingsShown $ build castToExpander "expandersettings")
+        (rec coSettingsShown $ builderGetObject b castToExpander "expandersettings")
         (\v c -> get v ? \a -> c{coSettingsShown=a})
         (const id)
     ,EP
-        (rec coAdditionalShown $ build castToExpander "expanderadditional")
+        (rec coAdditionalShown $ builderGetObject b castToExpander "expanderadditional")
         (\v c -> get v ? \a -> c{coAdditionalShown=a})
         (const id)
     ,EP
         (\_ _ -> do
-            wlabelmessage <- build castToLabel "labelmessage"
-            wprogressalignment <- build castToAlignment "progressalignment"
-            wprogresswipe <- build castToProgressBar "wipeprogress"
-            
+            wlabelmessage <- builderGetObject b castToLabel "labelmessage"
+            wprogressalignment <- builderGetObject b castToAlignment "progressalignment"
+            wprogresswipe <- builderGetObject b castToProgressBar "wipeprogress"
+
             return (wlabelmessage, wprogressalignment, wprogresswipe))
         (const return)
         (\(wlm, wpa, wpw) e -> e{wlabelmessage=wlm
@@ -69,16 +66,16 @@ envParts b =
                                 })
     ,EP
         (\e c -> do
-            walignmentlog <- build castToAlignment "alignmentlog"
+            walignmentlog <- builderGetObject b castToAlignment "alignmentlog"
 
-            wexpanderlog <- (rec coLogShown $ build castToExpander "expanderlog") e c
+            wexpanderlog <- (rec coLogShown $ builderGetObject b castToExpander "expanderlog") e c
 
-            wlabeldetachlog <- build castToLabel "labeldetachlog"
-            wlabelattachlog <- build castToLabel "labelattachlog"
+            wlabeldetachlog <- builderGetObject b castToLabel "labeldetachlog"
+            wlabelattachlog <- builderGetObject b castToLabel "labelattachlog"
 
-            windowlog <- build castToWindow "windowlog"
+            windowlog <- builderGetObject b castToWindow "windowlog"
 
-            wlog <- build castToTextView "log"
+            wlog <- builderGetObject b castToTextView "log"
             wbuf <- textViewGetBuffer wlog
             wad <- textViewGetVadjustment wlog
 
@@ -121,24 +118,28 @@ envParts b =
             labelSetMarkup wlabeldetachlog attachedmark
 
             -- Fucking faggots, why won't they just export these low-level functions?
-            let connect_STRING__BOOL :: 
-                  GObjectClass obj => SignalName ->
-                  ConnectAfter -> obj ->
-                  (String -> IO Bool) ->
-                  IO (ConnectId obj)
+            let connect_STRING__BOOL
+                  :: GObjectClass obj
+                  => SignalName
+                  -> ConnectAfter
+                  -> obj
+                  -> (String -> IO Bool)
+                  -> IO (ConnectId obj)
                 connect_STRING__BOOL signal after obj user =
-                  connectGeneric signal after obj action
-                  where action :: Ptr GObject -> CString -> IO Bool
-                        action _ str1 =
-                          failOnGError $
-                          peekUTFString str1 >>= \str1' ->
-                          user str1'
+                    connectGeneric signal after obj action
+                  where
+                    action :: Ptr GObject -> CString -> IO Bool
+                    action _ str1 =
+                        failOnGError $
+                        peekUTFString str1 >>= \str1' ->
+                        user str1'
 
             on wlabeldetachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
-                ifM (get detached)
-                    (attachLog)
-                    (detachLog)
-                mod detached not
+                modM detached $ \b -> do
+                    if b
+                      then attachLog
+                      else detachLog
+                    return (not b)
 
             on wlabelattachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
                 attachLog
@@ -153,16 +154,16 @@ envParts b =
         (\(wbuf,_) e -> e{wbuf=wbuf})
     ,EP
         (\e c -> do
-            wcheckthread <- (rec coCreateThreads $ build castToCheckButton "check-thread") e c
-            wcheckimages <- (rec coAttachImages $ build castToCheckButton "check-images") e c
-            wcheckwatermark <- (rec coWatermark $ build castToCheckButton "check-watermark") e c
-            wcheckposttimeout <- (rec coUsePostTimeout $ build castToCheckButton "checkposttimeout") e c
-            wspinposttimeout <- (rec coPostTimeout $ build castToSpinButton "spinposttimeout") e c
-            wcheckthreadtimeout <- (rec coUseThreadTimeout $ build castToCheckButton "checkthreadtimeout") e c
-            wspinthreadtimeout <- (rec coThreadTimeout $ build castToSpinButton "spinthreadtimeout") e c
-            wcheckfluctuation <- (rec coUseFluctuation $ build castToCheckButton "checkfluctuation") e c
-            wspinfluctuation <- (rec coFluctuation $ build castToSpinButton "spinfluctuation") e c
-            wchecksage <- (rec coSage $ build castToCheckButton "checksage") e c
+            wcheckthread <- (rec coCreateThreads $ builderGetObject b castToCheckButton "check-thread") e c
+            wcheckimages <- (rec coAttachImages $ builderGetObject b castToCheckButton "check-images") e c
+            wcheckwatermark <- (rec coWatermark $ builderGetObject b castToCheckButton "check-watermark") e c
+            wcheckposttimeout <- (rec coUsePostTimeout $ builderGetObject b castToCheckButton "checkposttimeout") e c
+            wspinposttimeout <- (rec coPostTimeout $ builderGetObject b castToSpinButton "spinposttimeout") e c
+            wcheckthreadtimeout <- (rec coUseThreadTimeout $ builderGetObject b castToCheckButton "checkthreadtimeout") e c
+            wspinthreadtimeout <- (rec coThreadTimeout $ builderGetObject b castToSpinButton "spinthreadtimeout") e c
+            wcheckfluctuation <- (rec coUseFluctuation $ builderGetObject b castToCheckButton "checkfluctuation") e c
+            wspinfluctuation <- (rec coFluctuation $ builderGetObject b castToSpinButton "spinfluctuation") e c
+            wchecksage <- (rec coSage $ builderGetObject b castToCheckButton "checksage") e c
 
             tqOut <- atomically $ newTQueue
 
@@ -206,26 +207,26 @@ envParts b =
              ,wchecksage=wchecksage
              })
     ,EP
-        (rec coAnnoy $ build castToCheckButton "check-annoy")
+        (rec coAnnoy $ builderGetObject b castToCheckButton "check-annoy")
         (\v c -> get v ? \a -> c{coAnnoy=a})
         (\v e -> e{wcheckannoy=v})
     ,EP
-        (rec coHideOnSubmit $ build castToCheckButton "checkhideonsubmit")
+        (rec coHideOnSubmit $ builderGetObject b castToCheckButton "checkhideonsubmit")
         (\v c -> get v ? \a -> c{coHideOnSubmit=a})
         (\v e -> e{wcheckhideonsubmit=v})
     ,EP
-        (rec coAnnoyErrors $ build castToCheckButton "check-annoyerrors")
+        (rec coAnnoyErrors $ builderGetObject b castToCheckButton "check-annoyerrors")
         (\v c -> get v ? \a -> c{coAnnoyErrors=a})
         (\v e -> e{wcheckannoyerrors=v})
     ,EP
-        (rec coTray $ build castToCheckButton "check-tray")
+        (rec coTray $ builderGetObject b castToCheckButton "check-tray")
         (\v c -> get v ? \a -> c{coTray=a})
         (\v e -> e{wchecktray=v})
     ,EP
         (\e c -> do
-            wcheckhttpproxy <- (rec coUseHttpProxy $ build castToCheckButton "checkhttpproxy") e c
-            wentryhttpproxyfile <- (rec coHttpProxyFile $ build castToEntry "entryhttpproxyfile") e c
-            wbuttonhttpproxyfile <- build castToButton "buttonhttpproxyfile"
+            wcheckhttpproxy <- (rec coUseHttpProxy $ builderGetObject b castToCheckButton "checkhttpproxy") e c
+            wentryhttpproxyfile <- (rec coHttpProxyFile $ builderGetObject b castToEntry "entryhttpproxyfile") e c
+            wbuttonhttpproxyfile <- builderGetObject b castToButton "buttonhttpproxyfile"
 
             on wcheckhttpproxy buttonActivated $
                 runE e $ do
@@ -248,9 +249,9 @@ envParts b =
                               })
     ,EP
         (\e c -> do
-            wchecksocksproxy <- (rec coUseSocksProxy $ build castToCheckButton "checksocksproxy") e c
-            wentrysocksproxyfile <- (rec coSocksProxyFile $ build castToEntry "entrysocksproxyfile") e c
-            wbuttonsocksproxyfile <- build castToButton "buttonsocksproxyfile"
+            wchecksocksproxy <- (rec coUseSocksProxy $ builderGetObject b castToCheckButton "checksocksproxy") e c
+            wentrysocksproxyfile <- (rec coSocksProxyFile $ builderGetObject b castToEntry "entrysocksproxyfile") e c
+            wbuttonsocksproxyfile <- builderGetObject b castToButton "buttonsocksproxyfile"
 
             on wchecksocksproxy buttonActivated $
                 runE e $ do
@@ -273,7 +274,7 @@ envParts b =
                               })
     ,EP
         (\ e c -> do
-            wchecknoproxy <- (rec coUseNoProxy $ build castToCheckButton "checknoproxy") e c
+            wchecknoproxy <- (rec coUseNoProxy $ builderGetObject b castToCheckButton "checknoproxy") e c
 
             on wchecknoproxy buttonActivated $ do
                 runE e $ regenerateProxies -- force update
@@ -283,7 +284,7 @@ envParts b =
         (\v e -> e{wchecknoproxy=v})
     ,EP
         (\_ _ -> do
-            wlabelversion <- build castToLabel "labelversion"
+            wlabelversion <- builderGetObject b castToLabel "labelversion"
             labelSetMarkup wlabelversion $
                 "<small><a href=\"https://github.com/exbb2/BlastItWithPiss\">" ++
                     showVersion version ++ "</a></small>")
@@ -293,22 +294,22 @@ envParts b =
         (\e _ -> do
             window <- builderGetObject b castToWindow "window1"
             windowSetTitle window "Вайпалка мочана"
-        
+
             -- setup tray
-        
+
             wtray <- statusIconNewFromFile $ bundledFile "resources/2ch.so.png"
             statusIconSetTooltip wtray "Вайпалка мочана"
             statusIconSetName wtray "blast-it-with-piss"
-        
+
             wmenushow <- checkMenuItemNewWithMnemonic "_Показать вайпалку"
             wmenuexit <- imageMenuItemNewFromStock stockQuit
             wmenu <- menuNew
             menuShellAppend wmenu wmenushow
             menuShellAppend wmenu wmenuexit
             widgetShowAll wmenu
-        
+
             -- tray signals
-        
+
             on wtray statusIconActivate $ windowToggle window
             on wtray statusIconPopupMenu $ \(Just mb) t -> menuPopup wmenu $ Just (mb, t)
             wmenushowConnId <- on wmenushow menuItemActivate $ windowToggle window
@@ -322,12 +323,12 @@ envParts b =
                 if noTray || closePlease
                     then return False
                     else True <$ widgetHide window
-    
+
             let setCheckActive ca = do
                     signalBlock wmenushowConnId -- prevent it from infinitely showing-unshowing window. I'm unsure if there's a better solution.
                     checkMenuItemSetActive wmenushow ca
                     signalUnblock wmenushowConnId
-        
+
             onShow window $ setCheckActive True
             onHide window $ setCheckActive False
 
@@ -341,9 +342,9 @@ envParts b =
 createWidgetsAndFillEnv :: Builder -> Conf -> IO (Env, Conf -> IO Conf)
 createWidgetsAndFillEnv builder conf = do
     messageLocks <- newIORef 0
-  
+
     wipeStarted <- newIORef False
-  
+
     postCount <- newIORef 0
     wipeStats <- newIORef (0, 0, 0)
 

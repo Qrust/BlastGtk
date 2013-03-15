@@ -100,7 +100,7 @@ maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
                     then do writeLog $ "Removing unneded {" ++ show wuProxy ++ "} " ++ renderBoard buBoard
                             killWipeUnit buBoard w >> return Nothing
                     else return $ Just $ Right w
-    
+
 maintainBoardUnit :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])]) -> BoardUnit -> E (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
 maintainBoardUnit (!activecount, !pbanned, !pdead) bu@BoardUnit{..} = do
     E{..} <- ask
@@ -135,7 +135,7 @@ maintainBoardUnits = do
                 else redMessage "Выберите доски для вайпа")
     return (bannedl++deadl)
 
-startWipe :: E ()    
+startWipe :: E ()
 startWipe = do
     E{..} <- ask
     writeLog "Starting wipe..."
@@ -330,7 +330,9 @@ showBoardSettings board = do
                 atomically $ writeTVar mthread nmthread
 
                 nmmode <- ifMJust (get wcheckwipethread)
-                                (bool BumpUnpopular SagePopular <$> get wchecksage)
+                                (ifM (get wchecksage)
+                                    (return SagePopular)
+                                    (return BumpUnpopular))
                 atomically $ writeTVar mmode nmmode
                 runE e $ writeLog $ renderBoard board ++ ": new mode: " ++ show nmmode
 
@@ -356,7 +358,7 @@ boardUnitsEnvPart b = EP
                     else ssachBoardsSortedByPostRate
 
         wvboxboards <- builderGetObject b castToVBox "vbox-boards"
-        
+
         boardUnits <- forM ssachBoardsWithSpeed $ \(board, sp) -> do
             whb <- hBoxNew False 0
 
@@ -384,7 +386,7 @@ boardUnitsEnvPart b = EP
         void $ on wbuttonselectall buttonActivated $ do
             forM_ boardUnits $
                 (`toggleButtonSetActive` True) . buWidget
-    
+
         void $ on wbuttonselectnone buttonActivated $ do
             forM_ boardUnits $
                 (`toggleButtonSetActive` False) . buWidget

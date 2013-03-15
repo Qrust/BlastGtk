@@ -121,14 +121,18 @@ collectCaptcha = do
     liftIO $ do
         readycount <- newIORef 0
         proxycount <- newIORef (length proxies)
+
+        putStrLn "Нажмите Enter чтобы запустить пушки когда достаточно капчи будет готово. Пушки сами себя не запустят."
+        _ <- forkIO $ displayCaptchaCounters readycount proxycount
+
         let success = atomicModifyIORef readycount $ \a -> (a+1, ())
             fail = atomicModifyIORef proxycount $ \a -> (a-1, ())
+
         res <- forM proxies $ \p -> do
             mvar <- newEmptyMVar
             _ <- forkIO $ antigateThread (success, fail) board antigateKey p manager mvar
             return (p, mvar)
-        putStrLn "Нажмите Enter чтобы запустить пушки когда достаточно капчи будет готово. Пушки сами себя не запустят."
-        _ <- forkIO $ displayCaptchaCounters readycount proxycount
+
         _ <- getLine
         putStrLn "BLAST IT WITH PISS"
         return res

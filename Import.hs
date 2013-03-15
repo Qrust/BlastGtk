@@ -4,8 +4,7 @@ module Import
     ,toLBS
     ,LText
     ,show
-    ,(>$>)
-    ,bool
+    ,decodeUtf8
     ,if'
     ,ifM
     ,whenM
@@ -14,6 +13,7 @@ module Import
     ,whenJustM
     ,fromLeft
     ,fromRight
+    ,modifyIORefM
     ,takeUntil
     ,dropUntil
     ,dropUntilLP
@@ -33,9 +33,6 @@ module Import
     ,justIf
     ,untilJust
     ,untilNothing
-    ,fromTrySome
-    ,modifyIORefM
-    ,decodeUtf8
     ) where
 #ifdef TEST
 import Debug.Trace as A
@@ -72,6 +69,8 @@ import qualified Text.Show as S
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
 
+-- * Strings
+
 type LByteString = LB.ByteString
 
 type LText = LT.Text
@@ -95,16 +94,11 @@ toLBS x = LB.fromChunks [x]
 show :: (Show a, IsString b) => a -> b
 show = fromString . S.show
 
+{-# INLINE decodeUtf8 #-}
+decodeUtf8 :: ByteString -> Text
+decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
+
 -- * CONTROL STRUCTURES
-
-{-# INLINE (>$>) #-}
-infixl 0 >$>
-(>$>) :: a -> (a -> b) -> b
-a >$> b = b a
-
-{-# INLINE bool #-}
-bool :: a -> a -> Bool -> a
-bool false true cond = if cond then true else false
 
 {-# INLINE if' #-}
 if' :: Bool -> a -> a -> a
@@ -152,19 +146,13 @@ untilNothing m = do
         Just a -> (a :) <$> untilNothing m
         Nothing -> return []
 
--- * LISTS
-
-{-# INLINABLE fromTrySome #-}
-fromTrySome :: MonadBaseControl IO m => m a -> m a -> m a
-fromTrySome e m = do
-    a <- try m
-    case a of
-        Left (_::SomeException) -> e
-        Right z -> return z
+-- * MISC
 
 {-# INLINE modifyIORefM #-}
 modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
 modifyIORefM r m = writeIORef r =<< m =<< readIORef r
+
+-- * LISTS
 
 anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 anyM _ [] = return False
@@ -253,7 +241,3 @@ findWithSurroundingsLE = find' []
             | Just ts <- stripPrefix pr l =
                 Just (reverse pas, pr, ts)
             | otherwise = find' (a:pas) pr as
-
-{-# INLINE decodeUtf8 #-}
-decodeUtf8 :: ByteString -> Text
-decodeUtf8 = TE.decodeUtf8With TE.lenientDecode

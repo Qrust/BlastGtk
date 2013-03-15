@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.20.zip",
-                "ee083517e1830a005548991f10920882"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.21.zip",
+                "0c5cc78821929713c5828cf61a0998ec"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.20.zip",
-                "b1ae2a934bd974ab785ba53950f6b3f7"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.21.zip",
+                "b82030a0ebde387a701ecff04f7864b2"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.21",
+            "Обновил компилятор для шиндос"
+        ],
         [
             "1.1.20",
             "Смешные пидары опять сменили поле ввода капчи. Добавил осколки /per/."
@@ -158,5 +162,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.20"
+    "version": "1.1.21"
 }
