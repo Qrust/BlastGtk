@@ -216,7 +216,7 @@ main = withSocketsDo $ do
             \m -> liftIO $ runReaderT mainloop
                 State {manager = m
                       ,board = board
-                      ,antigateKey = ApiKey _antigateKey _antigateHost
+                      ,antigateKey = ApiKey{api_key=_antigateKey, api_host=_antigateHost}
                       ,proxies = proxies
                       ,retryCaptcha = _retryCaptcha
                       }

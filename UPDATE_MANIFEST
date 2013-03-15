@@ -3,20 +3,24 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.21.zip",
-                "0c5cc78821929713c5828cf61a0998ec"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.22.zip",
+                "3be9eb1e579bd85d8b2ace475c9c9600"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.21.zip",
-                "b82030a0ebde387a701ecff04f7864b2"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.22.zip",
+                "497ba6426ff7645a3cdb6ee840cf1ee7"
             ]
         ]
     ],
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.22",
+            "Обновил компилятор в версии для шидос. Починил смывалку, она была сломана уже хуй знает сколько времени."
+        ],
         [
             "1.1.21",
             "Обновил компилятор для шиндос"
@@ -162,5 +166,5 @@
             "Добавлен постинг агитки\nДобавлена сортировка борд по-алфавиту\nДобавлено открепление лога\nДобавлено затенение опций неприменимых к данному типу пасты\nУбрана \"Копипаста про мочу\", дефолтный файл пасты теперь копипаста про мочу, а не анальный садизм\nДобавлена опция для включения/выключения автобана через обход вордфильтра\nУбраны надоедливые (StatusCodeException 303)"
         ]
     ],
-    "version": "1.1.21"
+    "version": "1.1.22"
 }
