@@ -292,6 +292,7 @@ generateNewBrowser = do
     setTimeout $ Just $ 10 * 1000000
     setDefaultHeader hUserAgent $ Just userAgent
     setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
+                       ,("Accept-Encoding", "")
                        ,(hConnection, "keep-alive")]
     --
     --setCookieFilter $ \_ _ -> return False
