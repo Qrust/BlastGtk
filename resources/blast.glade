@@ -23,6 +23,11 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkAdjustment" id="adjustment5">
+    <property name="upper">10000</property>
+    <property name="step_increment">10</property>
+    <property name="page_increment">100</property>
+  </object>
   <object class="GtkImage" id="image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -1269,15 +1274,22 @@ _ручной вайп</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkEntry" id="entryantigatehost">
+                                  <object class="GtkAlignment" id="alignment13">
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="invisible_char">●</property>
-                                    <property name="invisible_char_set">True</property>
-                                    <property name="primary_icon_activatable">False</property>
-                                    <property name="secondary_icon_activatable">False</property>
-                                    <property name="primary_icon_sensitive">True</property>
-                                    <property name="secondary_icon_sensitive">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="left_padding">10</property>
+                                    <child>
+                                      <object class="GtkEntry" id="entryantigatehost">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="invisible_char">●</property>
+                                        <property name="invisible_char_set">True</property>
+                                        <property name="primary_icon_activatable">False</property>
+                                        <property name="secondary_icon_activatable">False</property>
+                                        <property name="primary_icon_sensitive">True</property>
+                                        <property name="secondary_icon_sensitive">True</property>
+                                      </object>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1581,18 +1593,35 @@ _ручной вайп</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
+                              <object class="GtkLabel" id="label9">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="yalign">0</property>
+                                <property name="label" translatable="yes">Прокси</property>
+                                <attributes>
+                                  <attribute name="weight" value="bold"/>
+                                </attributes>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
                               <object class="GtkVBox" id="vbox13">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkLabel" id="label9">
+                                  <object class="GtkCheckButton" id="checknoproxy">
+                                    <property name="label" translatable="yes">Так_же постить без прокси</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="xalign">0</property>
-                                    <property name="label" translatable="yes">Прокси</property>
-                                    <attributes>
-                                      <attribute name="weight" value="bold"/>
-                                    </attributes>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="active">True</property>
+                                    <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1601,34 +1630,32 @@ _ручной вайп</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="checkhttpproxy">
-                                    <property name="label" translatable="yes">Использовать H_TTP
-прокси</property>
+                                  <object class="GtkHSeparator" id="hseparator1">
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Прокси слабо тестировались. Если что-то не так — пишите в тред.</property>
-                                    <property name="use_underline">True</property>
-                                    <property name="draw_indicator">True</property>
+                                    <property name="can_focus">False</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
-                                    <property name="fill">False</property>
+                                    <property name="fill">True</property>
                                     <property name="position">1</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox16">
+                                  <object class="GtkVBox" id="vbox14">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkLabel" id="label11">
+                                      <object class="GtkCheckButton" id="checkhttpproxy">
+                                        <property name="label" translatable="yes">Использовать H_TTP
+прокси</property>
                                         <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="xalign">0</property>
-                                        <property name="label" translatable="yes">Файл с H_TTP-прокси:</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                         <property name="use_underline">True</property>
-                                        <property name="mnemonic_widget">buttonhttpproxyfile</property>
+                                        <property name="draw_indicator">True</property>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -1637,57 +1664,83 @@ _ручной вайп</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkAlignment" id="alignment5">
+                                      <object class="GtkVBox" id="vbox16">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="left_padding">10</property>
                                         <child>
-                                          <object class="GtkHBox" id="hbox6">
+                                          <object class="GtkLabel" id="label11">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="xalign">0</property>
+                                            <property name="label" translatable="yes">Файл с H_TTP-прокси:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">buttonhttpproxyfile</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">False</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkAlignment" id="alignment5">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="left_padding">10</property>
                                             <child>
-                                              <object class="GtkEntry" id="entryhttpproxyfile">
+                                              <object class="GtkHBox" id="hbox6">
                                                 <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
-127.0.0.1:8118
-255.255.255.255:255</property>
-                                                <property name="editable">False</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="primary_icon_sensitive">True</property>
-                                                <property name="secondary_icon_sensitive">True</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">True</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">0</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkButton" id="buttonhttpproxyfile">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="receives_default">True</property>
-                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
-127.0.0.1:8118
-255.255.255.255:255</property>
+                                                <property name="can_focus">False</property>
                                                 <child>
-                                                  <object class="GtkImage" id="image5">
+                                                  <object class="GtkEntry" id="entryhttpproxyfile">
                                                     <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="stock">gtk-open</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
+                                                    <property name="editable">False</property>
+                                                    <property name="invisible_char">●</property>
+                                                    <property name="primary_icon_activatable">False</property>
+                                                    <property name="secondary_icon_activatable">False</property>
+                                                    <property name="primary_icon_sensitive">True</property>
+                                                    <property name="secondary_icon_sensitive">True</property>
                                                   </object>
+                                                  <packing>
+                                                    <property name="expand">True</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="buttonhttpproxyfile">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
+                                                    <child>
+                                                      <object class="GtkImage" id="image5">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="stock">gtk-open</property>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">False</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
                                                 </child>
                                               </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="position">1</property>
-                                              </packing>
                                             </child>
                                           </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">False</property>
+                                            <property name="position">1</property>
+                                          </packing>
                                         </child>
                                       </object>
                                       <packing>
@@ -1703,43 +1756,15 @@ _ручной вайп</property>
                                     <property name="position">2</property>
                                   </packing>
                                 </child>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">False</property>
-                                <property name="position">0</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkHSeparator" id="hseparator1">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">True</property>
-                                <property name="position">1</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkVBox" id="vbox14">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkCheckButton" id="checksocksproxy">
-                                    <property name="label" translatable="yes">Использовать SOCKS_5
-прокси</property>
+                                  <object class="GtkHSeparator" id="hseparator4">
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Прокси слабо тестировались. Если что-то не так — пишите в тред.</property>
-                                    <property name="use_underline">True</property>
-                                    <property name="draw_indicator">True</property>
+                                    <property name="can_focus">False</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">0</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">3</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -1747,14 +1772,17 @@ _ручной вайп</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkLabel" id="label12">
+                                      <object class="GtkCheckButton" id="checksocksproxy">
+                                        <property name="label" translatable="yes">Использовать SOCKS_5
+прокси</property>
                                         <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="xalign">0</property>
-                                        <property name="ypad">1</property>
-                                        <property name="label" translatable="yes">Файл с SOCKS_5-прокси:</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
                                         <property name="use_underline">True</property>
-                                        <property name="mnemonic_widget">buttonsocksproxyfile</property>
+                                        <property name="draw_indicator">True</property>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -1763,58 +1791,85 @@ _ручной вайп</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkAlignment" id="alignment7">
+                                      <object class="GtkVBox" id="vbox33">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="left_padding">10</property>
                                         <child>
-                                          <object class="GtkHBox" id="hbox7">
+                                          <object class="GtkLabel" id="label12">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="xalign">0</property>
+                                            <property name="ypad">1</property>
+                                            <property name="label" translatable="yes">Файл с SOCKS_5-прокси:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">buttonsocksproxyfile</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">False</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkAlignment" id="alignment7">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="left_padding">10</property>
                                             <child>
-                                              <object class="GtkEntry" id="entrysocksproxyfile">
+                                              <object class="GtkHBox" id="hbox7">
                                                 <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
-127.0.0.1:8118
-255.255.255.255:255</property>
-                                                <property name="editable">False</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="invisible_char_set">True</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="primary_icon_sensitive">True</property>
-                                                <property name="secondary_icon_sensitive">True</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">True</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">0</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkButton" id="buttonsocksproxyfile">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="receives_default">True</property>
-                                                <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
-127.0.0.1:8118
-255.255.255.255:255</property>
+                                                <property name="can_focus">False</property>
                                                 <child>
-                                                  <object class="GtkImage" id="image6">
+                                                  <object class="GtkEntry" id="entrysocksproxyfile">
                                                     <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="stock">gtk-open</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
+                                                    <property name="editable">False</property>
+                                                    <property name="invisible_char">●</property>
+                                                    <property name="invisible_char_set">True</property>
+                                                    <property name="primary_icon_activatable">False</property>
+                                                    <property name="secondary_icon_activatable">False</property>
+                                                    <property name="primary_icon_sensitive">True</property>
+                                                    <property name="secondary_icon_sensitive">True</property>
                                                   </object>
+                                                  <packing>
+                                                    <property name="expand">True</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="buttonsocksproxyfile">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <property name="tooltip_text" translatable="yes">Формат файла прокси — по прокси на строку, обязательно указывать порт. Например:
+127.0.0.1:8118
+255.255.255.255:255</property>
+                                                    <child>
+                                                      <object class="GtkImage" id="image6">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="stock">gtk-open</property>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">False</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
                                                 </child>
                                               </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="position">1</property>
-                                              </packing>
                                             </child>
                                           </object>
+                                          <packing>
+                                            <property name="expand">True</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">1</property>
+                                          </packing>
                                         </child>
                                       </object>
                                       <packing>
@@ -1825,44 +1880,16 @@ _ручной вайп</property>
                                     </child>
                                   </object>
                                   <packing>
-                                    <property name="expand">True</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">1</property>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">4</property>
                                   </packing>
                                 </child>
                               </object>
                               <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">False</property>
-                                <property name="position">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkHSeparator" id="hseparator4">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
+                                <property name="expand">True</property>
                                 <property name="fill">True</property>
-                                <property name="position">3</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkCheckButton" id="checknoproxy">
-                                <property name="label" translatable="yes">К тому _же постить без
-прокси</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="use_underline">True</property>
-                                <property name="active">True</property>
-                                <property name="draw_indicator">True</property>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">False</property>
-                                <property name="position">4</property>
+                                <property name="position">1</property>
                               </packing>
                             </child>
                           </object>
@@ -1995,13 +2022,83 @@ _ручной вайп</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkLabel" id="labeldetachlog">
+                          <object class="GtkHBox" id="hbox8">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="label" translatable="yes">&lt;a href="#"&gt;Соснуть хуйца&lt;/a&gt;</property>
-                            <property name="use_markup">True</property>
-                            <property name="track_visited_links">False</property>
+                            <child>
+                              <object class="GtkLabel" id="labeldetachlog">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">&lt;a href="#"&gt;Соснуть хуйца&lt;/a&gt;</property>
+                                <property name="use_markup">True</property>
+                                <property name="track_visited_links">False</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="labellogfile">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="yalign">0.4699999988079071</property>
+                                <property name="label" translatable="yes">[Открыть файл]</property>
+                                <property name="use_markup">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">False</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHBox" id="hbox9">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <child>
+                                  <object class="GtkLabel" id="label21">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">_Макс. строк</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="mnemonic_widget">wspinmaxlines</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="wspinmaxlines">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="primary_icon_sensitive">True</property>
+                                    <property name="secondary_icon_sensitive">True</property>
+                                    <property name="adjustment">adjustment5</property>
+                                    <property name="snap_to_ticks">True</property>
+                                    <property name="numeric">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="pack_type">end</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>

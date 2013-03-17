@@ -4,18 +4,28 @@ module BlastItWithPiss.Image
     ,appendJunk
     ,readImageWithoutJunk
     ,mkImageFileName
+
+    ,filterImages
     )where
 import Import hiding (insert)
+
 import BlastItWithPiss.MonadChoice
-import Data.Map (toDescList)
-import Network.Mime
+
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
-import System.FilePath (takeFileName)
 
-data Image = Image {filename :: !String
-                   ,contentType :: !ByteString
-                   ,bytes :: !LByteString}
+import Data.Map (toDescList)
+
+import System.FilePath (takeFileName, takeExtension)
+
+import Network.Mime
+
+data Image
+    = Image
+        {filename :: !String
+        ,contentType :: !ByteString
+        ,bytes :: !LByteString}
+  deriving Show
 
 instance NFData Image where
     rnf Image{..} = rnf (filename, contentType, bytes)
@@ -38,7 +48,7 @@ readImageWithoutJunk fn = do
                 ,bytes = bs}
 
 mkImageFileName :: MonadChoice m => MimeType -> m String
--- It's toDescList instead of toList because otherwise "image/jpg" returns ".jpe"
+-- It's toDescList instead of toAscList because otherwise "image/jpg" returns ".jpe"
 mkImageFileName ct = do
     name <- chooseFromList filenames
     return $ (++) name $
@@ -69,3 +79,6 @@ filenames =
     ,"ololo"
     ,"dvach"
     ]
+
+filterImages :: [FilePath] -> [FilePath]
+filterImages = filter ((`elem` [".jpg",".jpeg",".jpe",".gif",".png"]) . takeExtension)

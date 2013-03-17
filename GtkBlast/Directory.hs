@@ -7,14 +7,15 @@ module GtkBlast.Directory
     ,timeJustAfterNullTime'ie'forceUpdateJustOnce
     ) where
 import Import
-import GtkBlast.IO
-import System.FilePath
-import System.Directory
-import Paths_blast_it_with_piss
+
 #if !MIN_VERSION_directory(1,2,0)
 import System.Time
 #endif
-#if !defined(BINDIST)||!defined(TEST)
+
+#if !defined(BINDIST) && !defined(TEST)
+import System.FilePath
+import System.Directory
+import Paths_blast_it_with_piss
 import qualified System.IO.Unsafe as U
 #endif
 
@@ -25,14 +26,14 @@ type ModificationTime = ClockTime
 #endif
 
 bundledFile :: String -> String
-#if defined(BINDIST)||defined(TEST)
+#if defined(BINDIST) || defined(TEST)
 bundledFile x = x
 #else
 bundledFile x = U.unsafePerformIO $ getDataFileName x
 #endif
 
 configDir :: IO String
-#if defined(BINDIST)||defined(TEST)
+#if defined(BINDIST) || defined(TEST)
 configDir = return "."
 #else
 configDir = do c <- getAppUserDataDirectory "BlastItWithPiss"

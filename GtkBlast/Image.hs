@@ -4,7 +4,7 @@ module GtkBlast.Image
     ,imageEnvPart
     ) where
 import Import hiding (on)
-import GtkBlast.IO
+
 import GtkBlast.MuVar
 import GtkBlast.Log
 import GtkBlast.Environment
@@ -12,47 +12,51 @@ import GtkBlast.Conf
 import GtkBlast.EnvPart
 import GtkBlast.GtkUtils
 import GtkBlast.Directory
+
 import BlastItWithPiss
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Post
+import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
-import BlastItWithPiss.Board
 import BlastItWithPiss.MonadChoice
+
 import System.FilePath
 import System.Directory
+
 import Control.Concurrent.STM
+
 import Graphics.UI.Gtk hiding (get, set, Image)
 
-filterImages :: [FilePath] -> [FilePath]
-filterImages = filter ((`elem` [".jpg",".jpeg",".gif",".png"]) . takeExtension)
-
+-- FIXME ? Bind it to signal, why the fuck should it run all the time?
 regenerateImages :: E ()
 regenerateImages = do
     E{..} <- ask
     ni <- get wentryimagefolder
     li <- get imagefolderLast
     when (ni /= li) $ do
-        writeLog "regen images"
-        io . atomically . writeTVar (timagegen shS) .
-            imageGen connection ni =<< get wcheckagitka
+        writeLog "Regen imageGen"
+        agitka <- get wcheckagitka
+        let !gen = imageGen ni agitka
+        io $ atomically $ writeTVar (timagegen shS) gen
         set imagefolderLast ni
 
-imageGen :: Manager -> FilePath -> Bool -> Bool -> IO (Bool, Image)
-imageGen connection imagefolder agitka use = do
-    images <-
-        if use
-            then fromIOEM (return []) $ filterImages . map (imagefolder </>) <$> getDirectoryContents imagefolder
-            else return []
+imageGen :: FilePath -> Bool -> IO Image
+imageGen imagefolder agitka = do
+    images <- getDirectoryPics imagefolder
+
     let agitkafile = bundledFile "resources/agitka.png"
-    ifM ((agitka &&) <$> doesFileExist agitkafile)
-        (do let eq = 100 / (fromIntegral $ length images + 1)
-            (,) False <$> (readImageWithoutJunk =<< fromList ((agitkafile, 15) : map (\i -> (i, eq)) images)))
-        (if null images
-            then (,) True . Image "haruhi.jpg" "image/jpeg" <$> -- use recaptcha as a fallback
-                    runBlastNew connection
-                        (fmap fst . getCaptchaImage . Recaptcha =<<
-                            recaptchaChallengeKey cloudflareRecaptchaKey)
-            else (,) False <$> (readImageWithoutJunk =<< chooseFromList images))
+    thereIsAgitkaFile <- doesFileExist agitkafile
+
+    useAgitka <-
+        if agitka && thereIsAgitkaFile
+          then fromList [(True, 15), (False, 85)]
+          else return False
+
+    if useAgitka
+      then
+        readImageWithoutJunk agitkafile
+      else
+        fromMaybeM builtinImageGen $ folderImageGen imagefolder
 
 imageEnvPart :: Builder -> EnvPart
 imageEnvPart b = EP

@@ -27,12 +27,15 @@ import Data.Version (showVersion)
 import qualified Data.Map as M
 import Control.Monad.Fix
 
+import System.FilePath
+import System.Directory (getCurrentDirectory)
+
 import Foreign.Ptr
 import Foreign.C.String
 import System.Glib.GError
 import System.Glib.UTFString
 
-import Network.HTTP.Conduit(newManager, managerConnCount)
+import Network.HTTP.Conduit (newManager, managerConnCount)
 
 envParts :: Builder -> [EnvPart]
 envParts b =
@@ -135,11 +138,11 @@ envParts b =
                         user str1'
 
             on wlabeldetachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
-                modM detached $ \b -> do
-                    if b
+                modM detached $ \detached' -> do
+                    if detached'
                       then attachLog
                       else detachLog
-                    return (not b)
+                    return (not detached')
 
             on wlabelattachlog (Signal $ connect_STRING__BOOL "activate-link") $ \_ -> True <$ do
                 attachLog
@@ -168,7 +171,7 @@ envParts b =
             tqOut <- atomically $ newTQueue
 
             tpastagen <- atomically $ newTVar $ \_ _ _ -> return $ TBCC True True True "Генератор не запущен. Осторожно, двери закрываются."
-            timagegen <- atomically $ newTVar $ imageGen (connection e) [] False -- FIXME DANGER
+            timagegen <- atomically $ newTVar $ imageGen "" False
             tuseimages <- tvarCheck get wcheckimages
             tcreatethreads <- tvarCheck get wcheckthread
             tmakewatermark <- tvarCheck get wcheckwatermark
@@ -337,6 +340,26 @@ envParts b =
         )
         (const return)
         (\v e -> e{window=v})
+    ,EP
+        (rec (fromIntegral . coMaxLines) $ builderGetObject b castToSpinButton "wspinmaxlines")
+        (\v c -> get v ? \a -> c{coMaxLines=round a})
+        (\v e -> e{wspinmaxlines=v})
+    ,EP (\ _ _ -> do
+            wlabellogfile <- builderGetObject b castToLabel "labellogfile"
+
+            _pwd <- getCurrentDirectory
+            let
+              file =
+#ifdef mingw32_HOST_OS
+                '/' : _pwd </> "log.txt"
+#else
+                _pwd </> "log.txt"
+#endif
+            labelSetMarkup wlabellogfile $
+                "<a href=\"file://" ++ file ++ "\">log.txt</a>"
+        )
+        (const return)
+        (const id)
     ]
 
 createWidgetsAndFillEnv :: Builder -> Conf -> IO (Env, Conf -> IO Conf)

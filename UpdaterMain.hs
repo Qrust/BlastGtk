@@ -1,25 +1,35 @@
 module Main (main) where
 import Import hiding (on)
+
 import Updater.Manifest
 import Updater.UnpackZip
 import Updater.Repair
 import Updater.DownloadWithMD5
 import Updater.GuiXML
+
+import qualified Paths_blast_it_with_piss as Paths
+
 import Data.Version
+
+import Control.Concurrent
+
 import System.Directory
 import System.FilePath
+
 import System.Environment
 import System.Environment.Executable
 import System.Exit
 import System.Process
-import Control.Concurrent
-import Network
-import qualified Paths_blast_it_with_piss as Paths
+
 import Data.Aeson
-import Network.HTTP.Conduit
+
 import Graphics.UI.Gtk
+
 import qualified Text.Show
 import Text.ParserCombinators.ReadP
+
+import Network
+import Network.HTTP.Conduit
 
 currentPlatform :: Platform
 #if defined(linux_HOST_OS)
@@ -49,7 +59,7 @@ mainNoBindist = do
         (createProcess $ proc gtkblast [])
         (createProcess $ proc gtkblastBinary [])
 
-data BadEnd = ChecksumMismatch URL MD5Sum
+data BadEnd = ChecksumMismatch String MD5Sum
             | NoBuildAvailable
             | UnparseableManifest
     deriving (Typeable)
@@ -62,7 +72,7 @@ instance Show BadEnd where
     show NoBuildAvailable = errorNoBuildAvailable currentPlatform
       where errorNoBuildAvailable Linux = "Случилось абсолютно невозможное, не обнаружено версии вайпалки для единственной операционной системы!"
             errorNoBuildAvailable Windows = "Не обнаружено версии вайпалки для утятницы \"Пекач\"\nРешение:\n1. Соснуть хуйцов\n2.Сделать бочку."
-            errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса\nАльтернативное решение:\n1. Связаться с автором(контакты в .cabal файле или через тред)\n2. Скомпилять версию для мака\n3. Пососать разложившийся хуец жопса."
+            errorNoBuildAvailable Mac = "Не обнаружено версии вайпалки для мака, возможно эта ошибка появляется потому что MAKOBLYADI SOSNOOLEY\nРешение:\n1.Пососать разложившийся хуец жопса"
     show UnparseableManifest =
         "Не удалось распарсить манифест из " ++ manifestUrl
 
@@ -163,7 +173,7 @@ postInstall executablePath = do
     void $ createProcess $ proc updater ["--postinstall", showVersion Paths.version]
     mainQuit
 
--- HORRIBLE HACK both zip-archive and zip-conduit don't preserve file permissions
+-- HORRIBLE HACK both zip-archive and zip-conduit do not preserve file permissions
 -- so instead we'll simply set executable bit for our executables based on filename.
 -- Of course I could always switch to tar or LibZip, or add proper permission
 -- handling to zip-archive, but I'm too lazy for that.

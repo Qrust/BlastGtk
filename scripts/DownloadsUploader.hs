@@ -2,43 +2,37 @@
 module Main (main) where
 import Import
 import Updater.Manifest
-import System.Environment
+import qualified Paths_blast_it_with_piss as Paths
+
 import Network.HTTP.Types
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.MultipartFormData
+
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Aeson.Encode.Pretty
+
 import System.Console.Readline
+
 import qualified Data.Text as T
 import Data.Text.Encoding
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+
 import System.FilePath
+
 import Codec.Binary.UTF8.Generic (toString)
-import System.Cmd
-import qualified Paths_blast_it_with_piss as Paths
-import Text.ParserCombinators.ReadP
+
 import Crypto.Classes hiding (encode)
-import Data.Version
+
+import System.Environment
+import System.Cmd
+
 import Control.Concurrent
 import Control.Monad.Identity
 
-username :: IsString a => a
-username = "exbb2"
-
-reponame :: IsString a => a
-reponame = "BlastItWithPiss"
-
-githubDownloadsUrl :: String -> URL
-githubDownloadsUrl filename =
-    "https://github.com/downloads/" ++ username ++ "/" ++ reponame ++ "/" ++ filename
-
-getToVersion :: String -> Maybe String
-getToVersion s' =
-    let s = dropExtension s'
-    in stripPrefix "BlastItWithPiss-linux-x86-" s <|>
-       stripPrefix "BlastItWithPiss-windows-x86-" s
+import Data.Version
+import Text.ParserCombinators.ReadP
 
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
@@ -48,26 +42,45 @@ emptyUpdate = UpdateManifest
     ,changelog = []
     }
 
-only201 :: Status -> ResponseHeaders -> CookieJar -> Maybe SomeException
-only201 s e cj =
-    if statusCode s /= 201
-        then Just $ toException $ StatusCodeException s e cj
-        else Nothing
+-- | Shortcut for 'fromJust . parseUrl'
+{-# INLINE url #-}
+url :: String -> Request m
+url = fromJust . parseUrl
 
-deleteDownload :: Text -> Int -> IO ()
-deleteDownload pass id = do
-    void $ withManager $ http $ applyBasicAuth username (encodeUtf8 pass)
-        (fromJust $ parseUrl $
-            "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads/" ++ show id)
-                {method=methodDelete}
+username :: IsString a => a
+username = "exbb2"
+
+reponame :: IsString a => a
+reponame = "BlastItWithPiss"
+
+githubDownloadsUrl :: String -> String
+githubDownloadsUrl filename =
+    "https://github.com/downloads/" ++
+        username ++ "/" ++ reponame ++ "/" ++ filename
+
+getToVersion :: String -> Maybe String
+getToVersion s' =
+    let s = dropExtension s'
+    in stripPrefix "BlastItWithPiss-linux-x86-" s <|>
+       stripPrefix "BlastItWithPiss-windows-x86-" s
+
+only201 :: Status -> ResponseHeaders -> CookieJar -> Maybe SomeException
+only201 s@Status{statusCode=201} e cj = Just $ toException $ StatusCodeException s e cj
+only201 _ _ _ = Nothing
 
 fromJsonParser :: FromJSON a => LByteString -> (a -> Parser b) -> b
 fromJsonParser lbs m =
-    (either (\e -> error $ "Couldn't parse lbs: \"" ++ e ++ "\"\nLBS was {\n" ++ toString lbs ++ "\n}")
-           id $
-           flip parseEither (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) m)
+    case parseEither m (fromMaybe (error $ "JSONFAIL " ++ toString lbs) $ decode lbs) of
+      Left e -> error $ "Couldn't parse lbs: \"" ++ e ++ "\"\nLBS was {\n" ++ toString lbs ++ "\n}"
+      Right a -> a
 
-parseGithubDownloadsPart1Response :: Monad a => LByteString -> ByteString -> FilePath -> LByteString -> (Request a, Int)
+parseGithubDownloadsPart1Response
+    :: Monad a
+    => LByteString
+    -> ByteString
+    -> FilePath
+    -> LByteString
+    -> (Request a, Int)
 parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
     fromJsonParser lbs $ \o -> do
     let corr s3 part1 = partBS s3 <$> o .: part1
@@ -83,35 +96,74 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
         ,return $ partFileRequestBody "file" arcfilename $ RequestBodyLBS arcbytes
         ]
     rurl <- fromJust . parseUrl <$> o .: "s3_url"
-    id <- o .: "id"
-    return $ (formDataBodyPure boundary fields $ rurl
+    id' <- o .: "id"
+    return $
+      (formDataBodyPure boundary fields $ rurl
         {method = methodPost
         ,requestHeaders = [(hUserAgent, "http-conduit")]
         ,checkStatus = only201
         }
-        , id)
+      ,id')
 
-uploadZip :: Text -> String -> Text -> ByteString -> IO ()
+getPassword :: String -> IO Text
+getPassword desc = do
+    hSetEcho stdin False
+    password <- maybe (error "Пароль обязателен") T.pack <$> readline (desc ++ "\n")
+    hSetEcho stdin True
+    return password
+
+uploadZip :: Text -> String -> Text -> ByteString -> IO Bool
 uploadZip pass arcfilename desc arcbytes = withManager $ \m -> do
-    let req = applyBasicAuth username (encodeUtf8 pass) $
-                (fromJust $ parseUrl $
-                    "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads")
-                {method=methodPost
-                ,requestBody = RequestBodyLBS $ encode $ object
-                    ["name" .= T.pack arcfilename
-                    ,"size" .= B.length arcbytes
-                    ,"description" .= desc
-                    ,"content_type" .= ("application/zip" :: Text)
-                    ]
-                ,checkStatus = only201
-                }
+    let
+      _req = fromJust $ parseUrl $
+        "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads"
+      req =
+        applyBasicAuth username (encodeUtf8 pass) $ _req
+            {method = methodPost
+            ,requestBody = RequestBodyLBS $ encode $ object
+                ["name" .= T.pack arcfilename
+                ,"size" .= B.length arcbytes
+                ,"description" .= desc
+                ,"content_type" .= ("application/zip" :: Text)
+                ]
+            ,checkStatus = only201
+            }
+
     liftIO $ putStrLn "Part1"
     lbs <- responseBody <$> httpLbs req m
-    liftIO $ putStrLn "Part2"
     boundary <- liftIO $ webkitBoundary
-    let (req,id) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
-    void $ httpLbs req m
-    liftIO $ putStrLn "Success."
+    let (req,_) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
+
+    liftIO $ putStrLn "Part2"
+    _e <- try $ void $ httpLbs req m
+
+    case _e of
+      Left (StatusCodeException Status{statusCode=401} _ _) -> do
+        return False
+      Right _ ->
+        return True
+      Left e -> throwIO e
+
+uploadZips :: [(String, Text, ByteString)] -> IO ()
+uploadZips as = do
+    pass <- getPassword prompt
+    go as pass
+  where
+    prompt = "Пароль гитхаба:"
+    go [] _ = return ()
+    go _retry@((fname, desc, bs):us) pass = do
+        putStrLn $ "Uploading " ++ show desc
+        ifM (uploadZip pass fname desc bs)
+          (go us pass)
+          (go _retry =<< getPassword prompt)
+
+deleteDownload :: Text -> Int -> IO ()
+deleteDownload pass id = do
+    let _req = url $
+            "https://api.github.com/repos/" ++ username
+            ++ "/" ++ reponame ++ "/downloads/" ++ show id
+        req = applyBasicAuth username (encodeUtf8 pass) $ _req{method="DELETE"}
+    void $ withManager $ httpLbs req
 
 deleteDownloads :: Text -> Version -> IO ()
 deleteDownloads pass v = do
@@ -128,53 +180,60 @@ deleteDownloads pass v = do
             Nothing -> do
                 putStrLn $ "Passing by " ++ show (name, id)
 
-getPassword :: String -> IO Text
-getPassword desc = do
-    hSetEcho stdin False
-    password <- maybe (error "Пароль обязателен") T.pack <$> readline (desc ++ "\n")
-    hSetEcho stdin True
-    return password
-
 main :: IO ()
 main = do
     [rv,la,wa,dogit,delold] <- getArgs
     putStrLn "Updating manifest..."
     let v = fst $ last $ readP_to_S parseVersion $ rv
+
     let lafilename = takeFileName la
     let wafilename = takeFileName wa
-    manifest' <- either
-        (\(_::SomeException) -> emptyUpdate)
-        (fromMaybe emptyUpdate . decode . toLBS) <$>
-            try (B.readFile "UPDATE_MANIFEST")
-    chlog <- map (\x -> if x==';' then '\n' else x) .
-                fromMaybe (error "Please write changelog") <$>
-                    readline "Changes in this version:\n"
+
+    manifest' <- do
+        x <- try $ B.readFile "UPDATE_MANIFEST"
+        case x of
+          Left (_::SomeException) -> return emptyUpdate
+          Right old -> return $ fromMaybe emptyUpdate $ decode $ toLBS old
+
+    let semicolonToNewline = map (\x -> if x==';' then '\n' else x)
+
+    chlog <-
+        fmap (semicolonToNewline . fromMaybe (error "changelog is required")) $
+            readline "Changes in this version:\n"
+
     putStrLn "Computing linux archive hash"
     labytes <- B.readFile la
-    let lasum = renderMD5 $ hash' labytes
+    let !lasum = renderMD5 $ hash' labytes
+
     putStrLn "Computing windows archive hash"
     wabytes <- B.readFile wa
-    let wasum = renderMD5 $ hash' wabytes
+    let !wasum = renderMD5 $ hash' wabytes
+
     putStrLn "Updating manifest"
-    let manifest = manifest'{version = v
-                            ,binaryAndResourcesZipArchives =
-                                 [(Linux, (githubDownloadsUrl lafilename, lasum))
-                                 ,(Windows, (githubDownloadsUrl wafilename, wasum))]
-                            ,changelog = (v, chlog) : changelog manifest'
-                            }
+    let manifest = manifest'
+            {version = v
+            ,binaryAndResourcesZipArchives =
+                [(Linux, (githubDownloadsUrl lafilename, lasum))
+                ,(Windows, (githubDownloadsUrl wafilename, wasum))]
+            ,changelog = (v, chlog) : changelog manifest'
+            }
     L.writeFile "UPDATE_MANIFEST" $ encodePretty manifest
     putStrLn "Updated manifest..."
-    password <- getPassword "Пароль гитхаба:"
-    putStrLn "Прыщи..."
-    uploadZip password lafilename "Прыщи" labytes
-    putStrLn "Сперма..."
-    uploadZip password wafilename "Сперма" wabytes
-    putStrLn "Загрузилось наконец."
+
+    uploadZips
+        [(lafilename, "Прыщи", labytes)
+        ,(wafilename, "Сперма", wabytes)
+        ]
+
+    putStrLn "Done uploading."
+
     when (read dogit) $ do
         putStrLn "git commit"
         print =<< rawSystem "git" ["commit", "-am", chlog]
         putStrLn "git push"
         print =<< rawSystem "git" ["push"]
+
     when (read delold) $ do
         putStrLn "Deleting old downloads..."
+        password <- getPassword "Пароль гитхаба для удаления старых загрузок:"
         deleteDownloads password v

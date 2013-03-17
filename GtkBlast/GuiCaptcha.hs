@@ -7,19 +7,24 @@ module GtkBlast.GuiCaptcha
     ,maintainGuiCaptcha
     ) where
 import Import hiding (on, mod)
-import GtkBlast.IO
+
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.EnvPart
+
 import BlastItWithPiss
 import BlastItWithPiss.Board
 import BlastItWithPiss.Blast
-import Graphics.UI.Gtk hiding (get, set)
-import Control.Concurrent.STM
+
 import System.IO.Temp
+
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Map as M
+
+import Graphics.UI.Gtk hiding (get, set)
+
+import Control.Concurrent.STM
 
 captchaError :: String -> E ()
 captchaError =
@@ -36,7 +41,7 @@ formatCaptchaSupplyCaptcha CaptchaPosting (OriginStamp _ proxy board _ thread) =
         (case thread of
             Nothing -> "создания нового треда в " ++ renderBoard board
             t -> "Поста в тред " ++ ssachThread board t) ++
-                maybeNoProxy "" (\p -> "с прокси {" ++ show p ++ "}") proxy
+                maybeNoProxy "" (\p -> " с прокси {" ++ show p ++ "}") proxy
 formatCaptchaSupplyCaptcha CaptchaCloudflare (OriginStamp _ proxy _ _ _) =
     "Введите капчу Cloudflare для " ++ show proxy
 

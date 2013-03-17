@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Updater.Manifest
-    (URL
-    ,MD5Sum
+    (MD5Sum
     ,Platform(..)
     ,Changelog
     ,UpdateManifest(..)

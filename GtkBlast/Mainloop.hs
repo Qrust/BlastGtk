@@ -6,8 +6,10 @@ module GtkBlast.Mainloop
     ) where
 import Import hiding (on, mod)
 import qualified Data.Function as F (on)
+
+import Paths_blast_it_with_piss
+
 import GtkBlast.Achievement
-import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Conf
@@ -18,18 +20,21 @@ import GtkBlast.Pasta
 import GtkBlast.Image
 import GtkBlast.Proxy
 import GtkBlast.BoardSettingsGuiXML
+
 import BlastItWithPiss
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Choice (Mode(..))
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Board
+
+import qualified Data.Map as M
+
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (set)
+
 import Control.Concurrent
 import GHC.Conc
 import Control.Concurrent.STM
-import qualified Data.Map as M
-import Paths_blast_it_with_piss
 
 updWipeMessage :: E ()
 updWipeMessage = do

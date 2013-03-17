@@ -1,3 +1,4 @@
+-- | Kludge
 module BlastItWithPiss
     (ShSettings(..)
     ,MuSettings(..)
@@ -21,6 +22,7 @@ module BlastItWithPiss
 import Import
 
 import BlastItWithPiss.Blast
+import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
@@ -45,7 +47,7 @@ import Text.HTML.TagSoup(Tag)
 
 data ShSettings = ShSettings
     {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
-    ,timagegen :: TVar (Bool -> IO (Bool, Image))
+    ,timagegen :: TVar (IO Image)
     --NOTE all browser state accumulated in gens is lost.
     ,tuseimages :: TVar Bool
     ,tappendjunkimages :: TVar Bool
@@ -182,7 +184,7 @@ instance NFData SupplyCaptcha where
 instance NFData Message where
     rnf (OutcomeMessage o) = rnf o
     rnf (LogMessage s) = rnf s
-    rnf (SolveCaptcha s) = s `deepseq` ()
+    rnf (SolveCaptcha s) = rnf s
     rnf _ = ()
 
 instance NFData OutMessage where
@@ -323,22 +325,22 @@ blastPostData mode getThread mpastapage thread = do
     blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
     blastLog "Choosing image"
-    (noimages, cleanImage) <- do
+    cleanImage <- do
         use <- liftIO $ readTVarIO tuseimages
-        if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode) && not nopastas
-            then return (False, Nothing)
-            else do
-                imagegen <- liftIO $ readTVarIO timagegen
-                (no, raw) <- liftIO $ imagegen use
-                return (no, Just raw)
-    {-when noimages $ do
-        blastOut NoImages
-        blastLog "threw NoImages"-}
-    junkImage <- case cleanImage of
-        Nothing -> do
+        if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode)
+           && not nopastas
+          then
+            return Nothing
+          else do
+            imagegen <- liftIO $ readTVarIO timagegen
+            raw <- liftIO imagegen
+            return $ Just raw
+    junkImage <-
+        case cleanImage of
+          Nothing -> do
             blastLog "chose no image"
             return Nothing
-        Just i -> do
+          Just i -> do
             blastLog $ "chose image \"" ++ filename i ++ "\""
             Just <$> flBoolModSTM tappendjunkimages
                 (\im -> do blastLog "appending junk to image"
@@ -383,78 +385,103 @@ blastCloudflare :: (Response [Tag Text] -> BlastLog b) -> BlastLog (Response [Ta
 blastCloudflare md whatrsp url = do
     blastLog "Starting blastCloudflare"
     blastCloudflare' =<< whatrsp
-  where blastCloudflare' rsp
-            | responseStatus rsp == status404 && (maybe False (=="NWS_QPLUS_HY") $
-                lookup hServer $ responseHeaders rsp) = do
-                abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
-            | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
-                abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
-            | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
+  where
+    blastCloudflare' rsp
+        | responseStatus rsp == status404 && (maybe False (=="NWS_QPLUS_HY") $
+            lookup hServer $ responseHeaders rsp) = do
+            abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
+        | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
+            abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
+        | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) =
+            cloudflareChallenge
+        | otherwise = do
+            blastLog "blastCloudflare: No cloudflare spotted..."
+            md rsp
+    cloudflareChallenge = do
+        blastLog "Encountered cloudflare challenge"
+
+        ProxyS{..} <- askProxyS
+
+        (nothingyet, jobtaken) <- liftIO $ atomically $ do
+            nothingyet <- isEmptyTMVar psharedCookies
+            jobtaken <- isEmptyTMVar pcloudflareCaptchaLock
+            when (nothingyet && not jobtaken) $
+                takeTMVar pcloudflareCaptchaLock
+            return (nothingyet, jobtaken)
+        if not nothingyet || jobtaken
+          then do
+            blastLog "Waiting for cloudflare cookies..."
+
+            void $ liftIO $ atomically $ readTMVar pcloudflareCaptchaLock
+            stillnothing <- liftIO $ atomically $ isEmptyTMVar psharedCookies
+
+            if stillnothing
+              then cloudflareChallenge
+              else do
+                blastLog "Got cloudflare cookies"
+                blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
+                md =<< whatrsp
+          else (do
+            -- OH GOD
+            blastLog "locked cloudflare captcha"
+
+            chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
+            (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
+            cconf <- blast $ getCaptchaConf $ Recaptcha chKey
+
+            fname <- mkImageFileName ct
+            m <- newEmptyMVar
+            blastOut $ SolveCaptcha $ SupplyCaptcha
+                    {captchaType = CaptchaCloudflare
+                    ,captchaBytes = bytes
+                    ,captchaSend = \a -> a `deepseq` putMVar m a
+                    ,captchaConf = cconf
+                    ,captchaFilename = fname
+                    }
+            a <- takeMVar m
+            case a of
+              Answer s _ -> do
+                let
+                  _rq = (fromJust $ parseUrl url)
+                    {checkStatus = \_ _ _ -> Nothing
+                    ,redirectCount = 0}
+                  rq =
+                    [("recaptcha_challenge_key", fromString chKey)
+                    ,("recaptcha_response_key", fromString s)
+                    ,("message", "")
+                    ,("act", "captcha")
+                    ] `urlEncodedBody` _rq
+
+                void $ blast $ httpReq rq
+                ck <- blast $ getCookieJar
+
+                let cookieCount = length $ destroyCookieJar ck
+                if cookieCount == 0
+                  then do
+                    blastLog "Couldn't get Cloudflare cookies. Retrying."
+
+                    liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                    blastCloudflare md whatrsp url
+                  else do
+                    blastLog $ "Cloudflare cookie count: " ++
+                               show cookieCount
+
+                    liftIO $ atomically $ do
+                        putTMVar pcloudflareCaptchaLock ()
+                        putTMVar psharedCookies ck
+
+                    blastLog "finished working on captcha"
+                    md =<< whatrsp
+              ReloadCaptcha ->
                 cloudflareChallenge
-            | otherwise = do
-                blastLog "blastCloudflare: No cloudflare spotted..."
-                md rsp
-        cloudflareChallenge = do
-            blastLog "Encountered cloudflare challenge"
-            ProxyS{..} <- askProxyS
-            (empt, work) <- liftIO $ atomically $ do
-                empt <- isEmptyTMVar psharedCookies
-                work <- isEmptyTMVar pcloudflareCaptchaLock
-                when (empt && not work) $
-                    takeTMVar pcloudflareCaptchaLock
-                return (empt, work)
-            if not empt || work
-                then do
-                    blastLog "Waiting for cloudflare cookies..."
-                    void $ liftIO $ atomically $ readTMVar pcloudflareCaptchaLock
-                    nothingyet <- liftIO $ atomically $ isEmptyTMVar psharedCookies
-                    if nothingyet
-                        then cloudflareChallenge
-                        else do blastLog "Got cloudflare cookies"
-                                blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
-                                md =<< whatrsp
-                else handle (\(a::SomeException) -> do
-                                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
-                                throwIO a) $ do
-                    blastLog "locked cloudflare captcha"
-                    chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
-                    (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
-                    cconf <- blast $ getCaptchaConf $ Recaptcha chKey
-                    fname <- mkImageFileName ct
-                    m <- newEmptyMVar
-                    -- FIXME wait, why the hell don't we use blastCaptcha?
-                    blastOut $ SolveCaptcha $ SupplyCaptcha
-                            CaptchaCloudflare bytes (putMVar m $!!) cconf fname
-                    a <- takeMVar m
-                    case a of
-                        Answer s _ -> do
-                            let rq = urlEncodedBody
-                                    [("recaptcha_challenge_key", fromString chKey)
-                                    ,("recaptcha_response_key", fromString s)
-                                    ,("message", "")
-                                    ,("act", "captcha")
-                                    ] $ (fromJust $ parseUrl url)
-                                        {checkStatus = \_ _ _ -> Nothing
-                                        ,redirectCount = 0}
-                            void $ blast $ httpReq rq
-                            ck <- blast $ getCookieJar
-                            let ckl = length $ destroyCookieJar ck
-                            if ckl==0
-                                then do blastLog "Couldn't get Cloudflare cookies. Retrying."
-                                        liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
-                                        blastCloudflare md whatrsp url
-                                else do blastLog $ "Cloudflare cookie count: " ++ show (length $ destroyCookieJar ck)
-                                        liftIO $ atomically $ do
-                                            putTMVar pcloudflareCaptchaLock ()
-                                            putTMVar psharedCookies ck
-                                        blastLog "finished working on captcha"
-                                        md =<< whatrsp
-                        ReloadCaptcha -> cloudflareChallenge
-                        AbortCaptcha -> do
-                            blastLog "Aborting cloudflare captcha. This might have unforeseen consequences."
-                            liftIO $ atomically $ do
-                                putTMVar pcloudflareCaptchaLock ()
-                            md =<< whatrsp
+              AbortCaptcha -> do
+                blastLog "Aborting cloudflare captcha. ???????? consequences."
+
+                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                md =<< whatrsp
+            ) `catch` (\(a::SomeException) -> do
+                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                throwIO a)
 
 blastPost :: POSIXTime -> Bool -> [Part Blast (ResourceT IO)] -> Mode -> Maybe Int -> PostData -> BlastLog ()
 blastPost threadtimeout cap otherfields mode thread postdata = do

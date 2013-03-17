@@ -1,38 +1,6 @@
 module Import
     (module A
-    ,LByteString
-    ,toLBS
-    ,LText
-    ,show
-    ,decodeUtf8
-    ,if'
-    ,ifM
-    ,whenM
-    ,unlessM
-    ,whenJust
-    ,whenJustM
-    ,fromLeft
-    ,fromRight
-    ,modifyIORefM
-    ,takeUntil
-    ,dropUntil
-    ,dropUntilLP
-    ,findMap
-    ,findMapM
-    ,anyM
-    ,stripPrefixOfP
-    ,isPrefixOfP
-    ,isInfixOfP
-    ,getPrefixOfP
-    ,getInfixOfP
-    ,delimitBy
-    ,delimitByLE
-    ,slice
-    ,findWithSurroundings
-    ,findWithSurroundingsLE
-    ,justIf
-    ,untilJust
-    ,untilNothing
+    ,module Import
     ) where
 #ifdef TEST
 import Debug.Trace as A
@@ -124,6 +92,14 @@ whenJust mb m = maybe (return ()) m mb
 whenJustM :: Monad m => m (Maybe a) -> (a -> m ()) -> m ()
 whenJustM mmb m = maybe (return ()) m =<< mmb
 
+{-# INLINE fromMaybeM #-}
+fromMaybeM :: Monad m => m a -> m (Maybe a) -> m a
+fromMaybeM _nothing m = do
+    x <- m
+    case x of
+      Just _just -> return _just
+      Nothing -> _nothing
+
 {-# INLINE fromLeft #-}
 fromLeft :: Either a b -> a
 fromLeft = either id (error "fromLeft failed")
@@ -145,6 +121,15 @@ untilNothing m = do
     case x of
         Just a -> (a :) <$> untilNothing m
         Nothing -> return []
+
+{-# INLINE io #-}
+-- | 'liftIO'
+io :: MonadIO m => IO a -> m a
+io = liftIO
+
+{-# INLINE fromIOException #-}
+fromIOException :: MonadBaseControl IO m => m a -> m a -> m a
+fromIOException handler = handle (\(_ :: IOException) -> handler)
 
 -- * MISC
 

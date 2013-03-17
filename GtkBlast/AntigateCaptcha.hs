@@ -8,17 +8,16 @@ module GtkBlast.AntigateCaptcha
     ) where
 import Import hiding (on, mod)
 
-import BlastItWithPiss.Board
-import BlastItWithPiss.Blast
-import BlastItWithPiss
-
 import GtkBlast.Type_CaptchaMode
-import GtkBlast.IO
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvPart
+
+import BlastItWithPiss.Board
+import BlastItWithPiss.Blast
+import BlastItWithPiss
 
 import Text.Recognition.Antigate
 import Graphics.UI.Gtk hiding (get, set)
@@ -95,7 +94,7 @@ startAntigateThread c@(OriginStamp{..},_) = do
     apikey <- do
         weak <- get wentryantigatekey
         weah <- get wentryantigatehost
-        return ApiKey {api_host=weah, api_key=weak}
+        return def {api_host=weah, api_key=weak}
     i <- io $ forkIO $ antigateThread connection c antigateLogQueue apikey
     return (i, c)
 

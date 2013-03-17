@@ -2,18 +2,23 @@ module GtkBlast.Proxy
     (regenerateProxies
     ) where
 import Import
-import GtkBlast.IO
+
 import GtkBlast.Directory
 import GtkBlast.MuVar
 import GtkBlast.Log
 import GtkBlast.Environment
+
 import BlastItWithPiss
 import BlastItWithPiss.Blast
-import qualified Data.Map as M
-import Graphics.UI.Gtk hiding (get, set)
-import System.Directory
+
 import qualified Data.Text as T
 import qualified Data.ByteString as B (readFile)
+
+import qualified Data.Map as M
+
+import Graphics.UI.Gtk hiding (get, set)
+
+import System.Directory
 
 regenerateProxies :: E ()
 regenerateProxies = do

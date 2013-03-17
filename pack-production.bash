@@ -1,14 +1,15 @@
 #!/bin/bash
 set -m
+set -e
 sh compile-script.sh VersionIncrementerMain
 sh compile-script.sh DownloadsUploader
 delete=False
 case "$@" in
-    *nobump*)
-        echo "Nobump";;
-    *)
+    *bump*)
         echo "Bumping package version..."
         ./VersionIncrementerMain;;
+    *)
+        echo "Nobump";;
 esac
 case "$@" in
     *llvm*)
@@ -34,7 +35,7 @@ echo "DOS archive will be \"$windowszip\""
  bash build-production.bash $llvm &&\
  cd linux-dist && zip -r ../$linuxzip BlastItWithPiss/) &&\
  (echo "Packaging DOS";
- # Running any msys binary does strange things to my linux shell,
+ # Running msys sh does strange things to my linux shell,
  # input doesn't get echoed and 'echo' output is printed without a newline.
  # So instead, we'll use following workaround.
  bash build-production.bash "${llvm}wine" &&\
@@ -43,6 +44,8 @@ if [ -r $linuxzip ] && [ -r $windowszip ]
     then
         echo "Updating manifest and uploading archives..."
         ./DownloadsUploader $currentversion $linuxzip $windowszip "True" $delete
+        echo "Bumping package version..."
+        ./VersionIncrementerMain
     else
         echo "Something bad happened. Scroll up for error messages."
 fi

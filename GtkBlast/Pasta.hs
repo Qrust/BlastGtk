@@ -6,11 +6,7 @@ module GtkBlast.Pasta
     ,pastaEnvPart
     ) where
 import Import hiding (on)
-import BlastItWithPiss
-import BlastItWithPiss.Parsing
-import BlastItWithPiss.Choice
-import BlastItWithPiss.MonadChoice
-import GtkBlast.IO
+
 import GtkBlast.MuVar
 import GtkBlast.Directory
 import GtkBlast.Environment
@@ -19,13 +15,23 @@ import GtkBlast.EnvPart
 import GtkBlast.Log
 import GtkBlast.Type_PastaSet
 import GtkBlast.GtkUtils
+
+import BlastItWithPiss
+import BlastItWithPiss.Parsing
+import BlastItWithPiss.Choice
+import BlastItWithPiss.MonadChoice
+
 import System.Random.Shuffle
-import System.Directory
-import Control.Concurrent.STM
+
 import qualified Data.Text as T
 import qualified Data.ByteString as B
+
+import System.Directory
+
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (get)
+
+import Control.Concurrent.STM
 
 readPasta :: FilePath -> IO [String]
 readPasta f =
