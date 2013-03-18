@@ -13,24 +13,23 @@ import Network.Socket
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
-import System.IO (print, putStrLn)
 import Paths_blast_it_with_piss
 
 data Config = Config
-    { socks :: Bool
-    , append :: Bool
-    , quiet :: Bool
-    , atatime :: Int
-    , timeout :: Int
-    , strBoard :: String
-    , thread :: Int
-    , input :: String
-    , output :: String
-    , banned :: String
-    , four'o'four :: String
-    , cloudflare_captcha :: String
-    , cloudflare_ban :: String
-    , bad :: String
+    {socks :: Bool
+    ,append :: Bool
+    ,quiet :: Bool
+    ,atatime :: Int
+    ,timeout :: Int
+    ,strBoard :: String
+    ,thread :: Int
+    ,input :: String
+    ,output :: String
+    ,banned :: String
+    ,four'o'four :: String
+    ,cloudflare_captcha :: String
+    ,cloudflare_ban :: String
+    ,bad :: String
     -- , fast :: Bool
     }
   deriving (Show, Data, Typeable)

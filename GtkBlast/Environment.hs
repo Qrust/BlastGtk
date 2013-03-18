@@ -89,7 +89,7 @@ data Env = E
     ,wentrypastafile :: Entry
     ,wcheckescapeinv :: CheckButton
     ,wcheckescapewrd :: CheckButton
-    ,wcheckshufflereposts :: CheckButton
+    ,wcheckshuffle :: CheckButton
     ,wcheckrandomquote :: CheckButton
     ,wchecksage :: CheckButton
     ,wspinmaxlines :: SpinButton
@@ -150,7 +150,7 @@ instance NFData Env where
         `seq` wentrypastafile
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd
-        `seq` wcheckshufflereposts
+        `seq` wcheckshuffle
         `seq` wchecksage
         `seq` wspinmaxlines
         `seq` ()

@@ -4,6 +4,7 @@ import Import hiding (loop, fail, all)
 import Paths_blast_it_with_piss
 
 import BlastItWithPiss.Post
+import BlastItWithPiss.PastaGen
 import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
 import BlastItWithPiss.Parsing
@@ -28,14 +29,16 @@ import System.Environment
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
 
+-- NOTE cmdargs is deeply magical, won't let me use strict fields
 data Config = Config
-    {_socks        :: !Bool
-    ,_board        :: !String
-    ,_proxyFile    :: !String
-    ,_antigateKey  :: !String
-    ,_antigateHost :: !String
-    ,_retryCaptcha :: !Bool
-    ,_imageDir     :: !(Maybe FilePath)
+    {_socks        :: Bool
+    ,_board        :: String
+    ,_proxyFile    :: String
+    ,_antigateKey  :: String
+    ,_antigateHost :: String
+    ,_retryCaptcha :: Bool
+    ,_imageDir     :: (Maybe FilePath)
+    ,_pastaFile    :: (Maybe FilePath)
     }
   deriving (Show, Data, Typeable)
 
@@ -46,6 +49,7 @@ data State = State
     ,proxies      :: ![BlastProxy]
     ,retryCaptcha :: !Bool
     ,imageDir     :: !(Maybe FilePath)
+    ,pastas       :: ![String]
     }
 
 type M = ReaderT State IO
@@ -53,13 +57,14 @@ type M = ReaderT State IO
 impureAnnotatedCmdargsConfig :: Config
 impureAnnotatedCmdargsConfig =
     Config
-        {_socks = False &= help "Файл с проксями содержит Socks5 прокси, а не HTTP?"
+        {_socks = False &= explicit &= name "s" &= name "socks" &= help "Файл с проксями содержит Socks5 прокси, а не HTTP?"
         ,_board = [] &= argPos 1 &= typ "/Доска/"
         ,_proxyFile = [] &= argPos 2 &= typ "Файл_с_проксями"
         ,_antigateKey = [] &= argPos 0 &= typ "Ключ_антигейта"
-        ,_antigateHost = "antigate.com" &= explicit &= name "a" &= name "antigate_host" &= help "Домен апи антигейта, например captchabot.com"
-        ,_retryCaptcha = False &= explicit &= name "r" &= name "retrycaptcha" &= help "Пробовать решить капчу снова при фейле?"
-        ,_imageDir = Nothing &= explicit &= name "i" &= name "imagedir" &= help "Папка с картинками" &= typ "ПАПКА"
+        ,_antigateHost = "antigate.com" &= explicit &= name "a" &= name "antigate-host" &= help "Домен апи антигейта, например captchabot.com"
+        ,_retryCaptcha = False &= explicit &= name "r" &= name "retry-captcha" &= help "Пробовать решить капчу снова при фейле?"
+        ,_imageDir = Nothing &= explicit &= name "i" &= name "image-dir" &= help "Папка с картинками" &= typ "ПАПКА"
+        ,_pastaFile = Nothing &= explicit &= name "p" &= name "pasta-file" &= help "Файл с пастой" &= typ "ФАЙЛ"
         }
         &= program "smyvalka"
         &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
@@ -207,15 +212,18 @@ createThread retrycaptcha State{..} proxy mvar = do
             ,__ReportBad = badCaptcha} = do
         handle (\(e::SomeException) -> liftIO $ print e) $ do
             putStrLn $ "{" ++ show proxy ++ "} Started."
-            txt <- generateSymbolString 300
+            pasta <-
+                if null pastas
+                  then generateSymbolString 300
+                  else chooseFromList pastas
             let otherfields = ssachLastRecordedFields board
-            req <- prepare board Nothing
-                    (PostData "" txt (Just image) False False False False)
+            (!req, ~_) <- prepare board Nothing
+                    (PostData "" pasta (Just image) False False False False)
                       cAnswer otherfields ssachLengthLimit
             fix $ \goto -> do
-                outcome <- fmap fst $ runBlast manager st $ do
+                (!outcome, ~_) <- runBlast manager st $ do
                     httpSetProxy proxy
-                    post req
+                    post (req, Success)
                 putStrLn $ "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
                 case outcome of
                     PostRejected -> goto
@@ -268,6 +276,7 @@ main = withSocketsDo $ do
                 map (\x -> maybe (Left x) Right $ readBlastProxy _socks x)
                   rawIps
         forM_ errors $ hPutStrLn stderr . ("Couldn't read \"" ++) . (++ "\" as a proxy")
+        pastas <- fromMaybe [] <$> maybe (return Nothing) readPastaFile _pastaFile
         withManagerSettings def{managerConnCount=1000000} $
             \m -> liftIO $ runReaderT mainloop
                 State {manager = m
@@ -276,4 +285,5 @@ main = withSocketsDo $ do
                       ,proxies = proxies
                       ,retryCaptcha = _retryCaptcha
                       ,imageDir = _imageDir
+                      ,pastas = pastas
                       }

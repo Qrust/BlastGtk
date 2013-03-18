@@ -14,13 +14,10 @@ import GtkBlast.GtkUtils
 import GtkBlast.Directory
 
 import BlastItWithPiss
-import BlastItWithPiss.Blast
-import BlastItWithPiss.Post
 import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
 import BlastItWithPiss.MonadChoice
 
-import System.FilePath
 import System.Directory
 
 import Control.Concurrent.STM
@@ -48,15 +45,26 @@ imageGen imagefolder agitka = do
     thereIsAgitkaFile <- doesFileExist agitkafile
 
     useAgitka <-
-        if agitka && thereIsAgitkaFile
-          then fromList [(True, 15), (False, 85)]
-          else return False
+      if agitka && thereIsAgitkaFile
+        then
+          if null images
+            then
+              return True
+            else
+              fromList [(True, 15), (False, 85)]
+        else
+          return False
 
     if useAgitka
       then
         readImageWithoutJunk agitkafile
       else
-        fromMaybeM builtinImageGen $ folderImageGen imagefolder
+        fromMaybeM builtinImageGen $
+          if null images
+            then return Nothing
+            else do
+              fromIOException (return Nothing) $ fmap Just $
+                readImageWithoutJunk =<< chooseFromList images
 
 imageEnvPart :: Builder -> EnvPart
 imageEnvPart b = EP

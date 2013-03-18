@@ -17,12 +17,11 @@ module BlastItWithPiss
     ,sortSsachBoardsByPopularity
 
     -- FIXME
-    ,TempBlastCaptchaChannel(..)
+    ,TempBlastPastaChannel(..)
     ) where
 import Import
 
 import BlastItWithPiss.Blast
-import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
@@ -46,7 +45,7 @@ import qualified Text.Show as Show
 import Text.HTML.TagSoup(Tag)
 
 data ShSettings = ShSettings
-    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
+    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel)
     ,timagegen :: TVar (IO Image)
     --NOTE all browser state accumulated in gens is lost.
     ,tuseimages :: TVar Bool
@@ -300,8 +299,8 @@ abortWithOutcome o = do
     throwIO (AbortOutcome o)
 -- /HACK
 
-data TempBlastCaptchaChannel =
-    TBCC{nopastas :: Bool
+data TempBlastPastaChannel =
+    TBPC{nopastas :: Bool
         ,escinv :: Bool
         ,escwrd :: Bool
         ,pasta :: String} 
@@ -310,15 +309,17 @@ blastPostData :: Mode -> (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> 
 blastPostData mode getThread mpastapage thread = do
     ShSettings{..} <- askShS
     blastLog "Choosing pasta..."
-    TBCC{..} <- do
+    TBPC{..} <- do
         pastagen <- liftIO $ readTVarIO tpastagen
         r <- ask
         s <- lift get
         st <- blast getBrowserState
         manager <- blast getManager
-        liftIO $ pastagen
-            (runBlast manager st . runBlastLogSt r s . getThread)
-                    mpastapage thread
+        liftIO $
+            pastagen
+                (runBlast manager st . runBlastLogSt r s . getThread)
+                mpastapage
+                thread
     {-when nopastas $ do
         blastOut NoPastas
         blastLog "threw NoPastas"-}

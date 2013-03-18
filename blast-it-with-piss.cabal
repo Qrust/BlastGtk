@@ -91,6 +91,7 @@ library
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
+        ,BlastItWithPiss.PastaGen
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -139,6 +140,7 @@ executable gtkblast
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
+        ,BlastItWithPiss.PastaGen
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -249,6 +251,7 @@ executable proxychecker
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
+        ,BlastItWithPiss.PastaGen
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -333,6 +336,7 @@ executable smyvalka
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
+        ,BlastItWithPiss.PastaGen
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice

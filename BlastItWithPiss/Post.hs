@@ -33,31 +33,6 @@ data PostData = PostData
 instance NFData PostData where
     rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
 
-instance NFData (RequestBody a) where
-    rnf (RequestBodyBS b) = rnf b
-    rnf (RequestBodyLBS b) = rnf b
-    rnf (RequestBodyBuilder i b) = i `seq` b `seq` ()
-    rnf _ = ()
-
-instance NFData (Request a) where
-    rnf r =
-        method r `deepseq`
-        secure r `deepseq`
-        host r `deepseq`
-        port r `deepseq`
-        path r `deepseq`
-        queryString r `deepseq`
-        requestHeaders r `deepseq`
-        requestBody r `deepseq`
-        proxy r `deepseq`
-        socksProxy r `deepseq`
-        rawBody r `deepseq`
-        decompress r `deepseq`
-        redirectCount r `deepseq`
-        checkStatus r `deepseq`
-        responseTimeout r `deepseq`
-        ()
-
 prepare :: (MonadChoice m, Failure HttpException m, MonadResource m') => Board -> Maybe Int -> PostData -> CAnswer m m' -> [Part m m'] -> Int -> m (Request m', Outcome)
 prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) otherfields maxlength = do
     let (unesctext, rest) =

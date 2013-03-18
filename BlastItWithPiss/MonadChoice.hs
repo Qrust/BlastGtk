@@ -1,9 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module BlastItWithPiss.MonadChoice
     (module Control.Monad.Random
+
     ,MonadChoice
+
     ,chooseFromList
-    ,mchooseFromList
+    ,chooseFromListMaybe
+
     ,generateRandomString
     ,generateSymbolString
     ) where
@@ -20,9 +23,9 @@ chooseFromList :: MonadChoice m => [a] -> m a
 chooseFromList [] = error "chooseFromList supplied with empty list."
 chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)
 
-mchooseFromList :: (Monoid a, MonadChoice m) => [a] -> m a
-mchooseFromList [] = return mempty
-mchooseFromList l = (l!!) <$> getRandomR (0, length l - 1)
+chooseFromListMaybe :: MonadChoice m => [a] -> m (Maybe a)
+chooseFromListMaybe [] = return Nothing
+chooseFromListMaybe l = Just . (l!!) <$> getRandomR (0, length l - 1)
 
 {-# INLINE generateRandomString #-}
 generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String

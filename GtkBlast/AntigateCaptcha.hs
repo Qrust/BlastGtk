@@ -172,16 +172,16 @@ deactivateAntigateCaptcha = do
 antigateCaptchaEnvPart :: Builder -> EnvPart
 antigateCaptchaEnvPart b = EP
     (\e c -> do
+        let restart = do
+                E{..} <- ask
+                whenM ((==Antigate) <$> get captchaMode) $ do
+                    addAntigateCaptchas =<< deactivateAntigateCaptcha
+
         wentryantigatekey <- (rec coAntigateKey $ builderGetObject b castToEntry "entryantigatekey") e c
         wentryantigatehost <- (rec coAntigateHost $ builderGetObject b castToEntry "entryantigatehost") e c
 
         pendingAntigateCaptchas <- newIORef []
         antigateLogQueue <- atomically newTQueue
-
-        let restart = do
-                E{..} <- ask
-                whenM ((==Antigate) <$> get captchaMode) $ do
-                    addAntigateCaptchas =<< deactivateAntigateCaptcha
 
         void $ on wentryantigatekey entryActivate $ runE e restart
         void $ on wentryantigatehost entryActivate $ runE e restart

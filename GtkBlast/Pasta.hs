@@ -17,14 +17,11 @@ import GtkBlast.Type_PastaSet
 import GtkBlast.GtkUtils
 
 import BlastItWithPiss
+import BlastItWithPiss.PastaGen
 import BlastItWithPiss.Parsing
-import BlastItWithPiss.Choice
 import BlastItWithPiss.MonadChoice
 
 import System.Random.Shuffle
-
-import qualified Data.Text as T
-import qualified Data.ByteString as B
 
 import System.Directory
 
@@ -33,45 +30,72 @@ import qualified Graphics.UI.Gtk as G (get)
 
 import Control.Concurrent.STM
 
-readPasta :: FilePath -> IO [String]
-readPasta f =
-    filter (not . all isSpace) . delimitByLE "\n\n\n\n" .
-        T.unpack . decodeUtf8 <$> B.readFile f
+{-# INLINE shuffleWords #-}
+shuffleWords :: String -> IO String
+shuffleWords = fmap unwords . shuffleM . words
 
-generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastCaptchaChannel)
+-- | Depending on the environment, generate a function appending a random quote
+-- or return text intact
+makeRQuoter :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
+makeRQuoter = do
+    toQuote <- get =<< asks wcheckrandomquote
+    if toQuote
+      then return (genPastaRandomQuote 100 0)
+      else return (\_ _ _ -> return)
+
+-- | Depending on the environment, generate a function to shuffle words in text
+-- or return text intact
+makeShuffler :: E (String -> IO String)
+makeShuffler = do
+    toShuf <- get =<< asks wcheckshuffle
+    if toShuf
+      then return shuffleWords
+      else return return
+
+-- | > 'makeShuffler' '.' 'makeRquoter'
+makePostProc :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
+makePostProc = do
+    rquoter <- makeRQuoter
+    shuffler <- makeShuffler
+    return (\a b c s -> shuffler =<< rquoter a b c s)
+
+generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel)
 generatePastaGen PastaFile = do
     E{..} <- ask
-    pastas <- appFile [] readPasta =<< get wentrypastafile
-    toQuote <- get wcheckrandomquote
-    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
-    ei <- get wcheckescapeinv
-    ew <- get wcheckescapewrd
-    let x a b c = fmap (TBCC (null pastas) ei ew) $
-                    rquoter a b c =<< mchooseFromList pastas
-    return x
+
+    !pastadir <- get wentrypastafile
+    !pastas <- appFile [] (fmap (fromMaybe []) . readPastaFile) pastadir
+
+    !postproc <- makePostProc
+
+    !ei <- get wcheckescapeinv
+    !ew <- get wcheckescapewrd
+
+    return $ \a b c -> fmap (TBPC (null pastas) ei ew) $
+        postproc a b c =<< fromMaybe "" <$> chooseFromListMaybe pastas
 generatePastaGen Symbol = do
     E{..} <- ask
-    toQuote <- get wcheckrandomquote
-    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
-    return $ \a b c -> fmap (TBCC False False False) $
-        rquoter a b c =<< generateSymbolString 5000
+
+    !postproc <- makePostProc
+
+    return $ \a b c -> fmap (TBPC False False False) $
+        postproc a b c =<< generateSymbolString 5000
 generatePastaGen FromThread = do
     E{..} <- ask
 
-    toShuf <- get wcheckshufflereposts
-    let shuf = if toShuf then shuf' else return
+    !shuffler <- makeShuffler
 
-    quote <- get wcheckrandomquote
+    !quote <- get wcheckrandomquote
 
-    let x a b c = fmap (TBCC False False False) $ shuf =<< genPastaFromReposts quote a b c
-    return x
-  where
-    shuf' = fmap unwords . shuffleM . words
+    return $ \a b c -> fmap (TBPC False False False) $
+        shuffler =<< genPastaFromReposts quote a b c
 generatePastaGen NoPasta = do
     E{..} <- ask
-    toQuote <- get wcheckrandomquote
-    let rquoter = if toQuote then genPastaRandomQuote 100 0 else \_ _ _ -> return
-    return $ \a b c -> TBCC True False False <$> rquoter a b c ""
+
+    !postproc <- makePostProc
+
+    return $ \a b c -> fmap (TBPC True False False) $
+        postproc a b c ""
 
 pastaDate :: PastaSet -> E ModificationTime
 pastaDate PastaFile =
@@ -97,7 +121,7 @@ pastaEnvPart b = EP
 
         wcheckescapeinv <- (rec coEscapeInv $ builderGetObject b castToCheckButton "checkescapeinv") e c
         wcheckescapewrd <- (rec coEscapeWrd $ builderGetObject b castToCheckButton "checkescapewrd") e c
-        wcheckshufflereposts <- (rec coShuffleReposts $ builderGetObject b castToCheckButton "checkshufflereposts") e c
+        wcheckshuffle <- (rec coShuffleReposts $ builderGetObject b castToCheckButton "checkshuffle") e c
         wcheckrandomquote <- (rec coRandomQuote $ builderGetObject b castToCheckButton "checkrandomquote") e c
 
         let bolall w1 w2 = do
@@ -135,12 +159,20 @@ pastaEnvPart b = EP
 
         pwcei <- newIORef =<< get wcheckescapeinv
         pwcew <- newIORef =<< get wcheckescapewrd
-        let pastafileassoc = [(wcheckescapeinv, pwcei), (wcheckescapewrd, pwcew)]
-        let pastafilewidgets = [wcheckescapeall, wcheckescapeinv, wcheckescapewrd]
-
-        pwcsr <- newIORef =<< get wcheckshufflereposts
-        let fromthreadassoc = [(wcheckshufflereposts, pwcsr)]
-        let fromthreadwidgets = [wcheckshufflereposts]
+        pwcsr <- newIORef =<< get wcheckshuffle
+        let
+          pastafileassoc =
+            [(wcheckescapeinv, pwcei)
+            ,(wcheckescapewrd, pwcew)
+            ]
+          pastafilewidgets =
+            [wcheckescapeall
+            ,wcheckescapeinv
+            ,wcheckescapewrd]
+          fromthreadassoc =
+            [] :: [(CheckButton, IORef Bool)]
+          fromthreadwidgets =
+            [] :: [CheckButton]
 
         let setSensitive t assoc senswidgets = do
                 if t
@@ -197,7 +229,7 @@ pastaEnvPart b = EP
             writeIORef pastaMod nullTime -- force update
             runE e $ regeneratePastaGen
 
-        void $ on wcheckshufflereposts buttonActivated $ do
+        void $ on wcheckshuffle buttonActivated $ do
             writeIORef pastaMod nullTime -- force update
             runE e $ regeneratePastaGen
 
@@ -207,11 +239,13 @@ pastaEnvPart b = EP
 
         updAll
 
-        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew, wcheckshufflereposts, pwcsr, wcheckrandomquote)
+        return (pastaSet, pastaMod, wentrypastafile, wcheckescapeinv, wcheckescapewrd, pwcei, pwcew, wcheckshuffle, pwcsr, wcheckrandomquote)
         )
     (\(ps',_,wepf,wei,wew,pwei,pwew,wsr,pwsr,wcrq) c -> do
         ps <- get ps'
         pf <- get wepf
+        -- if widget is active, use current value, else use the one which was
+        -- set when it was active
         ei <- ifM (G.get wei widgetSensitive) (get wei) (get pwei)
         ew <- ifM (G.get wew widgetSensitive) (get wew) (get pwew)
         sr <- ifM (G.get wsr widgetSensitive) (get wsr) (get pwsr)
@@ -228,6 +262,6 @@ pastaEnvPart b = EP
          ,wentrypastafile=wepf
          ,wcheckescapeinv=wcei
          ,wcheckescapewrd=wcew
-         ,wcheckshufflereposts=wcsr
+         ,wcheckshuffle=wcsr
          ,wcheckrandomquote=wcrq
          })

@@ -1,4 +1,5 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module BlastItWithPiss.Blast
     (module Control.Exception.Lifted
 
@@ -153,6 +154,31 @@ instance NFData BlastProxy where
     rnf (HttpProxy p) = rnf p
     rnf (SocksProxy p) = rnf p
     rnf NoProxy = ()
+
+instance NFData (RequestBody a) where
+    rnf (RequestBodyBS b) = rnf b
+    rnf (RequestBodyLBS b) = rnf b
+    rnf (RequestBodyBuilder i b) = i `seq` b `seq` ()
+    rnf _ = ()
+
+instance NFData (Request a) where
+    rnf r =
+        method r `deepseq`
+        secure r `deepseq`
+        host r `deepseq`
+        port r `deepseq`
+        path r `deepseq`
+        queryString r `deepseq`
+        requestHeaders r `deepseq`
+        requestBody r `deepseq`
+        proxy r `deepseq`
+        socksProxy r `deepseq`
+        rawBody r `deepseq`
+        decompress r `deepseq`
+        redirectCount r `deepseq`
+        checkStatus r `deepseq`
+        responseTimeout r `deepseq`
+        ()
 
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =

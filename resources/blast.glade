@@ -917,9 +917,40 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="checkshufflereposts">
-                                    <property name="label" translatable="yes">Перемешивать слова
-(Посты из тредов)</property>
+                                  <object class="GtkCheckButton" id="check-thread">
+                                    <property name="label" translatable="yes">Со_здавать треды</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Если вы отключили прикрепление изображений, то вместо ОП-пикчи будет использоваться капча, но если при выключенных пикчах вы включили постинг агитки, то ОП-пикчей всегда будет она.</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="draw_indicator">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkCheckButton" id="checksage">
+                                    <property name="label" translatable="yes">Са_гать треды</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Треды всегда сагаются без пикчи, выключите сажу если вам нужно всегда постить пикчу</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="draw_indicator">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">2</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkCheckButton" id="checkshuffle">
+                                    <property name="label" translatable="yes">Перемешивать слова</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
@@ -928,22 +959,7 @@
                                   <packing>
                                     <property name="expand">True</property>
                                     <property name="fill">True</property>
-                                    <property name="position">1</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkCheckButton" id="checkescapeall">
-                                    <property name="label" translatable="yes">Обходить вордфильтр
-(АВТОБАН, Паста из файла)</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="draw_indicator">True</property>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">2</property>
+                                    <property name="position">3</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -960,22 +976,6 @@
                                   <packing>
                                     <property name="expand">True</property>
                                     <property name="fill">True</property>
-                                    <property name="position">3</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkCheckButton" id="check-thread">
-                                    <property name="label" translatable="yes">Со_здавать треды</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Если вы отключили прикрепление изображений, то вместо ОП-пикчи будет использоваться капча, но если при выключенных пикчах вы включили постинг агитки, то ОП-пикчей всегда будет она.</property>
-                                    <property name="use_underline">True</property>
-                                    <property name="draw_indicator">True</property>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
                                     <property name="position">4</property>
                                   </packing>
                                 </child>
@@ -997,13 +997,12 @@ _ручной вайп</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="checksage">
-                                    <property name="label" translatable="yes">Са_гать треды</property>
+                                  <object class="GtkCheckButton" id="checkescapeall">
+                                    <property name="label" translatable="yes">Обходить вордфильтр
+(АВТОБАН, Паста из файла)</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="tooltip_text" translatable="yes">Треды всегда сагаются без пикчи, выключите сажу если вам нужно всегда постить пикчу</property>
-                                    <property name="use_underline">True</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
