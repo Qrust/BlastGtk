@@ -65,8 +65,8 @@ getToVersion s' =
        stripPrefix "BlastItWithPiss-windows-x86-" s
 
 only201 :: Status -> ResponseHeaders -> CookieJar -> Maybe SomeException
-only201 s@Status{statusCode=201} e cj = Just $ toException $ StatusCodeException s e cj
-only201 _ _ _ = Nothing
+only201 s@Status{statusCode=201} e cj = Nothing
+only201 s e cj = Just $ toException $ StatusCodeException s e cj
 
 fromJsonParser :: FromJSON a => LByteString -> (a -> Parser b) -> b
 fromJsonParser lbs m =
@@ -129,13 +129,14 @@ uploadZip pass arcfilename desc arcbytes = withManager $ \m -> do
             ,checkStatus = only201
             }
 
-    liftIO $ putStrLn "Part1"
-    lbs <- responseBody <$> httpLbs req m
-    boundary <- liftIO $ webkitBoundary
-    let (req,_) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
+    _e <- try $ do
+        liftIO $ putStrLn "Part1"
+        lbs <- responseBody <$> httpLbs req m
+        boundary <- liftIO $ webkitBoundary
+        let (req,_) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
 
-    liftIO $ putStrLn "Part2"
-    _e <- try $ void $ httpLbs req m
+        liftIO $ putStrLn "Part2"
+        void $ httpLbs req m
 
     case _e of
       Left (StatusCodeException Status{statusCode=401} _ _) -> do
