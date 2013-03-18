@@ -360,8 +360,7 @@ blastCaptcha thread = do
         Left f -> do
             blastLog $ "Got presolved captcha " ++ show f
             return (False, Just (f, const $ return ()))
-        Right chKey -> do
-            let _ = chKey `asTypeOf` currentSsachCaptchaType
+        Right (chKey :: CurrentSsachCaptchaType) -> do
             blastLog "Downloadng captcha"
             (bytes, ct) <- blast $ getCaptchaImage chKey
             cconf <- blast $ getCaptchaConf chKey

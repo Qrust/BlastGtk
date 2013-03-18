@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes, ExistentialQuantification #-}
 module BlastItWithPiss.Captcha
-    (currentSsachCaptchaType
+    (CurrentSsachCaptchaType
 
     ,unsafeMakeYandexCaptchaAnswer
 
@@ -28,19 +28,18 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Text.Recognition.Antigate
 
+type CurrentSsachCaptchaType = Yandex
+
 ssachRecaptchaKey :: String
 ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
 
 cloudflareRecaptchaKey :: String
 cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
-
+{-
 ssachSolveMediaKey :: String
 ssachSolveMediaKey = "oIzJ06xKCH-H6PKr8OLVMa26G06kK3qh"
-
+-}
 type UserCode = String
-
-currentSsachCaptchaType :: Yandex
-currentSsachCaptchaType = undefined
 
 data CAnswer m m' = CAnswer
     { cAdaptive :: !Bool -- ^ Adaptive captcha?
@@ -48,7 +47,6 @@ data CAnswer m m' = CAnswer
     }
   deriving Show
 
--- | Kludge
 instance Default (CAnswer m m') where
     def = CAnswer True []
 
@@ -56,13 +54,16 @@ class Captcha a where
     -- | Check if any captcha is needed and return either premade fields or key
     -- needed to solve challenge.
     getNewCaptcha :: (MonadChoice m, MonadResource m') => Board -> Maybe Int -> UserCode -> Blast (Either (CAnswer m m') a)
+
     -- | If they use systems like recaptcha or solveMedia, then we know their
     -- public key before hand, so we don't have to query makaba to get our challenge.
     unsafeGenNewCaptcha :: Maybe (Blast a)
     unsafeGenNewCaptcha = Nothing
-    -- reloadCaptcha :: a -> Blast ()
+
     getCaptchaImage :: a -> Blast (LByteString, MimeType)
+
     applyCaptcha :: (MonadChoice m, MonadResource m') => a -> String -> Blast (CAnswer m m')
+
     getCaptchaConf :: a -> Blast CaptchaConf
 
 newtype Recaptcha = Recaptcha {recaptchaKey :: String}
@@ -76,12 +77,7 @@ instance Captcha Recaptcha where
 
     unsafeGenNewCaptcha =
         Just (Recaptcha <$> recaptchaChallengeKey ssachRecaptchaKey)
-{-
-    reloadCaptcha (Recaptcha chKey) = do
-        void $ httpGetLbs $
-            "http://www.google.com/recaptcha/api/reload?c=" ++ chKey ++ "&k=" ++
-                ssachRecaptchaKey ++ "&reason=r&type=image&lang=en"
--}
+
     getCaptchaImage (Recaptcha chKey) = do
         res <- httpGetLbs $
             "http://www.google.com/recaptcha/api/image?c=" ++ chKey

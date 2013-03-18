@@ -122,8 +122,7 @@ antigate board key proxy maybeImageDir = do
                           then "Adaptive captcha failed"
                           else "Guessed captcha, but it was wrong: " ++ show  a
                 }
-        Right chKey -> do
-            let _ = chKey `asTypeOf` currentSsachCaptchaType
+        Right (chKey :: CurrentSsachCaptchaType) -> do
             cconf <- getCaptchaConf chKey
             (captchaBytes, ct) <- getCaptchaImage chKey
             gen <- mkImageFileName ct
