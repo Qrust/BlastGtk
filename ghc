@@ -2,6 +2,7 @@
 
 ghc -package-confdist/package.conf.inplace \
 -idist/build/autogen \
+-isrc \
 -optP-include -optPdist/build/autogen/cabal_macros.h \
 -XNoImplicitPrelude \
 -XPackageImports \
