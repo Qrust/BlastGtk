@@ -1,5 +1,6 @@
 :set -package-confdist/package.conf.inplace
 :set -idist/build/autogen
+:set -isrc
 :set -optP-include -optPdist/build/autogen/cabal_macros.h
 :set -XNoImplicitPrelude
 :set -XPackageImports

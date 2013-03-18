@@ -112,6 +112,8 @@ library
     ghc-options: -Wall -threaded
 
     default-language: Haskell2010
+    
+    hs-source-dirs: src
 
     default-extensions:
          NoImplicitPrelude
@@ -221,6 +223,8 @@ executable gtkblast
     ghc-options: -Wall -threaded
 
     default-language: Haskell2010
+    
+    hs-source-dirs: src
 
     default-extensions:
          NoImplicitPrelude
@@ -303,6 +307,8 @@ executable proxychecker
     ghc-options: -Wall -threaded
 
     default-language: Haskell2010
+    
+    hs-source-dirs: src
 
     default-extensions:
          NoImplicitPrelude
@@ -389,6 +395,8 @@ executable smyvalka
     ghc-options: -Wall -threaded
 
     default-language: Haskell2010
+    
+    hs-source-dirs: src
 
     default-extensions:
          NoImplicitPrelude
@@ -409,35 +417,37 @@ executable smyvalka
         ,FlexibleInstances
         ,TypeSynonymInstances
 
---~executable cliblast
---~    main-is: CliMain.hs
---~    build-depends: base >= 4.5 && < 5
---~                  ,process
---~                  ,network
---~                  ,stm
---~                  ,bytestring
---~                  ,blast-it-with-piss
---~
---~    if flag(gtkonly)
---~        buildable: False
---~
---~    if flag(bindist)
---~        cpp-options: -DBINDIST
---~        build-depends: executable-path
---~
---~    ghc-options: -Wall -threaded
---~
---~    default-language: Haskell2010
---~
---~    default-extensions:
---~                NoImplicitPrelude
---~               ,CPP
---~               ,PatternGuards
---~               ,OverloadedStrings
---~               ,RecordWildCards
---~               ,ScopedTypeVariables
---~               ,PackageImports
---~               ,BangPatterns
+--executable cliblast
+--    main-is: CliMain.hs
+--    build-depends: base >= 4.5 && < 5
+--                  ,process
+--                  ,network
+--                  ,stm
+--                  ,bytestring
+--                  ,blast-it-with-piss
+--
+--    if flag(gtkonly)
+--        buildable: False
+--
+--    if flag(bindist)
+--        cpp-options: -DBINDIST
+--        build-depends: executable-path
+--
+--    ghc-options: -Wall -threaded
+--
+--    default-language: Haskell2010
+--   
+--    hs-source-dirs: src
+--
+--    default-extensions:
+--                NoImplicitPrelude
+--               ,CPP
+--               ,PatternGuards
+--               ,OverloadedStrings
+--               ,RecordWildCards
+--               ,ScopedTypeVariables
+--               ,PackageImports
+--               ,BangPatterns
 
 -- updater app. Checks and installs updates, then runs gtkblast
 executable BlastItWithPiss
@@ -494,6 +504,8 @@ executable BlastItWithPiss
     ghc-options: -Wall -threaded
 
     default-language: Haskell2010
+    
+    hs-source-dirs: src
 
     default-extensions:
          NoImplicitPrelude
