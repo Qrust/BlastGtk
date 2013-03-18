@@ -6,7 +6,6 @@ module BlastItWithPiss.Captcha
 
     ,ssachRecaptchaKey
     ,cloudflareRecaptchaKey
-    ,ssachSolveMediaKey
 
     ,CAnswer(..)
 

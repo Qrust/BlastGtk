@@ -222,7 +222,7 @@ main = do
 
     uploadZips
         [(lafilename, "Прыщи", labytes)
-        ,(wafilename, "Сперма", wabytes)
+        ,(wafilename, "Сперма. Версия для прыщей работает гораздо быстрее и лучше", wabytes)
         ]
 
     putStrLn "Done uploading."
