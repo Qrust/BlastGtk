@@ -196,38 +196,41 @@ createThread
     -> MVar (Maybe TempAntigateRes)
     -> IO (MVar ())
 createThread retrycaptcha State{..} proxy mvar = do
-    putStrLn $ "Creating thread {" ++ show proxy ++ "}"
     m <- newEmptyMVar
     void $ forkIO $ do
         _x <- takeMVar mvar
         case _x of
-            Nothing -> do
-                putMVar m ()
-            Just _x -> go m _x
+          Nothing -> do
+            putStrLn $ "Thread creation failed for {" ++ show proxy ++ "}"
+            putMVar m ()
+          Just _x -> do
+            putStrLn $ "Creating thread {" ++ show proxy ++ "}"
+            go m _x
     return m
   where
     go m TAR{__CAnswer = cAnswer
             ,__PostImage = image
             ,__BrowserState = st
-            ,__ReportBad = badCaptcha} = do
-        handle (\(e::SomeException) -> liftIO $ print e) $ do
-            putStrLn $ "{" ++ show proxy ++ "} Started."
+            ,__ReportBad = badCaptcha} = (do
+        handle (\(e::SomeException) -> print e) $ do
             pasta <-
                 if null pastas
                   then generateSymbolString 300
                   else chooseFromList pastas
             let otherfields = ssachLastRecordedFields board
+
             (!req, ~_) <- prepare board Nothing
                     (PostData "" pasta (Just image) False False False False)
                       cAnswer otherfields ssachLengthLimit
-            fix $ \goto -> do
+
+            fix $ \recurse -> do
                 (!outcome, ~_) <- runBlast manager st $ do
                     httpSetProxy proxy
                     post (req, Success)
                 putStrLn $ "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
                 case outcome of
-                    PostRejected -> goto
-                    Five'o'ThreeError -> goto
+                    PostRejected -> recurse
+                    Five'o'ThreeError -> recurse
                     o | o==NeedCaptcha || o==WrongCaptcha -> do
                         badCaptcha
                         when retrycaptcha $ do
@@ -236,7 +239,7 @@ createThread retrycaptcha State{..} proxy mvar = do
                                 antigate board antigateKey proxy imageDir
                             go m r
                     _ -> return ()
-        putMVar m ()
+        ) `finally` putMVar m ()
 
 mainloop :: M ()
 mainloop = do
