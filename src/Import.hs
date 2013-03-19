@@ -66,7 +66,12 @@ show = fromString . S.show
 decodeUtf8 :: ByteString -> Text
 decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
 
--- * CONTROL STRUCTURES
+-- * CONTROL
+
+{-# INLINE (&) #-}
+infixl 1 &
+(&) :: a -> (a -> b) -> b
+a & b = b $ a
 
 {-# INLINE if' #-}
 if' :: Bool -> a -> a -> a

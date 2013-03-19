@@ -212,8 +212,8 @@ tooFast :: Int -> Bool
 tooFast s = s >= 200
 
 -- | We take a look at the front page, and adjust our strategy depending on what we see.
-adjustStrategy :: Strategy -> Bool -> Bool -> Page -> Strategy
-adjustStrategy strategy canmakethread sage Page{..}
+adjustStrategy :: Strategy -> Bool -> Page -> Strategy
+adjustStrategy strategy canmakethread Page{..}
     -- >kokoko
     | !len <- fromIntegral $ length threads
     , if len /= 0
@@ -221,12 +221,14 @@ adjustStrategy strategy canmakethread sage Page{..}
         else error "adjustStrategy: no threads found"
     , !new <- fromIntegral (length $ filter newThread threads) % len
     , !vpop <- fromIntegral (length $ filter veryPopularThread threads) % len
-    , !nps <- if tooFast speed
-                then [CreateNew, BumpUnpopular]
-                else [BumpOld, ShitupSticky]
-    , !vps <- if tooFast speed
-                then [SagePopular, ShitupSticky]
-                else [BumpOld, CreateNew]
+    , !nps <-
+        if tooFast speed
+          then [CreateNew, BumpUnpopular]
+          else [BumpOld, ShitupSticky]
+    , !vps <-
+        if tooFast speed
+          then [SagePopular, ShitupSticky]
+          else [BumpOld, CreateNew]
     , aux <- \(x, r) ->
                 let y = r * if' (x `elem` nps) new 0
                     z = r * if' (x `elem` vps) vpop 0
@@ -236,10 +238,9 @@ adjustStrategy strategy canmakethread sage Page{..}
     goodStrategy (st, _) =
         notElem st $
             [CreateNew | not canmakethread] ++
-            [SagePopular | not sage] ++
             [ShitupSticky | not (any unlockedSticky threads)]
 
-chooseStrategy :: Board -> Bool -> Bool -> Page -> Strategy
+chooseStrategy :: Board -> Bool -> Page -> Strategy
 chooseStrategy board =
     adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
 
@@ -247,8 +248,9 @@ chooseModeStrategy :: MonadRandom m => Strategy -> m Mode
 chooseModeStrategy [] = error "chooseModeStrategy: empty list"
 chooseModeStrategy a = fromList a
 
-chooseMode :: MonadRandom m => Board -> Bool -> Bool -> Page -> m Mode
-chooseMode a b c d = chooseModeStrategy $ chooseStrategy a b c d
+chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
+chooseMode board canmakethread page =
+    chooseModeStrategy $ chooseStrategy board canmakethread page
 
 chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
 chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"

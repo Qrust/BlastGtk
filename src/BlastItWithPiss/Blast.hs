@@ -66,6 +66,8 @@ import qualified Data.Conduit.List as CL (map)
 import Numeric (showHex)
 
 -- HACK HACK HACK unsafePerformIO
+-- pin user agent to avoid 403
+-- Should be configured PerProxy instead.
 import qualified System.IO.Unsafe as Unsafe
 {-# NOINLINE userAgent #-}
 userAgent :: ByteString
@@ -317,9 +319,11 @@ generateNewBrowser = do
     setMaxRetryCount 1
     setTimeout $ Just $ 10 * 1000000
     setDefaultHeader hUserAgent $ Just userAgent
-    setOverrideHeaders [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
-                       ,("Accept-Encoding", "")
-                       ,(hConnection, "keep-alive")]
+    setOverrideHeaders
+        [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
+        ,("Accept-Encoding", "")
+        ,(hConnection, "keep-alive")
+        ]
     --
     --setCookieFilter $ \_ _ -> return False
     --

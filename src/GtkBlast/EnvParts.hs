@@ -170,12 +170,12 @@ envParts b =
 
             tqOut <- atomically $ newTQueue
 
-            tpastagen <- atomically $ newTVar $ \_ _ _ -> return $ TBPC True True True "Генератор не запущен. Осторожно, двери закрываются."
-            timagegen <- atomically $ newTVar $ imageGen "" False
+            tappendjunkimages <- atomically $ newTVar True
+            tpastagen <- atomically $ newTVar emptyPastaGen
+            timagegen <- atomically $ newTVar emptyImageGen
             tuseimages <- tvarCheck get wcheckimages
             tcreatethreads <- tvarCheck get wcheckthread
             tmakewatermark <- tvarCheck get wcheckwatermark
-            tappendjunkimages <- atomically $ newTVar True
             tposttimeout <- tvarSpinCheck get wcheckposttimeout wspinposttimeout
             tthreadtimeout <- tvarSpinCheck get wcheckthreadtimeout wspinthreadtimeout
             tfluctuation <- tvarSpinCheck get wcheckfluctuation wspinfluctuation

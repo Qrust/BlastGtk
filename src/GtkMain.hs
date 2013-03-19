@@ -21,16 +21,45 @@ import Data.Version
 
 
 
+{- URGENT
+    Loop / race condition stopping
+    _the GUI thread_, AND _also stopping any wipe_ introduced somewhere
+    between 1.1.22 5ee80c7cd96fb16a6becdb010d9f8a3da4874f8f (2013-03-18 00:18:31)
+    and 1.1.23 065d3a2e75db920573bbdfff24abc39729c962ef (2013-03-18 13:09:33)
+    Log: dlinynos-log-smaller_log.txt
+    Candidates:
+      - Not blastCloudflare # not in log
+      - not a letrec?       # consumes 100% CPU
+      - Antigate captcha    # antigate figures in log
+      - Log                 # very large log
+      - EnvPart             # the gui stops
+-}
+-- URGENT Checker with captcha
+-- URGENT Thread pool
+
+-- URGENT Avoid reopening log handle
+
+-- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
+
+-- URGENT global useragent makes all proxies share useragent
+-- URGENT Rid of unsafePerformIO in Blast.userAgent, perproxy useragent
+
+
+
+
+
+
+
 
 -- https://github.com/blog/1302-goodbye-uploads
 --
 -- dropbox, git-annex?
 -- bitbucket has Downloads section, we can setup a mirror there.
+-- google code and sourceforge also have Downloads sections
 
 
 
 
--- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 
 
 
@@ -60,18 +89,9 @@ import Data.Version
 -- URGENT To add a new option you need to edit at least 3 files.
 --  This is the worst peace of software i heard of.
 
--- URGENT disable sage
 -- URGENT post videos
 -- URGENT synchronize pastas and images/videos
-
--- URGENT Avoid reopening log handle
--- URGENT global useragent makes all proxies share useragent
--- URGENT Rid of unsafePerformIO in Blast.userAgent, Merge Blast and BlastLog
--- URGENT shuffleM in pastagen is probably ungodly slow
-
--- URGENT recog-services cli tool
-
--- URGENT Fix updater manifest fetch timeout
+-- TODO shuffleM in pastagen is probably ungodly slow
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 

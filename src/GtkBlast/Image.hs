@@ -1,6 +1,7 @@
 module GtkBlast.Image
     (regenerateImages
     ,imageGen
+    ,emptyImageGen
     ,imageEnvPart
     ) where
 import Import hiding (on)
@@ -36,6 +37,9 @@ regenerateImages = do
         let !gen = imageGen ni agitka
         io $ atomically $ writeTVar (timagegen shS) gen
         set imagefolderLast ni
+
+emptyImageGen :: IO Image
+emptyImageGen = builtinImageGen
 
 imageGen :: FilePath -> Bool -> IO Image
 imageGen imagefolder agitka = do

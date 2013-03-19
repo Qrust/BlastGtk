@@ -1,6 +1,7 @@
 module GtkBlast.Pasta
     (PastaSet(..)
     ,generatePastaGen
+    ,emptyPastaGen
     ,pastaDate
     ,regeneratePastaGen
     ,pastaEnvPart
@@ -59,6 +60,9 @@ makePostProc = do
     shuffler <- makeShuffler
     return (\a b c s -> shuffler =<< rquoter a b c s)
 
+emptyPastaGen :: (Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel
+emptyPastaGen _ _ _ = return $ TBPC False False "WHAT?"
+
 generatePastaGen :: PastaSet -> E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel)
 generatePastaGen PastaFile = do
     E{..} <- ask
@@ -71,14 +75,14 @@ generatePastaGen PastaFile = do
     !ei <- get wcheckescapeinv
     !ew <- get wcheckescapewrd
 
-    return $ \a b c -> fmap (TBPC (null pastas) ei ew) $
+    return $ \a b c -> fmap (TBPC ei ew) $
         postproc a b c =<< fromMaybe "" <$> chooseFromListMaybe pastas
 generatePastaGen Symbol = do
     E{..} <- ask
 
     !postproc <- makePostProc
 
-    return $ \a b c -> fmap (TBPC False False False) $
+    return $ \a b c -> fmap (TBPC False False) $
         postproc a b c =<< generateSymbolString 5000
 generatePastaGen FromThread = do
     E{..} <- ask
@@ -87,14 +91,14 @@ generatePastaGen FromThread = do
 
     !quote <- get wcheckrandomquote
 
-    return $ \a b c -> fmap (TBPC False False False) $
+    return $ \a b c -> fmap (TBPC False False) $
         shuffler =<< genPastaFromReposts quote a b c
 generatePastaGen NoPasta = do
     E{..} <- ask
 
     !postproc <- makePostProc
 
-    return $ \a b c -> fmap (TBPC True False False) $
+    return $ \a b c -> fmap (TBPC False False) $
         postproc a b c ""
 
 pastaDate :: PastaSet -> E ModificationTime

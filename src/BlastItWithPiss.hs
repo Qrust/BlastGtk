@@ -65,6 +65,11 @@ data MuSettings = MuSettings
     ,mthreadtimeout :: TVar (Maybe Double)
     }
 
+data ProxySettings = ProxyS
+    {psharedCookies :: !(TMVar CookieJar)
+    ,pcloudflareCaptchaLock :: !(TMVar ())
+    }
+
 data CaptchaType
     = CaptchaPosting
     | CaptchaCloudflare
@@ -103,11 +108,6 @@ data LogDetail
     = Log
     | Don'tLog
   deriving (Eq, Show, Ord, Enum, Bounded)
-
-data ProxySettings = ProxyS
-    {psharedCookies :: !(TMVar CookieJar)
-    ,pcloudflareCaptchaLock :: !(TMVar ())
-    }
 
 data BlastLogData = BlastLogData
     {bldProxy :: !BlastProxy
@@ -300,14 +300,14 @@ abortWithOutcome o = do
 -- /HACK
 
 data TempBlastPastaChannel =
-    TBPC{nopastas :: Bool
-        ,escinv :: Bool
+    TBPC{escinv :: Bool
         ,escwrd :: Bool
         ,pasta :: String} 
 
 blastPostData :: Mode -> (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog PostData
 blastPostData mode getThread mpastapage thread = do
     ShSettings{..} <- askShS
+
     blastLog "Choosing pasta..."
     TBPC{..} <- do
         pastagen <- liftIO $ readTVarIO tpastagen
@@ -320,35 +320,51 @@ blastPostData mode getThread mpastapage thread = do
                 (runBlast manager st . runBlastLogSt r s . getThread)
                 mpastapage
                 thread
-    {-when nopastas $ do
-        blastOut NoPastas
-        blastLog "threw NoPastas"-}
     blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
+
+    sageDisabled <- fmap not $ liftIO $ readTVarIO tsage
+    blastLog $ "Sage disabled: " ++ show sageDisabled
+
     blastLog "Choosing image"
     cleanImage <- do
-        use <- liftIO $ readTVarIO tuseimages
-        if (not use && not (obligatoryImageMode mode) || obligatoryNoImageMode mode)
-           && not nopastas
+        let notSagingCurrently = not $ obligatoryNoImageMode mode
+            emptyBody = null pasta
+        enableImages <- liftIO $ readTVarIO tuseimages
+        if emptyBody || (enableImages && (sageDisabled || notSagingCurrently))
           then
+            -- eval imageGen
+            fmap Just $ liftIO $ join $ readTVarIO timagegen
+          else
             return Nothing
-          else do
-            imagegen <- liftIO $ readTVarIO timagegen
-            raw <- liftIO imagegen
-            return $ Just raw
+    junkingEnabled <- liftIO $ readTVarIO $ tappendjunkimages
     junkImage <-
         case cleanImage of
           Nothing -> do
-            blastLog "chose no image"
             return Nothing
-          Just i -> do
-            blastLog $ "chose image \"" ++ filename i ++ "\""
-            Just <$> flBoolModSTM tappendjunkimages
-                (\im -> do blastLog "appending junk to image"
-                           appendJunk im) i
+          Just i -> Just <$> do
+            if junkingEnabled
+              then
+                appendJunk i
+              else
+                return i
+    junkImage & maybe
+        (blastLog "chose no image")
+        (\i -> blastLog $
+            "chose image \"" ++ filename i ++
+                "\", junk: " ++ show junkingEnabled)
+
     watermark <- liftIO $ readTVarIO tmakewatermark
     blastLog $ "Watermark: " ++ show watermark
-    let final = PostData "" pasta junkImage (sageMode mode) watermark escinv escwrd
+
+    let final = PostData
+                {subject = ""
+                ,text = pasta
+                ,image = junkImage
+                ,sage = if sageDisabled then False else sageMode mode
+                ,makewatermark = watermark
+                ,escapeInv = escinv
+                ,escapeWrd = escwrd}
     final `deepseq` return final
 
 blastCaptcha :: Maybe Int -> BlastLog (Bool, Maybe (CAnswer Blast (ResourceT IO), (OriginStamp -> IO ())))
@@ -361,7 +377,7 @@ blastCaptcha thread = do
             blastLog $ "Got presolved captcha " ++ show f
             return (False, Just (f, const $ return ()))
         Right (chKey :: CurrentSsachCaptchaType) -> do
-            blastLog "Downloadng captcha"
+            blastLog "Downloading captcha"
             (bytes, ct) <- blast $ getCaptchaImage chKey
             cconf <- blast $ getCaptchaConf chKey
             fname <- mkImageFileName ct
@@ -616,8 +632,7 @@ blastLoop = forever $ do
                 chooseFromList [SagePopular, BumpUnpopular]
             Just p0 -> do
                 blastLog "Choosing mode..."
-                sage' <- liftIO $ readTVarIO tsage
-                chooseMode board canmakethread sage' p0
+                chooseMode board canmakethread p0
     recMode mode
     blastLog $ "chose mode " ++ show mode
     (thread, mpastapage) <- flMaybeSTM mthread
