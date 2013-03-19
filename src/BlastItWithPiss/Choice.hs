@@ -3,7 +3,7 @@ module BlastItWithPiss.Choice
     (
      Mode(..)
     ,Strategy
-    ,sageMode
+    ,obligatorySageMode
     ,obligatoryImageMode
     ,obligatoryNoImageMode
     ,unlockedSticky
@@ -43,9 +43,9 @@ type Strategy = [(Mode, Rational)]
 
 instance NFData Mode
 
-sageMode :: Mode -> Bool
-sageMode SagePopular = True
-sageMode _ = False
+obligatorySageMode :: Mode -> Bool
+obligatorySageMode SagePopular = True
+obligatorySageMode _ = False
 
 obligatoryImageMode :: Mode -> Bool
 obligatoryImageMode CreateNew = True

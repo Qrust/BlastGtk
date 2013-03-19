@@ -294,11 +294,11 @@ showBoardSettings board = do
             wchecksage <- builderGetObject b castToCheckButton "checksage"
             whenJust mmod $ \mode -> do
                 if mode /= SagePopular && mode /= BumpUnpopular
-                    then do
-                        runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
-                        toggleButtonSetInconsistent wchecksage True
-                    else do
-                        set wchecksage (mode==SagePopular)
+                  then do
+                    runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
+                    toggleButtonSetInconsistent wchecksage True
+                  else do
+                    set wchecksage (mode==SagePopular)
 
             wcheckposttimeout <- builderGetObject b castToCheckButton "checkposttimeout"
             set wcheckposttimeout $ isJust mposttm

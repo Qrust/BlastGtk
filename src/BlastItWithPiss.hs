@@ -11,6 +11,7 @@ module BlastItWithPiss
     ,OutMessage(..)
     ,LogDetail(..)
     ,ProxySettings(..)
+    ,SageMode(..)
     ,defMuS
     ,defPrS
     ,entryPoint
@@ -32,7 +33,8 @@ import BlastItWithPiss.Post
 import Text.Recognition.Antigate
 
 import Control.Concurrent.Lifted
-import Control.Concurrent.STM
+import Control.Concurrent.STM hiding (readTVarIO, atomically)
+import qualified Control.Concurrent.STM as STM
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
@@ -44,25 +46,33 @@ import Data.Time.Clock.POSIX
 import qualified Text.Show as Show
 import Text.HTML.TagSoup(Tag)
 
+{-# INLINE readTVarIO #-}
+readTVarIO :: MonadIO m => TVar a -> m a
+readTVarIO = liftIO . STM.readTVarIO
+
+{-# INLINE atomically #-}
+atomically :: MonadIO m => STM a -> m a
+atomically = liftIO . STM.atomically
+
 data ShSettings = ShSettings
-    {tpastagen :: TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel)
-    ,timagegen :: TVar (IO Image)
+    {tpastagen :: !(TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel))
+    ,timagegen :: !(TVar (IO Image))
     --NOTE all browser state accumulated in gens is lost.
-    ,tuseimages :: TVar Bool
-    ,tappendjunkimages :: TVar Bool
-    ,tcreatethreads :: TVar Bool
-    ,tmakewatermark :: TVar Bool
-    ,tposttimeout :: TVar (Maybe Double)
-    ,tthreadtimeout :: TVar (Maybe Double)
-    ,tfluctuation :: TVar (Maybe Double)
-    ,tsage :: TVar Bool
+    ,tuseimages :: !(TVar Bool)
+    ,tappendjunkimages :: !(TVar Bool)
+    ,tcreatethreads :: !(TVar Bool)
+    ,tmakewatermark :: !(TVar Bool)
+    ,tposttimeout :: !(TVar (Maybe Double))
+    ,tthreadtimeout :: !(TVar (Maybe Double))
+    ,tfluctuation :: !(TVar (Maybe Double))
+    ,tsagemode :: !(TVar SageMode)
     }
 
 data MuSettings = MuSettings
-    {mthread :: TVar (Maybe Int)
-    ,mmode :: TVar (Maybe Mode)
-    ,mposttimeout :: TVar (Maybe Double)
-    ,mthreadtimeout :: TVar (Maybe Double)
+    {mthread :: !(TVar (Maybe Int))
+    ,mmode :: !(TVar (Maybe Mode))
+    ,mposttimeout :: !(TVar (Maybe Double))
+    ,mthreadtimeout :: !(TVar (Maybe Double))
     }
 
 data ProxySettings = ProxyS
@@ -189,21 +199,42 @@ instance NFData Message where
 instance NFData OutMessage where
     rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
 
-{-# INLINE maybeSTM #-}
-maybeSTM :: (Functor m, MonadIO m) => TVar (Maybe a) -> (a -> b) -> m b -> m b
-maybeSTM t d m = maybe m (return . d) =<< liftIO (readTVarIO t)
+data SageMode
+    = SageDisabled
+    | SageEnabled
+    | SageAccordingToMode
+  deriving (Eq, Show)
 
-{-# INLINE flMaybeSTM #-}
-flMaybeSTM :: MonadIO m => TVar (Maybe a) -> (a -> m b) -> m b -> m b
-flMaybeSTM t d m = maybe m d =<< liftIO (readTVarIO t)
+fromSageMode :: SageMode -> Mode -> Bool
+fromSageMode SageDisabled _ = False
+fromSageMode SageEnabled _ = True
+fromSageMode SageAccordingToMode m = obligatorySageMode m
 
-{-# INLINE flBoolModSTM #-}
-flBoolModSTM :: MonadIO m => TVar Bool -> (a -> m a) -> a -> m a
-flBoolModSTM t f v = ifM (liftIO $ readTVarIO t) (f v) (return v)
+blastPostTimeout :: BlastLog POSIXTime
+blastPostTimeout = do
+    board <- askBoard
+    ShSettings{..} <- askShSettings
+    MuSettings{..} <- askMuSettings
+    (fmap realToFrac <$> readTVarIO mposttimeout) >>= flip maybe return (
+        (fmap realToFrac <$> readTVarIO tposttimeout) >>= flip maybe return (
+            return (ssachPostTimeout board)))
+
+blastThreadTimeout :: BlastLog POSIXTime
+blastThreadTimeout = do
+    board <- askBoard
+    ShSettings{..} <- askShSettings
+    MuSettings{..} <- askMuSettings
+    (fmap realToFrac <$> readTVarIO mthreadtimeout) >>= flip maybe return (
+        (fmap realToFrac <$> readTVarIO tthreadtimeout) >>= flip maybe return (
+            return (ssachThreadTimeout board)))
 
 defMuS :: IO MuSettings
-defMuS = atomically $
-    MuSettings <$> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing <*> newTVar Nothing
+defMuS = atomically $ do
+    mthread <- newTVar Nothing
+    mmode <- newTVar Nothing
+    mposttimeout <- newTVar Nothing
+    mthreadtimeout <- newTVar Nothing
+    return MuSettings{..}
 
 defPrS :: IO ProxySettings
 defPrS = atomically $ do
@@ -226,29 +257,29 @@ askProxy = asks bldProxy
 askBoard :: BlastLog Board
 askBoard = asks bldBoard
 
-askLogD :: BlastLog LogDetail
-askLogD = asks bldLogD
+askLogDetail :: BlastLog LogDetail
+askLogDetail = asks bldLogD
 
-askOrI :: BlastLog OriginInfo
-askOrI = bsOriginInfo <$> lift get
+askOriginInfo :: BlastLog OriginInfo
+askOriginInfo = bsOriginInfo <$> lift get
 
-askShS :: BlastLog ShSettings
-askShS = asks bldShS
+askShSettings :: BlastLog ShSettings
+askShSettings = asks bldShS
 
-askBSM :: BlastLog (Board, ShSettings, MuSettings)
-askBSM = asks $ \b -> (bldBoard b, bldShS b, bldMuS b)
-
-askAdaptive :: BlastLog Bool
-askAdaptive = bsAdaptivityIn <$> lift get
-
-setAdaptive :: Bool -> BlastLog ()
-setAdaptive n = lift $ get >>= \s -> put s{bsAdaptivityIn=n}
+askMuSettings :: BlastLog MuSettings
+askMuSettings = asks bldMuS
 
 askProxyS :: BlastLog ProxySettings
 askProxyS = asks bldPrS
 
 askOut :: BlastLog (OutMessage -> IO ())
 askOut = asks bldOut
+
+askAdaptive :: BlastLog Bool
+askAdaptive = bsAdaptivityIn <$> lift get
+
+setAdaptive :: Bool -> BlastLog ()
+setAdaptive n = lift $ get >>= \s -> put s{bsAdaptivityIn=n}
 
 recMode :: Mode -> BlastLog ()
 recMode m = lift get >>= \s@BlastState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gmode=m}}
@@ -269,7 +300,7 @@ genOriginStamp :: BlastLog OriginStamp
 genOriginStamp = do
     proxy <- askProxy
     board <- askBoard
-    OriginInfo{..} <- askOrI
+    OriginInfo{..} <- askOriginInfo
     now <- liftIO getZonedTime
     return $ OriginStamp now proxy board gmode gthread
 
@@ -282,7 +313,7 @@ blastOut msg = do
 
 blastLog :: String -> BlastLog ()
 blastLog msg = do
-    d <- askLogD
+    d <- askLogDetail
     when (d == Log) $ do
         blastOut (LogMessage msg)
 
@@ -304,13 +335,13 @@ data TempBlastPastaChannel =
         ,escwrd :: Bool
         ,pasta :: String} 
 
-blastPostData :: Mode -> (Int -> BlastLog Thread) -> Maybe Page -> Maybe Int -> BlastLog PostData
-blastPostData mode getThread mpastapage thread = do
-    ShSettings{..} <- askShS
+blastPostData :: Mode -> Maybe Page -> Maybe Int -> BlastLog PostData
+blastPostData mode mpastapage thread = do
+    ShSettings{..} <- askShSettings
 
     blastLog "Choosing pasta..."
     TBPC{..} <- do
-        pastagen <- liftIO $ readTVarIO tpastagen
+        pastagen <- readTVarIO tpastagen
         r <- ask
         s <- lift get
         st <- blast getBrowserState
@@ -323,21 +354,21 @@ blastPostData mode getThread mpastapage thread = do
     blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
 
-    sageDisabled <- fmap not $ liftIO $ readTVarIO tsage
-    blastLog $ "Sage disabled: " ++ show sageDisabled
+    sagemode <- readTVarIO tsagemode
+    let sage = fromSageMode sagemode mode
+    blastLog $ "Sage mode: " ++ show sagemode ++
+               ", Sage: " ++ show sage
 
     blastLog "Choosing image"
     cleanImage <- do
-        let notSagingCurrently = not $ obligatoryNoImageMode mode
-            emptyBody = null pasta
-        enableImages <- liftIO $ readTVarIO tuseimages
-        if emptyBody || (enableImages && (sageDisabled || notSagingCurrently))
+        enableImages <- readTVarIO tuseimages
+        if (enableImages && not sage) || null pasta || obligatoryImageMode mode
           then
             -- eval imageGen
             fmap Just $ liftIO $ join $ readTVarIO timagegen
           else
             return Nothing
-    junkingEnabled <- liftIO $ readTVarIO $ tappendjunkimages
+    junkingEnabled <- readTVarIO $ tappendjunkimages
     junkImage <-
         case cleanImage of
           Nothing -> do
@@ -354,14 +385,14 @@ blastPostData mode getThread mpastapage thread = do
             "chose image \"" ++ filename i ++
                 "\", junk: " ++ show junkingEnabled)
 
-    watermark <- liftIO $ readTVarIO tmakewatermark
+    watermark <- readTVarIO tmakewatermark
     blastLog $ "Watermark: " ++ show watermark
 
     let final = PostData
                 {subject = ""
                 ,text = pasta
                 ,image = junkImage
-                ,sage = if sageDisabled then False else sageMode mode
+                ,sage = fromSageMode sagemode mode
                 ,makewatermark = watermark
                 ,escapeInv = escinv
                 ,escapeWrd = escwrd}
@@ -418,7 +449,7 @@ blastCloudflare md whatrsp url = do
 
         ProxyS{..} <- askProxyS
 
-        (nothingyet, jobtaken) <- liftIO $ atomically $ do
+        (nothingyet, jobtaken) <- atomically $ do
             nothingyet <- isEmptyTMVar psharedCookies
             jobtaken <- isEmptyTMVar pcloudflareCaptchaLock
             when (nothingyet && not jobtaken) $
@@ -428,14 +459,14 @@ blastCloudflare md whatrsp url = do
           then do
             blastLog "Waiting for cloudflare cookies..."
 
-            void $ liftIO $ atomically $ readTMVar pcloudflareCaptchaLock
-            stillnothing <- liftIO $ atomically $ isEmptyTMVar psharedCookies
+            void $ atomically $ readTMVar pcloudflareCaptchaLock
+            stillnothing <- atomically $ isEmptyTMVar psharedCookies
 
             if stillnothing
               then cloudflareChallenge
               else do
                 blastLog "Got cloudflare cookies"
-                blast $ setCookieJar =<< liftIO (atomically $ readTMVar psharedCookies)
+                blast $ setCookieJar =<< atomically (readTMVar psharedCookies)
                 md =<< whatrsp
           else (do
             -- OH GOD
@@ -476,13 +507,13 @@ blastCloudflare md whatrsp url = do
                   then do
                     blastLog "Couldn't get Cloudflare cookies. Retrying."
 
-                    liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                    atomically $ putTMVar pcloudflareCaptchaLock ()
                     blastCloudflare md whatrsp url
                   else do
                     blastLog $ "Cloudflare cookie count: " ++
                                show cookieCount
 
-                    liftIO $ atomically $ do
+                    atomically $ do
                         putTMVar pcloudflareCaptchaLock ()
                         putTMVar psharedCookies ck
 
@@ -493,15 +524,17 @@ blastCloudflare md whatrsp url = do
               AbortCaptcha -> do
                 blastLog "Aborting cloudflare captcha. ???????? consequences."
 
-                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                atomically $ putTMVar pcloudflareCaptchaLock ()
                 md =<< whatrsp
             ) `catch` (\(a::SomeException) -> do
-                liftIO $ atomically $ putTMVar pcloudflareCaptchaLock ()
+                atomically $ putTMVar pcloudflareCaptchaLock ()
                 throwIO a)
 
 blastPost :: POSIXTime -> Bool -> [Part Blast (ResourceT IO)] -> Mode -> Maybe Int -> PostData -> BlastLog ()
 blastPost threadtimeout cap otherfields mode thread postdata = do
-    (board, ShSettings{..}, MuSettings{..}) <- askBSM
+    board <- askBoard
+    ShSettings{..} <- askShSettings
+    MuSettings{..} <- askMuSettings
     BlastState{..} <- lift get
     adaptive <- askAdaptive
     (neededcaptcha, mcap) <-
@@ -519,20 +552,18 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
             p <- blast $ prepare board thread postdata captcha
                             otherfields ssachLengthLimit
 
-            posttimeout <-
-                maybeSTM mposttimeout realToFrac $
-                    maybeSTM tposttimeout realToFrac $
-                        return $ ssachPostTimeout board
+            posttimeout <- blastPostTimeout
             blastLog $ "Post timeout: " ++ show posttimeout
             blastLog $ "Thread timeout: " ++ show threadtimeout
 
-            mfluctuation <- liftIO $ readTVarIO tfluctuation
+            mfluctuation <- readTVarIO tfluctuation
             blastLog $ "Post time fluctuation: " ++ show mfluctuation
 
             beforeSleep <- liftIO getPOSIXTime
             let canDefinitelyPost =
                     beforeSleep - bsPessimisticLastPostTime >= posttimeout
 
+            -- implying that we get CreateNew only when we definitely can post
             when (mode /= CreateNew && not canDefinitelyPost) $ do
                 fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
                     lowerHalf <- chooseFromList [True, True, True, False]
@@ -548,13 +579,13 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
                 blastLog $ "sleeping " ++ show slptime ++
                     " seconds before post. FIXME using threadDelay for sleeping"
                     ++ ", instead of a more precise timer"
-                liftIO $ threadDelay $ round $ slptime * 1000000
+                threadDelay $ round $ slptime * 1000000
 
             blastLog "posting"
 
-            beforePost <- liftIO $ getPOSIXTime --optimistic
+            beforePost <- liftIO getPOSIXTime --optimistic
             (out, _) <- blast $ post p
-            afterPost <- liftIO $ getPOSIXTime --pessimistic
+            afterPost <- liftIO getPOSIXTime --pessimistic
 
             blastOut (OutcomeMessage out)
 
@@ -576,14 +607,10 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
                 Success -> return ()
                 SuccessLongPost rest ->
                     when (mode /= CreateNew) $ do
-                        blastPost threadtimeout cap otherfields mode thread $ PostData
-                            {subject = subject postdata
-                            ,text = rest
-                            ,image = Nothing
-                            ,sage = sageMode mode
-                            ,makewatermark = makewatermark postdata
-                            ,escapeInv = escapeInv postdata
-                            ,escapeWrd = escapeWrd postdata}
+                        blastPost threadtimeout cap otherfields mode thread $
+                            postdata
+                                {text = rest
+                                ,image = Nothing}
                 TooFastThread -> do
                     let m = threadtimeout / 3
                     blastLog $ "TooFastThread, retrying in " ++ show (m/60) ++ " minutes"
@@ -604,60 +631,84 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
 blastLoop :: BlastLog ()
 blastLoop = forever $ do
     bldOtherFields <- asks bldOtherFields
-    (board, ShSettings{..}, MuSettings{..}) <- askBSM
+    board <- askBoard
+    ShSettings{..} <- askShSettings
+    MuSettings{..} <- askMuSettings
     BlastState{..} <- lift get
-    now <- liftIO $ getPOSIXTime
-    threadtimeout <- maybeSTM mthreadtimeout realToFrac $
-                        maybeSTM tthreadtimeout realToFrac $
-                            return $ ssachThreadTimeout board
-    canmakethread <- ifM (liftIO $ readTVarIO tcreatethreads)
-                        (return $ now - bsLastThreadTime >= threadtimeout)
-                        (return False)
-    mp0 <- flMaybeSTM mthread (const $ return Nothing) $ do
-                blastLog "mp0: Getting first page."
-                Just <$> getPage board 0
-    flip (maybe $ blastLog "Thread chosen, ommitting page parsing") mp0 $ \p0 ->
-        blastLog $ "page params:\n" ++
-                   "page id: " ++ show (pageId p0) ++ "\n" ++
-                   "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
-                   "speed: " ++ show (speed p0) ++ "\n" ++
-                   "threads: " ++ show (length $ threads p0) ++ "\n" ++
-                   "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
-    mode <- flMaybeSTM mmode (\m -> do
-                                blastLog $ "Got mmode " ++ show m
-                                return m) $ do
-        case mp0 of
-            Nothing -> do
+
+    now <- liftIO getPOSIXTime
+    threadtimeout <- blastThreadTimeout
+    canmakethread <-
+        ifM (readTVarIO tcreatethreads)
+          (return $ now - bsLastThreadTime >= threadtimeout)
+          (return False)
+
+    mp0 <- do
+        threadIsSet <- isJust <$> readTVarIO mthread
+        if threadIsSet
+          then
+            return Nothing
+          else Just <$> do
+            blastLog "mp0: Getting first page."
+            getPage 0
+
+    case mp0 of
+      Nothing -> blastLog "Thread chosen, ommitting page parsing"
+      Just p0 -> blastLog $
+        "page params:\n" ++
+        "page id: " ++ show (pageId p0) ++ "\n" ++
+        "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
+        "speed: " ++ show (speed p0) ++ "\n" ++
+        "threads: " ++ show (length $ threads p0) ++ "\n" ++
+        "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
+
+    mode <- readTVarIO mmode >>=
+        maybe
+        (do case mp0 of
+              Nothing -> do
                 blastLog "No page, throwing a dice for SagePopular/BumpUnpopular"
                 chooseFromList [SagePopular, BumpUnpopular]
-            Just p0 -> do
+              Just p0 -> do
                 blastLog "Choosing mode..."
-                chooseMode board canmakethread p0
+                chooseMode board canmakethread p0)
+        (\m -> do
+            blastLog $ "Got mmode " ++ show m
+            return m)
     recMode mode
     blastLog $ "chose mode " ++ show mode
-    (thread, mpastapage) <- flMaybeSTM mthread
-        (\t -> do blastLog $ "Got mthread " ++ show t
-                  return (Just t, Nothing)) $ do
-        blastLog "Choosing thread..."
-        second Just <$> chooseThread board mode (getPage board)
-            (fromMaybe (error "Page is Nothing while thread specified") mp0)
+    (thread, mpastapage) <-
+        readTVarIO mthread >>= maybe
+            (do blastLog "Choosing thread..."
+                second Just <$>
+                    chooseThread
+                        board
+                        mode
+                        getPage
+                        (fromMaybe (error "Page is Nothing while thread not specified") mp0))
+            (\t -> do
+                blastLog $ "Got mthread " ++ show t
+                return (Just t, Nothing))
     recThread thread
     blastLog $ "chose thread " ++ show thread
-    postdata <- blastPostData mode (getThread board) mpastapage thread
+    postdata <- blastPostData mode mpastapage thread
     blastPost threadtimeout False bldOtherFields mode thread postdata
-  where
-    getPage board p = do
-        let url = ssachPage board p
-        let chkStatus _ _ _ = Nothing
-        blastLog $ "getPage: going to page " ++ show p
-        blastCloudflare (return . parsePage board . responseBody)
-            (blast $ httpReqStrTags $
-                (fromJust $ parseUrl url){checkStatus=chkStatus})
-            url
 
-    getThread board i = do
-        blastLog $ "Going into " ++ show i ++ " thread for pasta"
-        blast $ headNote "PastaHead fail" . fst . parseThreads <$>
+getPage :: Int -> BlastLog Page
+getPage p = do
+    board <- askBoard
+    let url = ssachPage board p
+    req <- parseUrl url
+    blastLog $ "getPage: going to page " ++ show p
+    blastCloudflare
+        (return . parsePage board . responseBody)
+        (blast $ httpReqStrTags req)
+        url
+
+getThread :: Int -> BlastLog Thread
+getThread i = do
+    board <- askBoard
+    blastLog $ "Going into " ++ show i ++ " thread for pasta"
+    blast $ headNote "PastaHead fail" . fst . parseThreads <$>
             httpGetStrTags (ssachThread board (Just i))
 
 -- | Entry point should always be forked.
@@ -672,7 +723,17 @@ blastLoop = forever $ do
 -- >    else continue
 entryPoint :: BlastProxy -> Board -> LogDetail -> ShSettings -> MuSettings -> ProxySettings -> (OutMessage -> IO ()) -> Blast ()
 entryPoint proxy board lgDetail shS muS prS output = do
-    runBlastLog (BlastLogData proxy board lgDetail shS muS prS output (ssachLastRecordedFields board)) $ do
+    runBlastLog
+      BlastLogData
+      {bldProxy = proxy
+      ,bldBoard = board
+      ,bldLogD = lgDetail
+      ,bldShS = shS
+      ,bldMuS = muS
+      ,bldPrS = prS
+      ,bldOut = output
+      ,bldOtherFields = ssachLastRecordedFields board
+      } $ do
         blastLog "Entry point"
         blast $ httpSetProxy proxy
         let hands =
@@ -717,10 +778,10 @@ entryPoint proxy board lgDetail shS muS prS output = do
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
 sortSsachBoardsByPopularity boards = bracket (newManager def) closeManager $ flip runBlastNew $ do
     maybeb <- forM boards $ \b -> do
-                liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
-                spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
-                liftIO $ putStrLn $ show spd
-                return (b, spd)
+        liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
+        spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
+        liftIO $ putStrLn $ show spd
+        return (b, spd)
     let (got, failed) = partition (isJust . snd) maybeb
         sorted = reverse $ sortBy (\(_,a) (_,b) -> compare (fromJust a) (fromJust b)) got
     return (map (second fromJust) sorted, fst $ unzip $ failed)

@@ -73,7 +73,6 @@ data Env = E
     ,wbuttonwipe :: Button
     ,wprogresswipe :: ProgressBar
     ,wentryimagefolder :: Entry
-    ,wcheckimages :: CheckButton
     ,wcheckagitka :: CheckButton
     ,wcheckannoy :: CheckButton
     ,wcheckhideonsubmit :: CheckButton
@@ -91,7 +90,6 @@ data Env = E
     ,wcheckescapewrd :: CheckButton
     ,wcheckshuffle :: CheckButton
     ,wcheckrandomquote :: CheckButton
-    ,wchecksage :: CheckButton
     ,wspinmaxlines :: SpinButton
     }
 
@@ -135,7 +133,6 @@ instance NFData Env where
         `seq` wbuttonwipe
         `seq` wprogresswipe
         `seq` wentryimagefolder
-        `seq` wcheckimages
         `seq` wcheckannoy
         `seq` wcheckhideonsubmit
         `seq` wcheckannoyerrors
@@ -151,7 +148,6 @@ instance NFData Env where
         `seq` wcheckescapeinv
         `seq` wcheckescapewrd
         `seq` wcheckshuffle
-        `seq` wchecksage
         `seq` wspinmaxlines
         `seq` ()
 

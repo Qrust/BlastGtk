@@ -43,7 +43,8 @@ import Data.Version
 
 -- URGENT global useragent makes all proxies share useragent
 -- URGENT Rid of unsafePerformIO in Blast.userAgent, perproxy useragent
-
+-- URGENT fix longposting (image)
+-- URGENT don't label non-modded threads as CreateNew
 
 
 

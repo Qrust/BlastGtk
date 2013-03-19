@@ -179,7 +179,9 @@ envParts b =
             tposttimeout <- tvarSpinCheck get wcheckposttimeout wspinposttimeout
             tthreadtimeout <- tvarSpinCheck get wcheckthreadtimeout wspinthreadtimeout
             tfluctuation <- tvarSpinCheck get wcheckfluctuation wspinfluctuation
-            tsage <- tvarCheck get wchecksage
+            let wchecksageToSageMode True  = SageAccordingToMode
+                wchecksageToSageMode False = SageDisabled
+            tsagemode <- tvarCheck (fmap wchecksageToSageMode . get) wchecksage
 
             return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation, wchecksage))
         (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf,wcs) c -> do
@@ -203,11 +205,9 @@ envParts b =
                     ,coUseFluctuation=cf
                     ,coFluctuation=sf
                     ,coSage=cs})
-        (\(tqOut,shS,_,wcheckimages,_,_,_,_,_,_,_,wchecksage) e ->
+        (\(tqOut,shS,_,_,_,_,_,_,_,_,_,_) e ->
             e{tqOut=tqOut
              ,shS=shS
-             ,wcheckimages=wcheckimages
-             ,wchecksage=wchecksage
              })
     ,EP
         (rec coAnnoy $ builderGetObject b castToCheckButton "check-annoy")
