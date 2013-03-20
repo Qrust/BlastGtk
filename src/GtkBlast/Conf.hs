@@ -224,21 +224,21 @@ readConfig configfile = do
     _x <- try $ B.readFile $ configfile
     case _x of
       Left (a::SomeException) -> do
-        putInvisibleLog $ "Couldn't read config from \"" ++ configfile ++ "\" , loading defaults. Exception was: " ++ show a
+        putInvisibleLog $ "Couldn't read config from \"" ++ T.pack configfile ++ "\" , loading defaults. Exception was: " ++ show a
         return def
-      Right c' -> do
-        let c = toLBS c'
+      Right _c -> do
+        let c = toLBS _c
         case decode' c of
           Nothing -> do
             let confbad = configfile <.> "old.faulty"
             putInvisibleLog $
-                "Couldn't read config from \"" ++ configfile ++
+                "Couldn't read config from \"" ++ T.pack configfile ++
                 "\" because of syntax error, overwriting with defaults. " ++
-                "Old version saved at \"" ++ confbad ++ "\""
+                "Old version saved at \"" ++ T.pack confbad ++ "\""
             fromIOException (return ()) $ LB.writeFile confbad c
             return def
           Just (n, errs) -> do
-            unless (null errs) $ putInvisibleLog errs
+            unless (null errs) $ putInvisibleLog $ T.pack errs
             return n
 
 writeConfig :: FilePath -> Conf -> E ()
@@ -248,6 +248,8 @@ writeConfig configfile conf = do
     case tw of
         Left (a::SomeException) ->
             writeLog $
-                "Couldn't write config to \"" ++ configfile ++
+                "Couldn't write config to \"" ++ T.pack configfile ++
                 "\" , got exception: " ++ show a
-        Right _ -> writeLog $ "Wrote config \"" ++ configfile ++"\": " ++ show conf
+        Right _ ->
+            writeLog $
+                "Wrote config \"" ++ T.pack configfile ++ "\": " ++ show conf

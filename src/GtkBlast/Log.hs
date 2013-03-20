@@ -3,6 +3,7 @@ module GtkBlast.Log
      putInvisibleLog
     -- * 'E'
     ,writeLog
+    
     ,showMessage
     ,tempError
     ,banMessage
@@ -10,6 +11,7 @@ module GtkBlast.Log
     ,uncMessage
     ,redMessage
     ,uncAnnoyMessage
+
     ,appFile -- FIXME appFile shouldn't be here
     ) where
 import Import
@@ -17,46 +19,58 @@ import Import
 import GtkBlast.Environment
 import GtkBlast.GtkUtils
 import GtkBlast.MuVar
-import Graphics.UI.Gtk hiding (get, set)
+import Graphics.UI.Gtk hiding (get, set, labelSetMarkup, labelSetText)
+import qualified Graphics.UI.Gtk as Gtk
 
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as TIO
 
-red :: String -> String
+{-# INLINE labelSetMarkup #-}
+labelSetMarkup :: MonadIO m => Label -> Text -> m ()
+labelSetMarkup l = liftIO . Gtk.labelSetMarkup l . T.unpack
+
+{-# INLINE labelSetText #-}
+labelSetText :: MonadIO m => Label -> Text -> m ()
+labelSetText l = liftIO . Gtk.labelSetText l . T.unpack
+
+red :: Text -> Text
 red s = "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
 
-rawPutStdout :: String -> IO ()
+rawPutStdout :: Text -> IO ()
 rawPutStdout s = 
-    fromIOException (return ()) $ whenM (hIsTerminalDevice stdout) $ do
-        putStrLn s
-        hFlush stdout
+    fromIOException (return ()) $
+        whenM (hIsTerminalDevice stdout) $ do
+            TIO.putStrLn s
+            hFlush stdout
 
-rawPutLog :: (String -> IO ()) -> FilePath -> String -> IO ()
+rawPutLog :: (Text -> IO ()) -> FilePath -> Text -> IO ()
 rawPutLog err' logfile str = do {
     withFile logfile AppendMode $ \h -> do
         hSetEncoding h utf8
 --      hSeek h SeekFromEnd 0
-        TIO.hPutStrLn h $ T.pack str
+        TIO.hPutStrLn h str
     } `catch`
         \(a :: IOException) ->
             err' $ "Got exception while trying to write to log file \"" ++
-                    logfile ++ "\": " ++ show a ++ "\nAttempted to write: " ++
-                    str
+                    T.pack logfile ++ "\": " ++ show a ++
+                    "\nAttempted to write: " ++ str
 
-rawGUILog :: TextBuffer -> Int -> String -> IO ()
+rawGUILog :: TextBuffer -> Int -> Text -> IO ()
 rawGUILog wbuf maxLines msg = do
     e <- textBufferGetEndIter wbuf
-    textBufferInsert wbuf e (msg++"\n")
+    textBufferInsertByteString wbuf e $ TE.encodeUtf8 msg
+    textBufferInsertByteString wbuf e "\n"
     l <- textBufferGetLineCount wbuf
     when (l > maxLines) $ do
         s <- textBufferGetStartIter wbuf
         il <- textBufferGetIterAtLine wbuf (l - maxLines)
         textBufferDelete wbuf s il
 
-writeLogIO :: TextBuffer -> Int -> String -> IO ()
+writeLogIO :: TextBuffer -> Int -> Text -> IO ()
 writeLogIO wbuf maxLines rawmsg = do
-    st <- show <$> getZonedTime
-    let frmt = ("[" ++ st ++ "]:\n  " ++ rawmsg)
+    st <- getZonedTime
+    let !frmt = ("[" ++ show st ++ "]:\n  " ++ rawmsg)
     rawPutLog (toGUIAndStdout wbuf maxLines) "log.txt" frmt
     rawPutStdout frmt
     rawGUILog wbuf maxLines frmt
@@ -67,18 +81,18 @@ writeLogIO wbuf maxLines rawmsg = do
 
 -- | Write to logfile and stdout, but not to the GUI.
 -- Use only when GUI is uninitialized.
-putInvisibleLog :: String -> IO ()
+putInvisibleLog :: Text -> IO ()
 putInvisibleLog msg = do
     rawPutLog rawPutStdout "log.txt" msg
     rawPutStdout msg -- duplicate log to stdout for convinience
 
-writeLog :: String -> E ()
+writeLog :: Text -> E ()
 writeLog s = do
     E{..} <- ask
     maxLines <- round <$> get wspinmaxlines
     io $ writeLogIO wbuf maxLines s
 
-showMessage :: (Env -> CheckButton) -> String -> Maybe Int -> Bool -> String -> E ()
+showMessage :: (Env -> CheckButton) -> Text -> Maybe Int -> Bool -> Text -> E ()
 showMessage getCheck msgname mUnlockT mkRed msg = do
     E{wlabelmessage=wlabel, ..} <- ask
     wcheck <- asks getCheck
@@ -86,48 +100,48 @@ showMessage getCheck msgname mUnlockT mkRed msg = do
     n <- io getZonedTime
     writeLog $ "gtkblast, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
     if mkRed
-        then io $ labelSetMarkup wlabel $ red msg
-        else io $ labelSetText wlabel msg
+        then labelSetMarkup wlabel $ red msg
+        else labelSetText wlabel msg
     io $ whenM (toggleButtonGetActive wcheck) $ windowPopup window
     case mUnlockT of
         Just t -> 
             void $ io $ timeoutAdd (modifyIORef messageLocks (subtract 1) >> return False) (t * 1000)
         Nothing -> return ()
 
-tempError :: Int -> String -> E ()
+tempError :: Int -> Text -> E ()
 tempError t s = do
     showMessage wcheckannoyerrors "Displayed error message" (Just t) True s
 
-banMessage :: Int -> String -> E ()
+banMessage :: Int -> Text -> E ()
 banMessage t s = showMessage wcheckannoy "Ban message" (Just t) True s
 
-updMessage :: String -> E ()
+updMessage :: Text -> E ()
 updMessage s = do
     E{..} <- ask
     locks <- io $ readIORef messageLocks
     if locks==0
-        then io $ labelSetText wlabelmessage s
+        then labelSetText wlabelmessage s
         else when (locks < 0) $ do
                 io $ writeIORef messageLocks 0
                 tempError 5 "Ой-ой, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
 
-uncMessage :: String -> E ()
+uncMessage :: Text -> E ()
 uncMessage s = do
     E{..} <- ask
     writeLog $ "gtkblast, Unconditinal message: " ++ s
-    io $ labelSetText wlabelmessage s
+    labelSetText wlabelmessage s
 
-redMessage :: String -> E ()
+redMessage :: Text -> E ()
 redMessage s = do
     E{..} <- ask
     writeLog $ "gtkblast, Red message: " ++ s
-    io $ labelSetMarkup wlabelmessage $ red s
+    labelSetMarkup wlabelmessage $ red s
 
-uncAnnoyMessage :: String -> E ()
+uncAnnoyMessage :: Text -> E ()
 uncAnnoyMessage s = do
     E{..} <- ask
     writeLog $ "gtkblast, Unconditional annoying message: " ++ s
-    io $ labelSetMarkup wlabelmessage $ red s
+    labelSetMarkup wlabelmessage $ red s
     io $ whenM ((||) <$> toggleButtonGetActive wcheckannoy <*> toggleButtonGetActive wcheckannoyerrors) $
         windowPopup window
 
@@ -136,5 +150,5 @@ appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
 appFile def' ac file =
     fromIOException err $ io $ ac file
   where err = do
-          tempError 3 $ "Невозможно прочитать файл \"" ++ file ++ "\""
+          tempError 3 $ "Невозможно прочитать файл \"" ++ T.pack file ++ "\""
           return def'

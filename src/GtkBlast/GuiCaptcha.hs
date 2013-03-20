@@ -26,16 +26,16 @@ import Graphics.UI.Gtk hiding (get, set)
 
 import Control.Concurrent.STM
 
-captchaError :: String -> E ()
+captchaError :: Text -> E ()
 captchaError =
     showMessage wcheckannoy "Captcha error" (Just 2) True
 
-captchaSupplyCaptchaPersistent :: String -> E ()
+captchaSupplyCaptchaPersistent :: Text -> E ()
 captchaSupplyCaptchaPersistent s =
     showMessage wcheckannoy "Persistent captcha message" Nothing False s
     -- showSupplyCaptcha increments messageLocks, we deincrement messageLock in removeCurrentCaptcha
 
-formatCaptchaSupplyCaptcha :: CaptchaType -> OriginStamp -> String
+formatCaptchaSupplyCaptcha :: CaptchaType -> OriginStamp -> Text
 formatCaptchaSupplyCaptcha CaptchaPosting (OriginStamp _ proxy board _ thread) =
     "Введите капчу для " ++
         (case thread of
@@ -58,7 +58,8 @@ updateCaptchaWidget = do
                 io $ imageSetFromFile wimagecaptcha fn
                 writeLog "switched captcha"
                 io $ entrySetText wentrycaptcha ""
-                captchaSupplyCaptchaPersistent $ formatCaptchaSupplyCaptcha (captchaType c) st
+                captchaSupplyCaptchaPersistent $
+                    formatCaptchaSupplyCaptcha (captchaType c) st
 
 putCaptchaWidget :: E ()
 putCaptchaWidget = do

@@ -1,22 +1,32 @@
 module Main (main) where
 import Import hiding (on, mod)
+
+import Paths_blast_it_with_piss
+
 import GtkBlast.Directory
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
 import GtkBlast.Mainloop (setMainLoop)
+import GtkBlast.ROW_ROW_FIGHT_THE_POWER
+
 import Graphics.UI.Gtk hiding (get)
+
+import qualified Data.Text as T
+
+import Data.Version
+
 import System.Environment (getArgs)
 import System.Exit
+
 import System.FilePath
-import Network (withSocketsDo)
-#ifdef BINDIST
 import System.Directory (setCurrentDirectory)
+
+#ifdef BINDIST
 import System.Environment.Executable (splitExecutablePath)
 #endif
-import GtkBlast.ROW_ROW_FIGHT_THE_POWER
-import Paths_blast_it_with_piss
-import Data.Version
+
+import Network (withSocketsDo)
 
 
 
@@ -38,6 +48,7 @@ import Data.Version
 -- URGENT Thread pool
 
 -- URGENT Avoid reopening log handle
+-- URGENT Use FastLogger/Text for log
 
 -- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 
@@ -238,7 +249,10 @@ main = withSocketsDo $ do
 #endif
     -- read configuration
 
-    putInvisibleLog =<< (("Starting gtkblast. Version " ++ showVersion version ++ ". Current time is ") ++) . show <$> getZonedTime
+    _t <- show <$> getZonedTime
+    putInvisibleLog $
+        "Starting gtkblast. Version " ++ T.pack (showVersion version) ++
+        ". Current time is " ++ _t
 
     configfile <- (</> "config.json") <$> configDir
 

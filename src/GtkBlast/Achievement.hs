@@ -4,7 +4,7 @@ module GtkBlast.Achievement
     ,getAchievementString) where
 import Import
 
-achievements :: [(Int, String)]
+achievements :: [(Int, Text)]
 achievements =
         reverse $
         [(10, "Анон")
@@ -24,10 +24,10 @@ achievements =
         ,(1000000, "Chitak ebaniy")
         ]
 
-getAchievement :: Int -> Maybe String
+getAchievement :: Int -> Maybe Text
 getAchievement a =
     findMap (\(p, t) -> if a >= p then Just t else Nothing) $ achievements
 
-getAchievementString :: Int -> String
+getAchievementString :: Int -> Text
 getAchievementString =
-    maybe [] (("Achievement unlocked: \"" ++) . (++ "\"")) . getAchievement
+    maybe "" (("Achievement unlocked: \"" ++) . (++ "\"")) . getAchievement

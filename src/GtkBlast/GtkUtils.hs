@@ -21,7 +21,7 @@ windowToggle window =
         (windowPopup window)
 
 -- if only FileChooserButton worked...
-onFileChooserEntryButton :: Bool -> Button -> Entry -> (String -> IO ()) -> IO () -> IO ()
+onFileChooserEntryButton :: Bool -> Button -> Entry -> (Text -> IO ()) -> IO () -> IO ()
 onFileChooserEntryButton b wfbutton wfentry put fin = void $ do
     if b
         then aux FileChooserActionSelectFolder (\d -> fileChooserSetCurrentFolder d =<< entryGetText wfentry)

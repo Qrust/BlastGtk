@@ -27,6 +27,7 @@ import BlastItWithPiss.Choice (Mode(..))
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Board
 
+import qualified Data.Text as T
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding (get,set)
@@ -42,11 +43,12 @@ updWipeMessage = do
     whenM (get wipeStarted) $ do
         pc <- get postCount
         let psc = "Сделано постов: " ++ show pc ++ "\n"
-        bnd <- do (ac, bn, dd) <- get wipeStats
-                  return $ "Активно: " ++ show ac ++ " / Забанено: " ++ show bn ++
-                            (if dd > 0 then "\nНаебнулось: " ++ show dd else [])
+        bnd <- do
+            (ac, bn, dd) <- get wipeStats
+            return $ "Активно: " ++ show ac ++ " / Забанено: " ++ show bn ++
+                    (if dd > 0 then "\nНаебнулось: " ++ show dd else "")
         let ach = getAchievementString pc
-        updMessage $ psc ++ bnd ++ (if null ach then [] else "\n" ++ ach)
+        updMessage $ psc ++ bnd ++ (if T.null ach then "" else "\n" ++ ach)
 
 killWipeUnit :: Board -> WipeUnit -> E ()
 killWipeUnit board WipeUnit{..} = do

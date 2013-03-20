@@ -52,7 +52,7 @@ data Env = E
 
     ,captchaMode :: IORef CaptchaMode
     ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, SupplyCaptcha))]
-    ,antigateLogQueue :: TQueue (Either String String)
+    ,antigateLogQueue :: TQueue (Either Text Text)
     ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
 
     ,guiReportQueue :: TQueue OriginStamp

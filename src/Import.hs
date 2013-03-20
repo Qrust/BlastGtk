@@ -6,11 +6,16 @@ module Import
 import Debug.Trace as A
 #endif
 import Safe as A
-import Prelude as A hiding (show, appendFile, getContents, getLine, interact, readFile, writeFile, catch, ioError, log)
+import Prelude as A hiding (show, appendFile, getContents, getLine, interact
+                           ,readFile, writeFile
+#if !MIN_VERSION_base(4,6,0)
+                           ,catch
+#endif
+                           ,ioError, log, (++))
 import System.IO as A hiding (readFile, writeFile, appendFile)
 import Data.Monoid as A
 import Data.Maybe as A
-import Data.List as A
+import Data.List as A hiding ((++))
 import Data.Char as A
 import Control.Applicative as A hiding (empty)
 import Control.Monad as A
@@ -65,6 +70,10 @@ show = fromString . S.show
 {-# INLINE decodeUtf8 #-}
 decodeUtf8 :: ByteString -> Text
 decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
+
+{-# INLINE (++) #-}
+(++) :: Monoid a => a -> a -> a
+(++) = mappend
 
 -- * CONTROL
 

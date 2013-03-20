@@ -32,6 +32,8 @@ import BlastItWithPiss.Post
 
 import Text.Recognition.Antigate
 
+import qualified Data.Text as T
+
 import Control.Concurrent.Lifted
 import Control.Concurrent.STM hiding (readTVarIO, atomically)
 import qualified Control.Concurrent.STM as STM
@@ -107,7 +109,7 @@ data SupplyCaptcha = SupplyCaptcha
 
 data Message
     = OutcomeMessage !Outcome
-    | LogMessage !String
+    | LogMessage !Text
     | SolveCaptcha !SupplyCaptcha
     | NoPastas
     | NoImages
@@ -153,7 +155,7 @@ instance Show CaptchaAnswer where
     show ReloadCaptcha = "ReloadCaptcha"
     show AbortCaptcha = "AbortCaptcha"
 
-renderCompactStamp :: OriginStamp -> String
+renderCompactStamp :: OriginStamp -> Text
 renderCompactStamp (OriginStamp _ proxy board _ _) =
     renderBoard board ++ " {" ++ show proxy ++ "}"
 
@@ -165,7 +167,7 @@ instance Show OriginStamp where
 
 instance Show Message where
     show (OutcomeMessage o) = show o
-    show (LogMessage o) = o
+    show (LogMessage o) = T.unpack o
     show SolveCaptcha{} = "SolveCaptcha"
     show NoPastas = "NoPastas"
     show NoImages = "NoImages"
@@ -311,7 +313,7 @@ blastOut msg = do
     let a = OutMessage st msg
     liftIO $ a `deepseq` to a
 
-blastLog :: String -> BlastLog ()
+blastLog :: Text -> BlastLog ()
 blastLog msg = do
     d <- askLogDetail
     when (d == Log) $ do
@@ -351,8 +353,10 @@ blastPostData mode mpastapage thread = do
                 (runBlast manager st . runBlastLogSt r s . getThread)
                 mpastapage
                 thread
-    blastLog $ "chose pasta, escaping invisibles " ++ show escinv ++
-        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++ pasta ++ "\""
+    blastLog $
+        "chose pasta, escaping invisibles " ++ show escinv ++
+        ", escaping wordfilter " ++ show escwrd ++ ": \"" ++
+        T.pack pasta ++ "\""
 
     sagemode <- readTVarIO tsagemode
     let sage = fromSageMode sagemode mode
@@ -382,7 +386,7 @@ blastPostData mode mpastapage thread = do
     junkImage & maybe
         (blastLog "chose no image")
         (\i -> blastLog $
-            "chose image \"" ++ filename i ++
+            "chose image \"" ++ T.pack (filename i) ++
                 "\", junk: " ++ show junkingEnabled)
 
     watermark <- readTVarIO tmakewatermark

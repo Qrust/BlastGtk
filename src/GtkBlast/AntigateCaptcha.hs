@@ -19,6 +19,8 @@ import BlastItWithPiss.Board
 import BlastItWithPiss.Blast
 import BlastItWithPiss
 
+import qualified Data.Text as T
+
 import Text.Recognition.Antigate
 import Graphics.UI.Gtk hiding (get, set)
 
@@ -29,7 +31,12 @@ import Data.Time.Clock.POSIX
 import Control.Monad.Trans.Resource
 import qualified Data.Map as M
 
-antigateThread :: Manager -> (OriginStamp, SupplyCaptcha) -> TQueue (Either String String) -> ApiKey -> IO ()
+antigateThread
+    :: Manager
+    -> (OriginStamp, SupplyCaptcha)
+    -> TQueue (Either Text Text)
+    -> ApiKey
+    -> IO ()
 antigateThread connection (st, SupplyCaptcha{..}) tq key =
     runResourceT $ flip catches hands $ do
         ut <- io $ newIORef 0
@@ -41,51 +48,55 @@ antigateThread connection (st, SupplyCaptcha{..}) tq key =
         (cid, str) <- solveCaptcha sconf key captchaConf captchaFilename
                         captchaBytes connection
 
-        lg $ "Sending antigate answer \"" ++ str ++ "\" to " ++ renderCompactStamp st
+        lg $ "Sending antigate answer \"" ++ T.pack str ++ "\" to " ++ renderCompactStamp st
         io $ captchaSend $ Answer str (handle errex . void . report cid)
 
         lg $ "Antigate thread finished for " ++ renderCompactStamp st
-  where lg :: MonadIO m => String -> m ()
-        lg = io . atomically . writeTQueue tq . Right
-        upcallback uploadtime then' cid = do
-            now <- getPOSIXTime
-            set uploadtime now
-            lg $ "Got captcha id for " ++ renderCompactStamp st ++ ": " ++
-                show cid ++ ". Spent " ++ show (now-then') ++ " on uploading"
-        counter _ _ _ 0 = return ()
-        counter uploadtime then' phase c = do
-            ut <- get uploadtime
-            now <- getPOSIXTime
-            lg $ "Retry #" ++ show c ++ " of " ++ show phase ++ " for " ++
-                renderCompactStamp st ++ ": spent " ++
-                    (case phase of
-                        CheckPhase ->
-                          show (now - then') ++ " solving captcha, " ++
-                            "with " ++ show (now - ut) ++ " spent on checking"
-                        UploadPhase -> show (now - then') ++ " on uploading"
-                    )
-        err :: MonadIO m => String -> m ()
-        err = io . atomically . writeTQueue tq . Left
-        report cid nst = do
-            lg $ "Reporting bad captcha id " ++ show cid ++ " for " ++ renderCompactStamp nst
-            runResourceT $ reportBad key cid connection
-        errex (e::SomeException) = err $ "errex " ++ renderCompactStamp st ++ ": " ++ (show e)
-        hands :: [Handler (ResourceT IO) ()]
-        hands =
-            [Handler $ \(e::SolveException) -> do
-                case e of
-                    SolveExceptionUpload a ->
-                        err $ "Не удалось загрузить капчу на антигейт, ошибка: " ++ show a ++ "\n" ++ renderCompactStamp st
-                    SolveExceptionCheck i a ->
-                        err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a ++ ", id: " ++ show i ++ "\n" ++ renderCompactStamp st
-                lg $ "Aborting antigate thread for " ++ renderCompactStamp st
-                io $ captchaSend AbortCaptcha
-            ,Handler $ \(e::AsyncException) -> do
-                lg $ "Antigate thread killed by async " ++ show e ++ " " ++ renderCompactStamp st
-            ,Handler $ \e -> do
-                io $ captchaSend AbortCaptcha
-                io $ errex e
-            ]
+  where
+    lg :: MonadIO m => Text -> m ()
+    lg = io . atomically . writeTQueue tq . Right
+    err :: MonadIO m => Text -> m ()
+    err = io . atomically . writeTQueue tq . Left
+    upcallback uploadtime then' cid = do
+        now <- getPOSIXTime
+        set uploadtime now
+        lg $ "Got captcha id for " ++ renderCompactStamp st ++ ": " ++
+            show cid ++ ". Spent " ++ show (now-then') ++ " on uploading"
+    counter _ _ _ 0 = return ()
+    counter uploadtime then' phase c = do
+        ut <- get uploadtime
+        now <- getPOSIXTime
+        lg $ "Retry #" ++ show c ++ " of " ++ show phase ++ " for " ++
+            renderCompactStamp st ++ ": spent " ++
+                (case phase of
+                  CheckPhase ->
+                    show (now - then') ++ " solving captcha, " ++
+                    "with " ++ show (now - ut) ++ " spent on checking"
+                  UploadPhase -> show (now - then') ++ " on uploading"
+                )
+    report cid nst = do
+        lg $ "Reporting bad captcha id " ++ show cid ++ " for " ++ renderCompactStamp nst
+        runResourceT $ reportBad key cid connection
+    errex (e::SomeException) = err $ "errex " ++ renderCompactStamp st ++ ": " ++ (show e)
+    hands :: [Handler (ResourceT IO) ()]
+    hands =
+        [Handler $ \(e::SolveException) -> do
+            case e of
+              SolveExceptionUpload a ->
+                err $ "Не удалось загрузить капчу на антигейт, ошибка: " ++
+                    show a ++ "\n" ++ renderCompactStamp st
+              SolveExceptionCheck i a ->
+                err $ "Антигейт не смог распознать капчу, ошибка: " ++ show a
+                    ++ ", id: " ++ show i ++ "\n" ++ renderCompactStamp st
+            lg $ "Aborting antigate thread for " ++ renderCompactStamp st
+            io $ captchaSend AbortCaptcha
+        ,Handler $ \(e::AsyncException) -> do
+            lg $ "Antigate thread killed by async " ++ show e ++ " " ++
+                renderCompactStamp st
+        ,Handler $ \e -> do
+            io $ captchaSend AbortCaptcha
+            io $ errex e
+        ]
 
 startAntigateThread :: (OriginStamp, SupplyCaptcha) -> E (ThreadId, (OriginStamp, SupplyCaptcha))
 startAntigateThread c@(OriginStamp{..},_) = do
