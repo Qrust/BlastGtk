@@ -195,6 +195,99 @@ maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
+generateNewBrowser :: BrowserAction ()
+generateNewBrowser = do
+    setMaxRedirects Nothing
+    setMaxRetryCount 1
+    setTimeout $ Just $ 10 * 1000000
+    setDefaultHeader hUserAgent $ Just userAgent
+    setOverrideHeaders
+        [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
+        -- ,("Accept-Encoding", "")
+        ,(hConnection, "keep-alive")
+        ]
+    --
+    --setCookieFilter $ \_ _ -> return False
+    --
+
+runBlastNew :: Manager -> Blast a -> IO a
+runBlastNew m blast =
+    runResourceT $ browse m $ do
+        generateNewBrowser
+        blast
+
+runBlast :: Manager -> BrowserState -> Blast a -> IO a
+runBlast m st blast =
+    runResourceT $ browse m $ do
+        setBrowserState st
+        blast
+
+httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
+httpSetProxys h s = do
+    setCurrentProxy h
+    setCurrentSocksProxy s
+
+httpSetProxy :: BlastProxy -> Blast ()
+httpSetProxy NoProxy = httpSetProxys Nothing Nothing
+httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
+httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
+
+httpGetProxy :: Blast BlastProxy
+httpGetProxy = do
+    h <- getCurrentProxy
+    case h of
+        Just p -> return $ HttpProxy p
+        Nothing -> do
+            s <- getCurrentSocksProxy
+            case s of
+                Just p -> return $ SocksProxy p
+                Nothing -> return NoProxy
+
+httpWithProxy :: BlastProxy -> Blast a -> Blast a
+httpWithProxy p m = do
+    bracket
+        httpGetProxy
+        (\current -> httpSetProxy current)
+        (\_ -> do
+            httpSetProxy p
+            m)
+
+httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
+httpReq = makeRequest
+
+httpReqLbs :: Request (ResourceT IO) -> Blast (Response LByteString)
+httpReqLbs = makeRequestLbs
+
+httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
+httpReqStr u = do
+    x <- httpReq u
+    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map T.decodeUtf8 =$ consume)
+
+httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
+httpReqStrTags u = do
+    x <- httpReq u
+    liftIO $ runResourceT $ (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
+
+httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
+httpGet = makeRequest . fromJust . parseUrl
+
+httpGetLbs :: String -> Blast LByteString
+httpGetLbs u = do
+    r <- parseUrl u
+    responseBody <$> makeRequestLbs r
+
+httpGetStr :: String -> Blast Text
+httpGetStr u = do
+    g <- httpGet u
+    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map T.decodeUtf8 =$ consume)
+    x
+
+httpGetStrTags :: String -> Blast [Tag Text]
+httpGetStrTags u = do
+    g <- httpGet u
+    let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
+    x
+
 userAgents :: [ByteString]
 userAgents =
     [
@@ -312,96 +405,3 @@ userAgents =
     ,"Opera/9.80 (X11; FreeBSD 8.1-RELEASE i386; Edition Next) Presto/2.12.388 Version/12.10"
     ,"Mozilla/5.0 (X11; U; SunOS i86pc; en-US; rv:1.8.1.12) Gecko/20080303 SeaMonkey/1.1.8"
     ]
-
-generateNewBrowser :: BrowserAction ()
-generateNewBrowser = do
-    setMaxRedirects Nothing
-    setMaxRetryCount 1
-    setTimeout $ Just $ 10 * 1000000
-    setDefaultHeader hUserAgent $ Just userAgent
-    setOverrideHeaders
-        [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
-        ,("Accept-Encoding", "")
-        ,(hConnection, "keep-alive")
-        ]
-    --
-    --setCookieFilter $ \_ _ -> return False
-    --
-
-runBlastNew :: Manager -> Blast a -> IO a
-runBlastNew m blast =
-    runResourceT $ browse m $ do
-        generateNewBrowser
-        blast
-
-runBlast :: Manager -> BrowserState -> Blast a -> IO a
-runBlast m st blast =
-    runResourceT $ browse m $ do
-        setBrowserState st
-        blast
-
-httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
-httpSetProxys h s = do
-    setCurrentProxy h
-    setCurrentSocksProxy s
-
-httpSetProxy :: BlastProxy -> Blast ()
-httpSetProxy NoProxy = httpSetProxys Nothing Nothing
-httpSetProxy (HttpProxy p) = httpSetProxys (Just p) Nothing
-httpSetProxy (SocksProxy p) = httpSetProxys Nothing (Just p)
-
-httpGetProxy :: Blast BlastProxy
-httpGetProxy = do
-    h <- getCurrentProxy
-    case h of
-        Just p -> return $ HttpProxy p
-        Nothing -> do
-            s <- getCurrentSocksProxy
-            case s of
-                Just p -> return $ SocksProxy p
-                Nothing -> return NoProxy
-
-httpWithProxy :: BlastProxy -> Blast a -> Blast a
-httpWithProxy p m = do
-    bracket
-        httpGetProxy
-        (\current -> httpSetProxy current)
-        (\_ -> do
-            httpSetProxy p
-            m)
-
-httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpReq = makeRequest
-
-httpReqLbs :: Request (ResourceT IO) -> Blast (Response LByteString)
-httpReqLbs = makeRequestLbs
-
-httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
-httpReqStr u = do
-    x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map T.decodeUtf8 =$ consume)
-
-httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
-httpReqStrTags u = do
-    x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
-
-httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpGet = makeRequest . fromJust . parseUrl
-
-httpGetLbs :: String -> Blast LByteString
-httpGetLbs u = do
-    r <- parseUrl u
-    responseBody <$> makeRequestLbs r
-
-httpGetStr :: String -> Blast Text
-httpGetStr u = do
-    g <- httpGet u
-    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map T.decodeUtf8 =$ consume)
-    x
-
-httpGetStrTags :: String -> Blast [Tag Text]
-httpGetStrTags u = do
-    g <- httpGet u
-    let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
-    x

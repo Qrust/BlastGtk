@@ -56,6 +56,7 @@ readTVarIO = liftIO . STM.readTVarIO
 atomically :: MonadIO m => STM a -> m a
 atomically = liftIO . STM.atomically
 
+-- | Global
 data ShSettings = ShSettings
     {tpastagen :: !(TVar ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO TempBlastPastaChannel))
     ,timagegen :: !(TVar (IO Image))
@@ -70,6 +71,7 @@ data ShSettings = ShSettings
     ,tsagemode :: !(TVar SageMode)
     }
 
+-- | PerBoard
 data MuSettings = MuSettings
     {mthread :: !(TVar (Maybe Int))
     ,mmode :: !(TVar (Maybe Mode))
@@ -77,6 +79,7 @@ data MuSettings = MuSettings
     ,mthreadtimeout :: !(TVar (Maybe Double))
     }
 
+-- | PerProxy
 data ProxySettings = ProxyS
     {psharedCookies :: !(TMVar CookieJar)
     ,pcloudflareCaptchaLock :: !(TMVar ())
@@ -563,22 +566,28 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
             mfluctuation <- readTVarIO tfluctuation
             blastLog $ "Post time fluctuation: " ++ show mfluctuation
 
-            beforeSleep <- liftIO getPOSIXTime
-            let canDefinitelyPost =
-                    beforeSleep - bsPessimisticLastPostTime >= posttimeout
+            canDefinitelyPost <-
+                flip fmap (liftIO getPOSIXTime) $ \now ->
+                    now - bsPessimisticLastPostTime >= posttimeout
 
             -- implying that we get CreateNew only when we definitely can post
-            when (mode /= CreateNew && not canDefinitelyPost) $ do
-                fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
+            unless (mode == CreateNew || canDefinitelyPost) $ do
+                !fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
                     lowerHalf <- chooseFromList [True, True, True, False]
                     r <- realToFrac <$> getRandomR
                         (if lowerHalf then 0 else f/2, if lowerHalf then f/2 else f)
                     blastLog $ "Sleep added by fluctuation: " ++ show r
                     return r
 
+                let !orientedLastPostTime =
+                        if adaptive
+                            then bsOptimisticLastPostTime
+                            else bsPessimisticLastPostTime
+
+                now <- liftIO getPOSIXTime
                 let slptime =
-                        (bsOptimisticLastPostTime + posttimeout)
-                        - beforeSleep + fluctuation
+                        (orientedLastPostTime + posttimeout)
+                        - now + fluctuation
 
                 blastLog $ "sleeping " ++ show slptime ++
                     " seconds before post. FIXME using threadDelay for sleeping"
@@ -594,17 +603,14 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
             blastOut (OutcomeMessage out)
 
             when (successOutcome out) $ do
-                if not neededcaptcha && not adaptive
-                    then do
-                        setAdaptive True
-                    else do
-                        when (neededcaptcha && adaptive) $ setAdaptive False
-                if mode==CreateNew
-                    then do
-                        setLastThreadTime afterPost
-                    else do
-                        setPessimisticLastPostTime afterPost
-                        setOptimisticLastPostTime beforePost
+                when (neededcaptcha && adaptive) $ setAdaptive False
+                unless (neededcaptcha || adaptive) $ setAdaptive True
+                if mode == CreateNew
+                  then do
+                    setLastThreadTime afterPost
+                  else do
+                    setPessimisticLastPostTime afterPost
+                    setOptimisticLastPostTime beforePost
                 blastLog "post succeded"
 
             case out of
@@ -627,8 +633,10 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
                     blastPost threadtimeout True otherfields mode thread postdata
                   | otherwise -> do
                     if o==TooFastPost
-                        then blastLog "TooFastPost, retrying in 0.5 seconds"
-                        else blastLog "post failed, retrying in 0.5 seconds"
+                      then
+                        blastLog "TooFastPost, retrying in 0.5 seconds"
+                      else
+                        blastLog "post failed, retrying in 0.5 seconds"
                     setOptimisticLastPostTime $ beforePost - (posttimeout - 0.5)
                     setPessimisticLastPostTime $ beforePost - (posttimeout - 0.5)
 

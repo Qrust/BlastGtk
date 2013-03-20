@@ -46,6 +46,8 @@ import Network (withSocketsDo)
 -}
 -- URGENT Checker with captcha
 -- URGENT Thread pool
+-- URGENT Presolve & migrate captcha
+-- URGENT AdaptiveIn is a property of board+proxy not of a single agent
 
 -- URGENT Avoid reopening log handle
 -- URGENT Use FastLogger/Text for log
