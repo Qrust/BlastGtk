@@ -7,7 +7,7 @@ import Debug.Trace as A
 #endif
 import Safe as A
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact
-                           ,readFile, writeFile
+                           ,readFile, writeFile, putStrLn, print
 #if !MIN_VERSION_base(4,6,0)
                            ,catch
 #endif
@@ -107,12 +107,8 @@ whenJustM :: Monad m => m (Maybe a) -> (a -> m ()) -> m ()
 whenJustM mmb m = maybe (return ()) m =<< mmb
 
 {-# INLINE fromMaybeM #-}
-fromMaybeM :: Monad m => m a -> m (Maybe a) -> m a
-fromMaybeM _nothing m = do
-    x <- m
-    case x of
-      Just _just -> return _just
-      Nothing -> _nothing
+fromMaybeM :: Monad m => m a -> Maybe a -> m a
+fromMaybeM nothingM = maybe nothingM return
 
 {-# INLINE fromLeft #-}
 fromLeft :: Either a b -> a

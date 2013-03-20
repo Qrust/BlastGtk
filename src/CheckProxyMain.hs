@@ -15,6 +15,8 @@ import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import Paths_blast_it_with_piss
 
+import System.IO (putStrLn)
+
 data Config = Config
     {socks :: Bool
     ,append :: Bool
@@ -194,7 +196,7 @@ main = withSocketsDo $ do
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
 
     ifM (null <$> getArgs)
-      (print md)
+      (putStrLn $ show md)
       (do
         conf@Config{..} <- cmdArgsRun md
         let board =
@@ -208,7 +210,7 @@ main = withSocketsDo $ do
                   . decodeUtf8
                   <$> B.readFile input
 
-        unless quiet $ print conf
+        unless quiet $ putStrLn $ show conf
 
         let eraseFile f = do
                 unless quiet $ putStrLn $ "erasing file " ++ f

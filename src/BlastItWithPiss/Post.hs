@@ -67,7 +67,7 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
           requestHeaders =
            [(hReferer, ssachThread board thread)
            ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-           ,(hAcceptLanguage, "ru,en;q=0.5")]
+           ]
           ,responseTimeout = Just 30
           ,redirectCount = 0
           ,checkStatus = \_ _ _ -> Nothing
@@ -84,6 +84,7 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
     union' :: [Part m m'] -> [Part m m'] -> [Part m m']
     union' = unionBy ((==) `on` partName)
 
+-- Browser postprocesses the request
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
     let exc som = return (InternalError $ ErrorException $ toException som, Nothing)

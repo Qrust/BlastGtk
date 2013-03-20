@@ -245,12 +245,11 @@ httpGetProxy = do
 
 httpWithProxy :: BlastProxy -> Blast a -> Blast a
 httpWithProxy p m = do
-    bracket
-        httpGetProxy
-        (\current -> httpSetProxy current)
-        (\_ -> do
-            httpSetProxy p
-            m)
+    current <- httpGetProxy
+    httpSetProxy p
+    a <- m
+    httpSetProxy current
+    return a
 
 httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
 httpReq = makeRequest

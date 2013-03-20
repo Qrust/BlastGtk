@@ -34,6 +34,8 @@ import Control.Monad.Identity
 import Data.Version
 import Text.ParserCombinators.ReadP
 
+import System.IO (putStrLn, print)
+
 emptyUpdate :: UpdateManifest
 emptyUpdate = UpdateManifest
     {version = Paths.version
@@ -153,7 +155,7 @@ uploadZips as = do
     prompt = "Пароль гитхаба:"
     go [] _ = return ()
     go _retry@((fname, desc, bs):us) pass = do
-        putStrLn $ "Uploading " ++ show desc
+        putStrLn $ "Uploading " ++ T.unpack desc
         ifM (uploadZip pass fname desc bs)
           (go us pass)
           (go _retry =<< getPassword prompt)

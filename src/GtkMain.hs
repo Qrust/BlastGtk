@@ -44,10 +44,17 @@ import Network (withSocketsDo)
       - Log                 # very large log
       - EnvPart             # the gui stops
 -}
+-- URGENT share parse results perBoard
 -- URGENT Checker with captcha
 -- URGENT Thread pool
--- URGENT Presolve & migrate captcha
+-- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
+-- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
+--        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
+--        (return sleep time, instead of sleeping, to allow for thread pool?)
 -- URGENT AdaptiveIn is a property of board+proxy not of a single agent
+
+-- URGENT smyvalka write Log
+-- URGENT smyvalka show captchas currently in solving
 
 -- URGENT Avoid reopening log handle
 -- URGENT Use FastLogger/Text for log
@@ -55,7 +62,7 @@ import Network (withSocketsDo)
 -- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 
 -- URGENT global useragent makes all proxies share useragent
--- URGENT Rid of unsafePerformIO in Blast.userAgent, perproxy useragent
+--        Rid of unsafePerformIO in Blast.userAgent, user-agent is a proxy property
 -- URGENT fix longposting (image)
 -- URGENT don't label non-modded threads as CreateNew
 

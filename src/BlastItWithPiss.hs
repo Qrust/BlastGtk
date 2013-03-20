@@ -220,8 +220,8 @@ blastPostTimeout = do
     board <- askBoard
     ShSettings{..} <- askShSettings
     MuSettings{..} <- askMuSettings
-    (fmap realToFrac <$> readTVarIO mposttimeout) >>= flip maybe return (
-        (fmap realToFrac <$> readTVarIO tposttimeout) >>= flip maybe return (
+    (fmap realToFrac <$> readTVarIO mposttimeout) >>= fromMaybeM (
+        (fmap realToFrac <$> readTVarIO tposttimeout) >>= fromMaybeM (
             return (ssachPostTimeout board)))
 
 blastThreadTimeout :: BlastLog POSIXTime
@@ -229,8 +229,8 @@ blastThreadTimeout = do
     board <- askBoard
     ShSettings{..} <- askShSettings
     MuSettings{..} <- askMuSettings
-    (fmap realToFrac <$> readTVarIO mthreadtimeout) >>= flip maybe return (
-        (fmap realToFrac <$> readTVarIO tthreadtimeout) >>= flip maybe return (
+    (fmap realToFrac <$> readTVarIO mthreadtimeout) >>= fromMaybeM (
+        (fmap realToFrac <$> readTVarIO tthreadtimeout) >>= fromMaybeM (
             return (ssachThreadTimeout board)))
 
 defMuS :: IO MuSettings

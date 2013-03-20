@@ -63,7 +63,7 @@ imageGen imagefolder agitka = do
       then
         readImageWithoutJunk agitkafile
       else
-        fromMaybeM builtinImageGen $
+        fromMaybeM builtinImageGen =<<
           if null images
             then return Nothing
             else do
