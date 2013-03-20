@@ -1,7 +1,11 @@
 {
-    "version": "1.1.23",
+    "version": "1.1.24",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.24",
+            "Починен постинг в длинные треды без сажи. Убрана чрезмерная торопливость при постинге из-за которой можно было проебать капчу."
+        ],
         [
             "1.1.23",
             "Подпилил гуи. Добавил перемешивание слов для всех типов вайп-контента. Добавил постинг пикч и пасты в смывалку."
@@ -159,15 +163,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.23.zip",
-                "a1566d4b4e2af5e437e07c36b4a05114"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.24.zip",
+                "e64571a38dfc96173acf300ecea54b0f"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.23.zip",
-                "537cddb37bc13bbe766cb9ef1896997d"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.24.zip",
+                "99bdcda35141a571f1b51781d633a237"
             ]
         ]
     ]
