@@ -48,6 +48,8 @@ import Data.Time.Clock.POSIX
 import qualified Text.Show as Show
 import Text.HTML.TagSoup(Tag)
 
+import System.IO (putStrLn, putStr)
+
 {-# INLINE readTVarIO #-}
 readTVarIO :: MonadIO m => TVar a -> m a
 readTVarIO = liftIO . STM.readTVarIO

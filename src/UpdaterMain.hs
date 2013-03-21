@@ -9,6 +9,8 @@ import Updater.GuiXML
 
 import qualified Paths_blast_it_with_piss as Paths
 
+import System.IO (putStrLn)
+
 import Data.Version
 
 import Control.Concurrent

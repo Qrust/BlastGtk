@@ -7,12 +7,12 @@ import Debug.Trace as A
 #endif
 import Safe as A
 import Prelude as A hiding (show, appendFile, getContents, getLine, interact
-                           ,readFile, writeFile, putStrLn, print
+                           ,readFile, writeFile, putStrLn, putStr, print
 #if !MIN_VERSION_base(4,6,0)
                            ,catch
 #endif
                            ,ioError, log, (++))
-import System.IO as A hiding (readFile, writeFile, appendFile)
+import System.IO as A hiding (readFile, writeFile, appendFile, putStrLn, putStr, print)
 import Data.Monoid as A
 import Data.Maybe as A
 import Data.List as A hiding ((++))
@@ -35,6 +35,7 @@ import Data.ByteString as A (ByteString)
 import qualified Data.ByteString.Lazy as LB
 import Data.Text as A (Text)
 import qualified Data.Text.Encoding as TE
+import Data.Text.Encoding as A (encodeUtf8)
 import qualified Data.Text.Encoding.Error as TE
 import qualified Data.Text.Lazy as LT
 import qualified Text.Show as S

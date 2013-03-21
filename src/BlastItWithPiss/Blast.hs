@@ -57,7 +57,6 @@ import Text.HTML.TagSoup.Fast.Utf8Only
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 
 import Data.Conduit
 import Data.Conduit.List (consume)
@@ -260,7 +259,7 @@ httpReqLbs = makeRequestLbs
 httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
 httpReqStr u = do
     x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map T.decodeUtf8 =$ consume)
+    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map decodeUtf8 =$ consume)
 
 httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
 httpReqStrTags u = do
@@ -278,7 +277,7 @@ httpGetLbs u = do
 httpGetStr :: String -> Blast Text
 httpGetStr u = do
     g <- httpGet u
-    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map T.decodeUtf8 =$ consume)
+    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map decodeUtf8 =$ consume)
     x
 
 httpGetStrTags :: String -> Blast [Tag Text]

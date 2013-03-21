@@ -1,5 +1,5 @@
 module Main where
-import Import hiding (loop, fail, all, putStrLn)
+import Import hiding (loop, fail, all)
 
 import Paths_blast_it_with_piss
 
@@ -63,7 +63,7 @@ impureAnnotatedCmdargsConfig =
             &= explicit
             &= name "s"
             &= name "socks"
-            &= help "Файл с проксями содержит Socks5 прокси, а не HTTP?"
+            &= help "Файл с проксями содержит Socks5 прокси? Если в имени файла есть \"socks\", то флаг включен автоматически."
         ,_board = []
             &= argPos 1
             &= typ "/Доска/"
@@ -136,9 +136,9 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
                 fromMaybeM (liftIO builtinImageGen) captchaImage
               Just dir ->
                 liftIO $ fromMaybeM builtinImageGen =<< folderImageGen dir
-        
+
         pasta <- fromMaybe "" <$> chooseFromListMaybe pastas
-        
+
         let otherfields = ssachLastRecordedFields board
 
         (!req, ~_) <- prepare board Nothing
@@ -196,7 +196,7 @@ antigate e@Env{..} proxy = runBlastNew manager $ do
                     ++ show answerStr ++ "for proxy {" ++
                     show proxy ++ "}, report result: " ++ show x
         st <- getBrowserState
-        
+
         return $ ProxyPoster $ runBlast manager st $
             createThread e answer (Just captchaImg) repBad
 
@@ -264,7 +264,7 @@ main :: IO ()
 main = withSocketsDo $ do
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
     ifM (null <$> getArgs)
-        (print md) $ do
+        (putStrLn $ show md) $ do
         Config{..} <- cmdArgsRun md
         let board =
               fromMaybe
@@ -272,12 +272,13 @@ main = withSocketsDo $ do
                   "\" как борду, возможно вы имели ввиду \"/" ++ _board ++
                     "/\"?")
                 $ readBoard $ _board
+        let isSocks = _socks || "socks" `isInfixOf` map toLower _proxyFile
         rawIps <-
             nub . filter (not . null) . lines . T.unpack . decodeUtf8 <$>
                 B.readFile _proxyFile
         let (errors, proxies) =
               partitionEithers $
-                map (\x -> maybe (Left x) Right $ readBlastProxy _socks x)
+                map (\x -> maybe (Left x) Right $ readBlastProxy isSocks x)
                   rawIps
         forM_ errors $ hPutStrLn stderr . ("Couldn't read \"" ++) . (++ "\" as a proxy")
         pastas <- fromMaybe [] <$> maybe (return Nothing) readPastaFile _pastaFile

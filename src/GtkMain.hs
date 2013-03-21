@@ -20,9 +20,11 @@ import System.Environment (getArgs)
 import System.Exit
 
 import System.FilePath
-import System.Directory (setCurrentDirectory)
+
+import System.IO (putStrLn)
 
 #ifdef BINDIST
+import System.Directory (setCurrentDirectory)
 import System.Environment.Executable (splitExecutablePath)
 #endif
 
@@ -44,6 +46,7 @@ import Network (withSocketsDo)
       - Log                 # very large log
       - EnvPart             # the gui stops
 -}
+-- URGENT Only allow running Blast with Explcit proxy
 -- URGENT share parse results perBoard
 -- URGENT Checker with captcha
 -- URGENT Thread pool
@@ -52,6 +55,7 @@ import Network (withSocketsDo)
 --        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
 --        (return sleep time, instead of sleeping, to allow for thread pool?)
 -- URGENT AdaptiveIn is a property of board+proxy not of a single agent
+-- URGENT ввод капчи руками в смывалке и чекере
 
 -- URGENT smyvalka write Log
 -- URGENT smyvalka show captchas currently in solving

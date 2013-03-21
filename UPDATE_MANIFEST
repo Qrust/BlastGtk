@@ -1,7 +1,15 @@
 {
-    "version": "1.1.25",
+    "version": "1.1.26",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.26",
+            "Убыстрение проксичекера, проксичекер теперь чекает фиксированное количество проксей одновременно, а не подходами\nПроксичекер теперь показывает отчеканные прокси по категориям\nВ смывалке и проксичекере список прокси читается как Socks, если в имени файла есть \"socks\""
+        ],
+        [
+            "1.1.25",
+            "Убыстрение проксичекера, проксичекер теперь чекает фиксированное количество проксей одновременно, а не подходами\nПроксичекер теперь показывает отчеканные прокси по категориям\nВ смывалке и проксичекере список прокси читается как Socks, если в имени файла есть \"socks\""
+        ],
         [
             "1.1.25",
             "Починены соксы в смывалке. В смывалке, во избежание 503, вся капча теперь достается с проксей"
@@ -167,15 +175,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.25.zip",
-                "6ae8068bbe110dad84491892afb30d58"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.26.zip",
+                "ca20a8baf40146135fd27682094b72bc"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.25.zip",
-                "45ce35a78e700ffa890cac9a0cb57b36"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.26.zip",
+                "7b8679e0c6e81f53490369889917445c"
             ]
         ]
     ]

@@ -23,7 +23,6 @@ import Graphics.UI.Gtk hiding (get, set, labelSetMarkup, labelSetText)
 import qualified Graphics.UI.Gtk as Gtk
 
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as TIO
 
 {-# INLINE labelSetMarkup #-}
@@ -59,7 +58,7 @@ rawPutLog err' logfile str = do {
 rawGUILog :: TextBuffer -> Int -> Text -> IO ()
 rawGUILog wbuf maxLines msg = do
     e <- textBufferGetEndIter wbuf
-    textBufferInsertByteString wbuf e $ TE.encodeUtf8 msg
+    textBufferInsertByteString wbuf e $ encodeUtf8 msg
     textBufferInsertByteString wbuf e "\n"
     l <- textBufferGetLineCount wbuf
     when (l > maxLines) $ do
