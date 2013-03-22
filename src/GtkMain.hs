@@ -46,22 +46,24 @@ import Network (withSocketsDo)
       - Log                 # very large log
       - EnvPart             # the gui stops
 -}
--- URGENT Only allow running Blast with Explcit proxy
 -- URGENT share parse results perBoard
+-- URGENT numCapabilities?
+
 -- URGENT Checker with captcha
--- URGENT Thread pool
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
--- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
---        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
---        (return sleep time, instead of sleeping, to allow for thread pool?)
--- URGENT AdaptiveIn is a property of board+proxy not of a single agent
--- URGENT ввод капчи руками в смывалке и чекере
+-- URGENT Thread pool
 
 -- URGENT smyvalka write Log
 -- URGENT smyvalka show captchas currently in solving
 
 -- URGENT Avoid reopening log handle
 -- URGENT Use FastLogger/Text for log
+
+-- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
+--        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
+--        (return sleep time, instead of sleeping, to allow for thread pool?)
+-- URGENT AdaptiveIn is a property of board+proxy not of a single agent
+-- URGENT ввод капчи руками в смывалке и чекере
 
 -- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 

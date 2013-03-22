@@ -17,7 +17,7 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.Random
 import System.Random.Shuffle
 
-type MonadChoice a = (MonadRandom a, MonadIO a, Applicative a)
+type MonadChoice a = (MonadRandom a, MonadIO a, MonadBaseControl IO a, Applicative a)
 
 chooseFromList :: MonadChoice m => [a] -> m a
 chooseFromList [] = error "chooseFromList supplied with empty list."

@@ -123,10 +123,10 @@ pastaEnvPart b = EP
         pastaMod <- newIORef nullTime
         pastaSet <- newIORef $ coPastaSet c
 
-        wcheckescapeinv <- (rec coEscapeInv $ builderGetObject b castToCheckButton "checkescapeinv") e c
-        wcheckescapewrd <- (rec coEscapeWrd $ builderGetObject b castToCheckButton "checkescapewrd") e c
-        wcheckshuffle <- (rec coShuffleReposts $ builderGetObject b castToCheckButton "checkshuffle") e c
-        wcheckrandomquote <- (rec coRandomQuote $ builderGetObject b castToCheckButton "checkrandomquote") e c
+        wcheckescapeinv <- setir (coEscapeInv c) =<< builderGetObject b castToCheckButton "checkescapeinv"
+        wcheckescapewrd <- setir (coEscapeWrd c) =<< builderGetObject b castToCheckButton "checkescapewrd"
+        wcheckshuffle <- setir (coShuffleReposts c) =<< builderGetObject b castToCheckButton "checkshuffle"
+        wcheckrandomquote <- setir (coRandomQuote c) =<< builderGetObject b castToCheckButton "checkrandomquote"
 
         let bolall w1 w2 = do
                 (x1,x2) <- (,) <$> getIO w1 <*> getIO w2
@@ -206,7 +206,7 @@ pastaEnvPart b = EP
                     setSensitive (p==PastaFile) pastafileassoc pastafilewidgets
                     setSensitive (p==FromThread) fromthreadassoc fromthreadwidgets
 
-        wentrypastafile <- (rec coPastaFile $ builderGetObject b castToEntry "entrypastafile") e c
+        wentrypastafile <- setir (coPastaFile c) =<< builderGetObject b castToEntry "entrypastafile"
         wbuttonpastafile <- builderGetObject b castToButton "buttonpastafile"
 
         onFileChooserEntryButton False wbuttonpastafile wentrypastafile (runE e . writeLog) $ do

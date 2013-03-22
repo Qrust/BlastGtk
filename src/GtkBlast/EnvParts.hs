@@ -48,12 +48,12 @@ envParts b =
     ,pastaEnvPart b
     ,imageEnvPart b
     ,EP
-        (rec coSettingsShown $ builderGetObject b castToExpander "expandersettings")
-        (\v c -> get v ? \a -> c{coSettingsShown=a})
+        (\_ c -> setir (coSettingsShown c) =<< builderGetObject b castToExpander "expandersettings")
+        (\v c -> get v <&> \a -> c{coSettingsShown=a})
         (const id)
     ,EP
-        (rec coAdditionalShown $ builderGetObject b castToExpander "expanderadditional")
-        (\v c -> get v ? \a -> c{coAdditionalShown=a})
+        (\_ c -> setir (coAdditionalShown c) =<< builderGetObject b castToExpander "expanderadditional")
+        (\v c -> get v <&> \a -> c{coAdditionalShown=a})
         (const id)
     ,EP
         (\_ _ -> do
@@ -71,7 +71,7 @@ envParts b =
         (\e c -> do
             walignmentlog <- builderGetObject b castToAlignment "alignmentlog"
 
-            wexpanderlog <- (rec coLogShown $ builderGetObject b castToExpander "expanderlog") e c
+            wexpanderlog <- setir (coLogShown c) =<< builderGetObject b castToExpander "expanderlog"
 
             wlabeldetachlog <- builderGetObject b castToLabel "labeldetachlog"
             wlabelattachlog <- builderGetObject b castToLabel "labelattachlog"
@@ -153,20 +153,20 @@ envParts b =
                 set detached False
 
             return (wbuf,wexpanderlog))
-        (\(_,wel) c -> get wel ? \a -> c{coLogShown=a})
+        (\(_,wel) c -> get wel <&> \a -> c{coLogShown=a})
         (\(wbuf,_) e -> e{wbuf=wbuf})
     ,EP
         (\e c -> do
-            wcheckthread <- (rec coCreateThreads $ builderGetObject b castToCheckButton "check-thread") e c
-            wcheckimages <- (rec coAttachImages $ builderGetObject b castToCheckButton "check-images") e c
-            wcheckwatermark <- (rec coWatermark $ builderGetObject b castToCheckButton "check-watermark") e c
-            wcheckposttimeout <- (rec coUsePostTimeout $ builderGetObject b castToCheckButton "checkposttimeout") e c
-            wspinposttimeout <- (rec coPostTimeout $ builderGetObject b castToSpinButton "spinposttimeout") e c
-            wcheckthreadtimeout <- (rec coUseThreadTimeout $ builderGetObject b castToCheckButton "checkthreadtimeout") e c
-            wspinthreadtimeout <- (rec coThreadTimeout $ builderGetObject b castToSpinButton "spinthreadtimeout") e c
-            wcheckfluctuation <- (rec coUseFluctuation $ builderGetObject b castToCheckButton "checkfluctuation") e c
-            wspinfluctuation <- (rec coFluctuation $ builderGetObject b castToSpinButton "spinfluctuation") e c
-            wchecksage <- (rec coSage $ builderGetObject b castToCheckButton "checksage") e c
+            wcheckthread <- setir (coCreateThreads c) =<< builderGetObject b castToCheckButton "check-thread"
+            wcheckimages <- setir (coAttachImages c) =<< builderGetObject b castToCheckButton "check-images"
+            wcheckwatermark <- setir (coWatermark c) =<< builderGetObject b castToCheckButton "check-watermark"
+            wcheckposttimeout <- setir (coUsePostTimeout c) =<< builderGetObject b castToCheckButton "checkposttimeout"
+            wspinposttimeout <- setir (coPostTimeout c) =<< builderGetObject b castToSpinButton "spinposttimeout"
+            wcheckthreadtimeout <- setir (coUseThreadTimeout c) =<< builderGetObject b castToCheckButton "checkthreadtimeout"
+            wspinthreadtimeout <- setir (coThreadTimeout c) =<< builderGetObject b castToSpinButton "spinthreadtimeout"
+            wcheckfluctuation <- setir (coUseFluctuation c) =<< builderGetObject b castToCheckButton "checkfluctuation"
+            wspinfluctuation <- setir (coFluctuation c) =<< builderGetObject b castToSpinButton "spinfluctuation"
+            wchecksage <- setir (coSage c) =<< builderGetObject b castToCheckButton "checksage"
 
             tqOut <- atomically $ newTQueue
 
@@ -210,25 +210,25 @@ envParts b =
              ,shS=shS
              })
     ,EP
-        (rec coAnnoy $ builderGetObject b castToCheckButton "check-annoy")
-        (\v c -> get v ? \a -> c{coAnnoy=a})
+        (\_ c -> setir (coAnnoy c) =<< builderGetObject b castToCheckButton "check-annoy")
+        (\v c -> get v <&> \a -> c{coAnnoy=a})
         (\v e -> e{wcheckannoy=v})
     ,EP
-        (rec coHideOnSubmit $ builderGetObject b castToCheckButton "checkhideonsubmit")
-        (\v c -> get v ? \a -> c{coHideOnSubmit=a})
+        (\_ c -> setir (coHideOnSubmit c) =<< builderGetObject b castToCheckButton "checkhideonsubmit")
+        (\v c -> get v <&> \a -> c{coHideOnSubmit=a})
         (\v e -> e{wcheckhideonsubmit=v})
     ,EP
-        (rec coAnnoyErrors $ builderGetObject b castToCheckButton "check-annoyerrors")
-        (\v c -> get v ? \a -> c{coAnnoyErrors=a})
+        (\_ c -> setir (coAnnoyErrors c) =<< builderGetObject b castToCheckButton "check-annoyerrors")
+        (\v c -> get v <&> \a -> c{coAnnoyErrors=a})
         (\v e -> e{wcheckannoyerrors=v})
     ,EP
-        (rec coTray $ builderGetObject b castToCheckButton "check-tray")
-        (\v c -> get v ? \a -> c{coTray=a})
+        (\_ c -> setir (coTray c) =<< builderGetObject b castToCheckButton "check-tray")
+        (\v c -> get v <&> \a -> c{coTray=a})
         (\v e -> e{wchecktray=v})
     ,EP
         (\e c -> do
-            wcheckhttpproxy <- (rec coUseHttpProxy $ builderGetObject b castToCheckButton "checkhttpproxy") e c
-            wentryhttpproxyfile <- (rec coHttpProxyFile $ builderGetObject b castToEntry "entryhttpproxyfile") e c
+            wcheckhttpproxy <- setir (coUseHttpProxy c) =<< builderGetObject b castToCheckButton "checkhttpproxy"
+            wentryhttpproxyfile <- setir (coHttpProxyFile c) =<< builderGetObject b castToEntry "entryhttpproxyfile"
             wbuttonhttpproxyfile <- builderGetObject b castToButton "buttonhttpproxyfile"
 
             on wcheckhttpproxy buttonActivated $
@@ -252,8 +252,8 @@ envParts b =
                               })
     ,EP
         (\e c -> do
-            wchecksocksproxy <- (rec coUseSocksProxy $ builderGetObject b castToCheckButton "checksocksproxy") e c
-            wentrysocksproxyfile <- (rec coSocksProxyFile $ builderGetObject b castToEntry "entrysocksproxyfile") e c
+            wchecksocksproxy <- setir (coUseSocksProxy c) =<< builderGetObject b castToCheckButton "checksocksproxy"
+            wentrysocksproxyfile <- setir (coSocksProxyFile c) =<< builderGetObject b castToEntry "entrysocksproxyfile"
             wbuttonsocksproxyfile <- builderGetObject b castToButton "buttonsocksproxyfile"
 
             on wchecksocksproxy buttonActivated $
@@ -277,13 +277,13 @@ envParts b =
                               })
     ,EP
         (\ e c -> do
-            wchecknoproxy <- (rec coUseNoProxy $ builderGetObject b castToCheckButton "checknoproxy") e c
+            wchecknoproxy <- setir (coUseNoProxy c) =<< builderGetObject b castToCheckButton "checknoproxy"
 
             on wchecknoproxy buttonActivated $ do
                 runE e $ regenerateProxies -- force update
 
             return wchecknoproxy)
-        (\v c -> get v ? \a -> c{coUseNoProxy=a})
+        (\v c -> get v <&> \a -> c{coUseNoProxy=a})
         (\v e -> e{wchecknoproxy=v})
     ,EP
         (\_ _ -> do
@@ -341,8 +341,8 @@ envParts b =
         (const return)
         (\v e -> e{window=v})
     ,EP
-        (rec (fromIntegral . coMaxLines) $ builderGetObject b castToSpinButton "wspinmaxlines")
-        (\v c -> get v ? \a -> c{coMaxLines=round a})
+        (\_ c -> setir ((fromIntegral . coMaxLines) c) =<< builderGetObject b castToSpinButton "wspinmaxlines")
+        (\v c -> get v <&> \a -> c{coMaxLines=round a})
         (\v e -> e{wspinmaxlines=v})
     ,EP (\ _ _ -> do
             wlabellogfile <- builderGetObject b castToLabel "labellogfile"

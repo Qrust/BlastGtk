@@ -3,11 +3,8 @@ module GtkBlast.EnvPart
     (EnvPart(..)
     ,runEnvPart
     ,runEnvParts
-    ,(?)
-    ,rec
     ) where
 import Import
-import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Conf
 
@@ -32,13 +29,3 @@ runEnvPart EP{..} e c = do
 
 runEnvParts :: [EnvPart] -> Env -> Conf -> IO (Env -> Env, Conf -> IO Conf)
 runEnvParts = runEnvPart . mconcat
-
-infixr 1 ?
-(?) :: Functor f => f a -> (a -> b) -> f b
-(?) = flip fmap
-
-rec :: MuVar v a => (Conf -> a) -> IO v -> (Env -> Conf -> IO v)
-rec gt mv _ conf = do
-    v <- mv
-    setIO v $ gt conf
-    return v

@@ -3,12 +3,13 @@ module GtkBlast.MuVar
     (MuVar(..)
     ,get
     ,set
+    ,setr
     ,seti
+    ,setir
     ,mod
     ,modi
     ,modM
     ,modiM
-    ,modget
     ) where
 import Import hiding (mod)
 import Graphics.UI.Gtk hiding (get, set)
@@ -56,9 +57,17 @@ get v = liftIO (getIO v)
 set :: (MonadIO m, MuVar v a) => v -> a -> m ()
 set v a = liftIO (setIO v a)
 
+{-# INLINE setr #-}
+setr :: (MonadIO m, MuVar v a) => v -> a -> m v
+setr v a = set v a >> return v
+
 {-# INLINE seti #-}
 seti :: (MonadIO m, MuVar v a) => a -> v -> m ()
 seti = flip set
+
+{-# INLINE setir #-}
+setir :: (MonadIO m, MuVar v a) => a -> v -> m v
+setir = flip setr
 
 {-# INLINE mod #-}
 mod :: (Functor m, MonadIO m, MuVar v a) => v -> (a -> a) -> m ()
@@ -75,7 +84,3 @@ modM v m = set v =<< m =<< get v
 {-# INLINE modiM #-}
 modiM :: (MonadIO m, MuVar v a) => (a -> m a) -> v -> m ()
 modiM = flip modM
-
-{-# INLINE modget #-}
-modget :: (Functor m, MonadIO m, MuVar v a) => v -> (a -> a) -> m a
-modget v f = f <$> get v >>= \a -> set v a >> return a

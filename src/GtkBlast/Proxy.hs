@@ -39,7 +39,7 @@ regenerateProxies = do
                     then do
                         writeLog $ "regen " ++ if isSocks then "socks" else "http" ++ " proxy"
                         set proxymod nd
-                        nps <- catMaybes . map (readBlastProxy isSocks) . lines <$>
+                        nps <- mapMaybe (readBlastProxy isSocks) . lines <$>
                                 appFile [] (fmap (T.unpack . decodeUtf8) . B.readFile) pf
                         set proxylast nps
                         return nps

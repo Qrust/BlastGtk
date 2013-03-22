@@ -3,7 +3,7 @@ module GtkBlast.Log
      putInvisibleLog
     -- * 'E'
     ,writeLog
-    
+
     ,showMessage
     ,tempError
     ,banMessage
@@ -22,6 +22,7 @@ import GtkBlast.MuVar
 import Graphics.UI.Gtk hiding (get, set, labelSetMarkup, labelSetText)
 import qualified Graphics.UI.Gtk as Gtk
 
+import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
@@ -37,18 +38,22 @@ red :: Text -> Text
 red s = "<span foreground=\"#ff0000\">" ++ s ++ "</span>"
 
 rawPutStdout :: Text -> IO ()
-rawPutStdout s = 
+rawPutStdout s =
     fromIOException (return ()) $
         whenM (hIsTerminalDevice stdout) $ do
-            TIO.putStrLn s
+#ifdef mingw32_HOST_OS
+            TIO.hPutStrLn stdout s
+#else
+            B.hPutStrLn stdout $ encodeUtf8 s
+#endif
             hFlush stdout
 
 rawPutLog :: (Text -> IO ()) -> FilePath -> Text -> IO ()
 rawPutLog err' logfile str = do {
     withFile logfile AppendMode $ \h -> do
-        hSetEncoding h utf8
+--      hSetEncoding h utf8
 --      hSeek h SeekFromEnd 0
-        TIO.hPutStrLn h str
+        B.hPutStrLn h $ encodeUtf8 str
     } `catch`
         \(a :: IOException) ->
             err' $ "Got exception while trying to write to log file \"" ++
@@ -103,7 +108,7 @@ showMessage getCheck msgname mUnlockT mkRed msg = do
         else labelSetText wlabel msg
     io $ whenM (toggleButtonGetActive wcheck) $ windowPopup window
     case mUnlockT of
-        Just t -> 
+        Just t ->
             void $ io $ timeoutAdd (modifyIORef messageLocks (subtract 1) >> return False) (t * 1000)
         Nothing -> return ()
 

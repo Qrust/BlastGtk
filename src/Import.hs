@@ -76,12 +76,17 @@ decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
 
--- * CONTROL
+-- * Control
 
 {-# INLINE (&) #-}
 infixl 1 &
 (&) :: a -> (a -> b) -> b
 a & b = b $ a
+
+{-# INLINE (<&>) #-}
+infixl 1 <&>
+(<&>) :: Functor f => f a -> (a -> b) -> f b
+a <&> b = b <$> a
 
 {-# INLINE if' #-}
 if' :: Bool -> a -> a -> a
@@ -138,17 +143,21 @@ untilNothing m = do
 io :: MonadIO m => IO a -> m a
 io = liftIO
 
+-- * Exceptions
+
 {-# INLINE fromIOException #-}
 fromIOException :: MonadBaseControl IO m => m a -> m a -> m a
 fromIOException handler = handle (\(_ :: IOException) -> handler)
 
--- * MISC
+-- * Lists
 
-{-# INLINE modifyIORefM #-}
-modifyIORefM :: IORef a -> (a -> IO a) -> IO ()
-modifyIORefM r m = writeIORef r =<< m =<< readIORef r
+{-# INLINE mapMaybeM #-}
+mapMaybeM :: (Functor m, Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
+mapMaybeM m = fmap catMaybes . mapM m
 
--- * LISTS
+{-# INLINE forMaybeM #-}
+forMaybeM :: (Functor m, Monad m) => [a] -> (a -> m (Maybe b)) -> m [b]
+forMaybeM = flip mapMaybeM
 
 anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 anyM _ [] = return False

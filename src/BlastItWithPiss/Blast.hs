@@ -16,6 +16,9 @@ module BlastItWithPiss.Blast
     ,Blast
     ,generateNewBrowser
     ,runBlastNew
+
+    ,BlastState
+    ,getBlastState
     ,runBlast
 
     ,BlastProxy(..)
@@ -194,8 +197,9 @@ maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
-generateNewBrowser :: BrowserAction ()
-generateNewBrowser = do
+generateNewBrowser :: BlastProxy -> BrowserAction ()
+generateNewBrowser bproxy = do
+    httpSetProxy bproxy
     setMaxRedirects Nothing
     setMaxRetryCount 1
     setTimeout $ Just $ 10 * 1000000
@@ -209,14 +213,19 @@ generateNewBrowser = do
     --setCookieFilter $ \_ _ -> return False
     --
 
-runBlastNew :: Manager -> Blast a -> IO a
-runBlastNew m blast =
+runBlastNew :: Manager -> BlastProxy -> Blast a -> IO a
+runBlastNew m bproxy blast =
     runResourceT $ browse m $ do
-        generateNewBrowser
+        generateNewBrowser bproxy
         blast
 
-runBlast :: Manager -> BrowserState -> Blast a -> IO a
-runBlast m st blast =
+newtype BlastState = BlastState BrowserState
+
+getBlastState :: Blast BlastState
+getBlastState = BlastState <$> getBrowserState
+
+runBlast :: Manager -> BlastState -> Blast a -> IO a
+runBlast m (BlastState st) blast =
     runResourceT $ browse m $ do
         setBrowserState st
         blast

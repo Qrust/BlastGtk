@@ -1,7 +1,7 @@
 module BlastItWithPiss.ImageGen
     (folderImageGen
     ,fileImageGen
-    ,cloudflareRecaptchaImageGen
+    -- ,cloudflareRecaptchaImageGen
 
     ,builtinImageGen
     ,nyanImage
@@ -22,13 +22,13 @@ import BlastItWithPiss.MonadChoice
 import System.FilePath
 import System.Directory
 
-getDirectoryPics :: FilePath -> IO [FilePath]
-getDirectoryPics imagefolder = do
+getDirectoryPics :: MonadIO m => FilePath -> m [FilePath]
+getDirectoryPics imagefolder = liftIO $ do
     fromIOException (return []) $ do
         contents <- getDirectoryContents imagefolder
         return $ filterImages $ map (imagefolder </>) contents
 
-folderImageGen :: FilePath -> IO (Maybe Image)
+folderImageGen :: MonadChoice m => FilePath -> m (Maybe Image)
 folderImageGen imagefolder = do
     _fps <- getDirectoryPics imagefolder
     case _fps of
@@ -40,14 +40,14 @@ folderImageGen imagefolder = do
         go fp fps
     go fpath fs = fromIOException (start fs) $ Just <$> readImageWithoutJunk fpath
 
-fileImageGen :: FilePath -> IO (Maybe Image)
+fileImageGen :: MonadChoice m => FilePath -> m (Maybe Image)
 fileImageGen fpath =
     fromIOException (return Nothing) $ Just <$> readImageWithoutJunk fpath
-
-cloudflareRecaptchaImageGen :: Manager -> IO (Maybe Image)
-cloudflareRecaptchaImageGen manager = do
+{-
+cloudflareRecaptchaImageGen :: Blast (Maybe Image)
+cloudflareRecaptchaImageGen = do
     x <- try $ do
-        (bytes, ct) <- runBlastNew manager $ do
+        (bytes, ct) <- do
             chKey <- recaptchaChallengeKey cloudflareRecaptchaKey
             getCaptchaImage $ Recaptcha chKey
         fname <- mkImageFileName ct
@@ -55,8 +55,8 @@ cloudflareRecaptchaImageGen manager = do
     case x of
       Left (_::HttpException) -> return Nothing
       Right i -> return $ Just i
-
-builtinImageGen :: IO Image
+-}
+builtinImageGen :: MonadChoice m => m Image
 builtinImageGen = chooseFromList
     [nyanImage
     ,sobakImage

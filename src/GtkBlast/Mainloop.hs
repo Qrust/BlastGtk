@@ -79,23 +79,27 @@ regenerateExcluding :: Board -> [BlastProxy] -> MuSettings -> E [WipeUnit]
 regenerateExcluding board exc mus = do
     E{..} <- ask
     prx <- M.assocs <$> get proxies
-    catMaybes <$> forM prx (\(p, s) ->
+    forMaybeM prx $ \(p, s) ->
         if elem p exc
-            then return Nothing
-            else do writeLog $ "Spawning new thread for " ++ renderBoard board ++ " {" ++ show p ++ "}"
+          then
+            return Nothing
+          else do
+            writeLog $
+                "Spawning new thread for " ++
+                renderBoard board ++ " {" ++
+                show p ++ "}"
 #ifdef mingw32_HOST_OS
-                    threadid <- io $ forkOS $ runBlastNew connection $ do
+            threadid <- io $ forkOS $ do
 #else
-                    threadid <- io $ forkIO $ runBlastNew connection $ do
+            threadid <- io $ forkIO $ do
 #endif
-                        --entryPoint p board Log shS mus s (putStrLn . show)
-                        entryPoint p board Log shS mus s $ atomically . writeTQueue tqOut
-                    writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
-                    return $ Just $ WipeUnit p threadid
-        )
+                entryPoint connection p board Log shS mus s $
+                    atomically . writeTQueue tqOut
+            writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
+            return $ Just $ WipeUnit p threadid
 
 maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe (Either BlastProxy WipeUnit))
-maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
+maintainWipeUnit BoardUnit{..} isActive hasWipeStarted w@WipeUnit{..} = do
         E{..} <- ask
         st <- io $ threadStatus wuThreadId
         pxs <- get proxies
@@ -103,7 +107,7 @@ maintainWipeUnit BoardUnit{..} isActive hadWipeStarted w@WipeUnit{..} = do
             then do
                 writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
                 return $ Just $ Left wuProxy
-            else if not isActive || not hadWipeStarted || M.notMember wuProxy pxs
+            else if not isActive || not hasWipeStarted || M.notMember wuProxy pxs
                     then do writeLog $ "Removing unneded {" ++ show wuProxy ++ "} " ++ renderBoard buBoard
                             killWipeUnit buBoard w >> return Nothing
                     else return $ Just $ Right w
@@ -112,12 +116,15 @@ maintainBoardUnit :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])]) -> 
 maintainBoardUnit (!activecount, !pbanned, !pdead) bu@BoardUnit{..} = do
     E{..} <- ask
     isActive <- get buWidget
-    hadWipeStarted <- get wipeStarted
-    (newdead, old) <- partitionEithers . catMaybes <$> (mapM (maintainWipeUnit bu isActive hadWipeStarted) =<< get buWipeUnits)
+    hasWipeStarted <- get wipeStarted
+    _wipeUnits <- get buWipeUnits
+    (newdead, old) <-
+        fmap partitionEithers $ forMaybeM _wipeUnits $
+            maintainWipeUnit bu isActive hasWipeStarted
     mod buDead (newdead++)
     banned <- get buBanned
     dead <- get buDead
-    new <- if isActive && hadWipeStarted
+    new <- if isActive && hasWipeStarted
             then do
                 regenerateExcluding buBoard (map wuProxy old ++ banned ++ dead) buMuSettings
             else return []
@@ -388,7 +395,7 @@ boardUnitsEnvPart b = EP
 
         wbuttonselectall <- builderGetObject b castToButton "buttonselectall"
         wbuttonselectnone <- builderGetObject b castToButton "buttonselectnone"
-        wchecksort <- (rec coSortingByAlphabet $ builderGetObject b castToCheckButton "checksort") e c
+        wchecksort <- setir (coSortingByAlphabet c) =<< builderGetObject b castToCheckButton "checksort"
 
         void $ on wbuttonselectall buttonActivated $ do
             forM_ boardUnits $

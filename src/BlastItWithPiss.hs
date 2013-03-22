@@ -142,7 +142,7 @@ data OriginInfo = OriginInfo
     ,gthread :: !(Maybe Int)
     }
 
-data BlastState = BlastState
+data BlastLogState = BlastLogState
     {bsOriginInfo :: !OriginInfo
     ,bsAdaptivityIn :: !Bool
     ,bsOptimisticLastPostTime :: !POSIXTime
@@ -150,10 +150,10 @@ data BlastState = BlastState
     ,bsLastThreadTime :: !POSIXTime -- ^ Always pessimistic
     }
 
-instance Default BlastState where
-    def = BlastState def False 0 0 0
+instance Default BlastLogState where
+    def = BlastLogState def False 0 0 0
 
-type BlastLog = ReaderT BlastLogData (StateT BlastState Blast)
+type BlastLog = ReaderT BlastLogData (StateT BlastLogState Blast)
 
 instance Show CaptchaAnswer where
     show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
@@ -252,7 +252,7 @@ defPrS = atomically $ do
 runBlastLog :: BlastLogData -> BlastLog a -> Blast a
 runBlastLog d m = evalStateT (runReaderT m d) def
 
-runBlastLogSt :: BlastLogData -> BlastState -> BlastLog a -> Blast a
+runBlastLogSt :: BlastLogData -> BlastLogState -> BlastLog a -> Blast a
 runBlastLogSt d o m = evalStateT (runReaderT m d) o
 
 blast :: Blast a -> BlastLog a
@@ -289,10 +289,10 @@ setAdaptive :: Bool -> BlastLog ()
 setAdaptive n = lift $ get >>= \s -> put s{bsAdaptivityIn=n}
 
 recMode :: Mode -> BlastLog ()
-recMode m = lift get >>= \s@BlastState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gmode=m}}
+recMode m = lift get >>= \s@BlastLogState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gmode=m}}
 
 recThread :: (Maybe Int) -> BlastLog ()
-recThread t = lift get >>= \s@BlastState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gthread=t}}
+recThread t = lift get >>= \s@BlastLogState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gthread=t}}
 
 setLastThreadTime :: POSIXTime -> BlastLog ()
 setLastThreadTime t = lift get >>= \s -> lift $ put s{bsLastThreadTime=t}
@@ -340,7 +340,7 @@ abortWithOutcome o = do
 data TempBlastPastaChannel =
     TBPC{escinv :: Bool
         ,escwrd :: Bool
-        ,pasta :: String} 
+        ,pasta :: String}
 
 blastPostData :: Mode -> Maybe Page -> Maybe Int -> BlastLog PostData
 blastPostData mode mpastapage thread = do
@@ -351,7 +351,7 @@ blastPostData mode mpastapage thread = do
         pastagen <- readTVarIO tpastagen
         r <- ask
         s <- lift get
-        st <- blast getBrowserState
+        st <- blast getBlastState
         manager <- blast getManager
         liftIO $
             pastagen
@@ -544,7 +544,7 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
     board <- askBoard
     ShSettings{..} <- askShSettings
     MuSettings{..} <- askMuSettings
-    BlastState{..} <- lift get
+    BlastLogState{..} <- lift get
     adaptive <- askAdaptive
     (neededcaptcha, mcap) <-
         if cap || mode==CreateNew || not adaptive
@@ -648,7 +648,7 @@ blastLoop = forever $ do
     board <- askBoard
     ShSettings{..} <- askShSettings
     MuSettings{..} <- askMuSettings
-    BlastState{..} <- lift get
+    BlastLogState{..} <- lift get
 
     now <- liftIO getPOSIXTime
     threadtimeout <- blastThreadTimeout
@@ -735,21 +735,30 @@ getThread i = do
 -- > if st==ThreadDied || st==ThreadFinished
 -- >    then resurrect
 -- >    else continue
-entryPoint :: BlastProxy -> Board -> LogDetail -> ShSettings -> MuSettings -> ProxySettings -> (OutMessage -> IO ()) -> Blast ()
-entryPoint proxy board lgDetail shS muS prS output = do
-    runBlastLog
-      BlastLogData
-      {bldProxy = proxy
-      ,bldBoard = board
-      ,bldLogD = lgDetail
-      ,bldShS = shS
-      ,bldMuS = muS
-      ,bldPrS = prS
-      ,bldOut = output
-      ,bldOtherFields = ssachLastRecordedFields board
-      } $ do
+entryPoint
+    :: Manager
+    -> BlastProxy
+    -> Board
+    -> LogDetail
+    -> ShSettings
+    -> MuSettings
+    -> ProxySettings
+    -> (OutMessage -> IO ())
+    -> IO ()
+entryPoint manager proxy board lgDetail shS muS prS output =
+    runBlastNew manager proxy $
+    runBlastLog BlastLogData
+        {bldProxy = proxy
+        ,bldBoard = board
+        ,bldLogD = lgDetail
+        ,bldShS = shS
+        ,bldMuS = muS
+        ,bldPrS = prS
+        ,bldOut = output
+        ,bldOtherFields = ssachLastRecordedFields board
+        }
+      $ do
         blastLog "Entry point"
-        blast $ httpSetProxy proxy
         let hands =
               [Handler $ \(a::AsyncException) -> do
                 blastLog $ "Got async " ++ show a
@@ -790,12 +799,13 @@ entryPoint proxy board lgDetail shS muS prS output = do
                 blastLoop w 0 0-}
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
-sortSsachBoardsByPopularity boards = bracket (newManager def) closeManager $ flip runBlastNew $ do
-    maybeb <- forM boards $ \b -> do
-        liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
-        spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
-        liftIO $ putStrLn $ show spd
-        return (b, spd)
-    let (got, failed) = partition (isJust . snd) maybeb
-        sorted = reverse $ sortBy (\(_,a) (_,b) -> compare (fromJust a) (fromJust b)) got
-    return (map (second fromJust) sorted, fst $ unzip $ failed)
+sortSsachBoardsByPopularity boards =
+    bracket (newManager def) closeManager $ \m -> runBlastNew m NoProxy $ do
+        maybeb <- forM boards $ \b -> do
+            liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
+            spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
+            liftIO $ putStrLn $ show spd
+            return (b, spd)
+        let (got, failed) = partition (isJust . snd) maybeb
+            sorted = reverse $ sortBy (compare `on` fromJust . snd) got
+        return (map (second fromJust) sorted, fst $ unzip $ failed)

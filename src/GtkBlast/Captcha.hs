@@ -60,7 +60,7 @@ migrateCaptcha ocm ncm = do
 captchaModeEnvPart :: Builder -> EnvPart
 captchaModeEnvPart b = EP
     (\e c -> do
-        wcheckantigate <- (rec (cmToBool . coCaptchaMode) $ builderGetObject b castToCheckButton "checkantigate") e c
+        wcheckantigate <- setir ((cmToBool . coCaptchaMode) c) =<< builderGetObject b castToCheckButton "checkantigate"
 
         captchaMode <- newIORef (coCaptchaMode c)
 
@@ -72,7 +72,7 @@ captchaModeEnvPart b = EP
 
         return captchaMode
     )
-    (\v c -> get v ? \a -> c{coCaptchaMode=a})
+    (\v c -> get v <&> \a -> c{coCaptchaMode=a})
     (\v e -> e{captchaMode=v})
 
 maintainCaptcha :: [(Board, [BlastProxy])] -> E ()

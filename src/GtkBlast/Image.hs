@@ -73,12 +73,12 @@ imageGen imagefolder agitka = do
 imageEnvPart :: Builder -> EnvPart
 imageEnvPart b = EP
     (\e c -> do
-        wentryimagefolder <- (rec coImageFolder $ builderGetObject b castToEntry "entryimagefolder") e c
+        wentryimagefolder <- setir (coImageFolder c) =<< builderGetObject b castToEntry "entryimagefolder"
         wbuttonimagefolder <- builderGetObject b castToButton "buttonimagefolder"
-        
+
         onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder (runE e . writeLog) (return ())
 
-        wcheckagitka <- (rec coPostAgitka $ builderGetObject b castToCheckButton "checkagitka") e c
+        wcheckagitka <- setir (coPostAgitka c) =<< builderGetObject b castToCheckButton "checkagitka"
 
         void $ on wcheckagitka buttonActivated $
             runE e $ do

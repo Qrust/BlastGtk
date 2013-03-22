@@ -167,8 +167,7 @@ antigate
     :: Env
     -> BlastProxy
     -> IO ProxyPoster
-antigate e@Env{..} proxy = runBlastNew manager $ do
-    httpSetProxy proxy
+antigate e@Env{..} proxy = runBlastNew manager proxy $ do
     nc <- getNewCaptcha board Nothing ""
     case nc of
       Left adaptiveAnswer -> do
@@ -176,7 +175,7 @@ antigate e@Env{..} proxy = runBlastNew manager $ do
                 if cAdaptive adaptiveAnswer
                     then "Adaptive captcha failed"
                     else "Guessed captcha, but it was wrong."
-        st <- getBrowserState
+        st <- getBlastState
         return $ ProxyPoster $ runBlast manager st $
             createThread e adaptiveAnswer Nothing repBad
       Right (chKey :: CurrentSsachCaptchaType) -> do
@@ -195,7 +194,7 @@ antigate e@Env{..} proxy = runBlastNew manager $ do
                     "Reported bad captcha " ++ show cid ++ ":"
                     ++ show answerStr ++ "for proxy {" ++
                     show proxy ++ "}, report result: " ++ show x
-        st <- getBrowserState
+        st <- getBlastState
 
         return $ ProxyPoster $ runBlast manager st $
             createThread e answer (Just captchaImg) repBad

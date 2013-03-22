@@ -188,8 +188,8 @@ antigateCaptchaEnvPart b = EP
                 whenM ((==Antigate) <$> get captchaMode) $ do
                     addAntigateCaptchas =<< deactivateAntigateCaptcha
 
-        wentryantigatekey <- (rec coAntigateKey $ builderGetObject b castToEntry "entryantigatekey") e c
-        wentryantigatehost <- (rec coAntigateHost $ builderGetObject b castToEntry "entryantigatehost") e c
+        wentryantigatekey <- setir (coAntigateKey c) =<< builderGetObject b castToEntry "entryantigatekey"
+        wentryantigatehost <- setir (coAntigateHost c) =<< builderGetObject b castToEntry "entryantigatehost"
 
         pendingAntigateCaptchas <- newIORef []
         antigateLogQueue <- atomically newTQueue

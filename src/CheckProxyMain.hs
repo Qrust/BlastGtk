@@ -201,14 +201,12 @@ impureAnnotatedCmdargsConfig = Config
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
 checkProxy proxy = do
     Env{..} <- ask
-    liftIO $ runBlastNew manager $ do
-        httpSetProxy proxy
-
+    liftIO $ runBlastNew manager proxy $ do
         -- HACK Lock log / fast-logger
         liftIO $ putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
 
         setTimeout $ Just $ timeout * 1000000
-        setMaxRetryCount 1 -- why retry?
+        setMaxRetryCount 0 -- why retry?
 
         -- HACK Lock log / fast-logger
         liftIO $ putStrLn $ show proxy ++ ": Поcтим"
@@ -375,7 +373,7 @@ main = withSocketsDo $ do
            . decodeUtf8
             <$> B.readFile _input
         let isSocks = _socks || "socks" `isInfixOf` map toLower _input
-        proxies <- catMaybes <$> mapM (proxyReader isSocks) proxyStrings
+        proxies <- mapMaybeM (proxyReader isSocks) proxyStrings
 
         putStrLn $ show conf
 
