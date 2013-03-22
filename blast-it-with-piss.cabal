@@ -48,6 +48,10 @@ flag test
     description: Build DEBUG version, otherwise build release.
     default: False
 
+flag old-directory
+    description: Build with directory < 1.2
+    default: False
+
 library
     build-depends:
          base >= 4.5 && < 5
@@ -60,6 +64,7 @@ library
         ,bytestring
         ,text
         ,safe
+        ,lens
         ,filepath
         ,directory
         ,MonadRandom
@@ -170,44 +175,57 @@ executable gtkblast
 
     build-depends:
          base >= 4.5 && < 5
-        ,antigate >= 0.5 && < 0.6
-        ,filepath
-        ,directory
-        ,containers
-        ,temporary
-        ,time
-        ,old-time
-        ,stm >= 2.4
-        ,transformers
-        ,monad-control
-        ,lifted-base
-        ,bytestring
-        ,text
-        ,gtk >= 0.12.4
-        ,glib
-        ,network
+        ,data-default
         ,deepseq
         ,failure
-        ,data-default
+        ,safe
+        ,lifted-base
+
+        ,containers
+
+        ,stm >= 2.4
+
+        ,time
+
+        ,filepath
+        ,directory
+        ,temporary
+
+        ,transformers
+        ,monad-control
+
+        ,random
+        ,random-shuffle
+        ,MonadRandom
+
+        ,bytestring
+        ,case-insensitive >= 1 && < 2
+        ,text
+
+        -- older gtk2hs doesn't work with TH on wdos
+        ,gtk >= 0.12.4
+        ,glib
+
         ,aeson
         ,aeson-pretty
-        ,ghc-prim
-        ,random-shuffle
-        ,random
-        ,safe
-        ,filepath
-        ,MonadRandom
+
+        ,network
+        ,http-types
         ,http-conduit >= 1.9.1
         ,http-conduit-browser >= 1.8.2
-        ,certificate >= 1.3.1
+        ,antigate >= 0.5 && < 0.6
         ,conduit
-        ,http-types
+        ,resourcet
+
+        ,certificate >= 1.3.1
         ,mime-types >= 0.1.0.2
         ,socks >= 0.5 && < 0.6
-        ,resourcet
-        ,case-insensitive >= 1 && < 2
-        ,tagsoup
+
         ,fast-tagsoup-utf8-only >= 1.0.4
+        ,tagsoup
+
+    if flag(old-directory)
+        build-depends: old-time
 
     if flag(bindist)
         cpp-options: -DBINDIST
@@ -275,6 +293,7 @@ executable proxychecker
         ,bytestring
         ,text
         ,safe
+        ,lens
         ,deepseq
         ,failure
         ,data-default
@@ -363,6 +382,7 @@ executable smyvalka
         ,bytestring
         ,text
         ,safe
+        ,lens
         ,deepseq
         ,failure
         ,data-default
@@ -467,10 +487,10 @@ executable BlastItWithPiss
         ,Updater.GuiXML
 
     build-depends:
-         ghc-prim
-        ,base
+         base
         ,lifted-base
         ,safe
+        ,lens
         ,process
         ,gtk
         ,filepath

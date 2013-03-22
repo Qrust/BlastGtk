@@ -9,7 +9,7 @@ module GtkBlast.Directory
 import Import
 
 #if !MIN_VERSION_directory(1,2,0)
-import System.Time
+import System.Time -- old-time
 #endif
 
 #if !defined(BINDIST) && !defined(TEST)
