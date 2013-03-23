@@ -152,6 +152,7 @@ executable gtkblast
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
 
+        ,GtkBlast.Worker
         ,GtkBlast.Achievement
         ,GtkBlast.Conf
         ,GtkBlast.Directory

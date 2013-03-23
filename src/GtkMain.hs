@@ -48,6 +48,7 @@ import Network (withSocketsDo)
 -}
 -- URGENT share parse results perBoard
 -- URGENT numCapabilities?
+-- URGENT --exclude
 
 -- URGENT Checker with captcha
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)

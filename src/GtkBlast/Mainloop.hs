@@ -9,6 +9,7 @@ import qualified Data.Function as F (on)
 
 import Paths_blast_it_with_piss
 
+import GtkBlast.Worker
 import GtkBlast.Achievement
 import GtkBlast.MuVar
 import GtkBlast.Environment
@@ -75,79 +76,115 @@ killBoardUnit bu = do
     killBoardUnitWipeUnits bu
     cleanBoardUnitBadRecord bu
 
+newWipeUnit
+    :: Board
+    -> BlastProxy
+    -> MuSettings
+    -> ProxySettings
+    -> E WipeUnit
+newWipeUnit board bproxy muSettings proxySettings = do
+    E{..} <- ask
+    writeLog $
+        "Spawning new thread for " ++
+        renderBoard board ++ " {" ++
+        show bproxy ++ "}"
+#ifdef mingw32_HOST_OS
+    threadid <- io $ forkOS $ do
+#else
+    threadid <- io $ forkIO $ do
+#endif
+        entryPoint connection bproxy board Log shS muSettings proxySettings $
+            atomically . writeTQueue tqOut
+    writeLog $ "Spawned " ++ renderBoard board ++ " {" ++ show bproxy ++ "}"
+    return $ WipeUnit bproxy threadid
+
 regenerateExcluding :: Board -> [BlastProxy] -> MuSettings -> E [WipeUnit]
-regenerateExcluding board exc mus = do
+regenerateExcluding board excludeThese muSettings = do
     E{..} <- ask
     prx <- M.assocs <$> get proxies
-    forMaybeM prx $ \(p, s) ->
-        if elem p exc
+    forMaybeM prx $ \(bproxy, prSettings) ->
+        if bproxy `elem` excludeThese
           then
             return Nothing
           else do
-            writeLog $
-                "Spawning new thread for " ++
-                renderBoard board ++ " {" ++
-                show p ++ "}"
-#ifdef mingw32_HOST_OS
-            threadid <- io $ forkOS $ do
-#else
-            threadid <- io $ forkIO $ do
-#endif
-                entryPoint connection p board Log shS mus s $
-                    atomically . writeTQueue tqOut
-            writeLog $ "Spawned " ++ renderBoard board ++ "{" ++ show p ++ "}"
-            return $ Just $ WipeUnit p threadid
+            Just <$> newWipeUnit board bproxy muSettings prSettings
 
-maintainWipeUnit :: BoardUnit -> Bool -> Bool -> WipeUnit -> E (Maybe (Either BlastProxy WipeUnit))
+maintainWipeUnit
+    :: BoardUnit
+    -> Bool
+    -> Bool
+    -> WipeUnit
+    -> E (Maybe (Either BlastProxy WipeUnit))
 maintainWipeUnit BoardUnit{..} isActive hasWipeStarted w@WipeUnit{..} = do
-        E{..} <- ask
-        st <- io $ threadStatus wuThreadId
-        pxs <- get proxies
-        if st == ThreadDied || st == ThreadFinished
-            then do
-                writeLog $ "blasgtk: Thread for {" ++ show wuProxy ++ "} " ++ renderBoard buBoard ++ " died. Removing"
-                return $ Just $ Left wuProxy
-            else if not isActive || not hasWipeStarted || M.notMember wuProxy pxs
-                    then do writeLog $ "Removing unneded {" ++ show wuProxy ++ "} " ++ renderBoard buBoard
-                            killWipeUnit buBoard w >> return Nothing
-                    else return $ Just $ Right w
+    E{..} <- ask
+    st <- io $ threadStatus wuThreadId
+    pxs <- get proxies
+    if st == ThreadDied || st == ThreadFinished
+      then do
+        writeLog $
+            "blasgtk: Thread for {" ++ show wuProxy
+            ++ "} " ++ renderBoard buBoard ++
+            " died. Removing"
+        return $ Just $ Left wuProxy
+      else
+        if not isActive || not hasWipeStarted || M.notMember wuProxy pxs
+          then do
+            writeLog $
+                "Removing unneded {" ++ show wuProxy
+                ++ "} " ++ renderBoard buBoard
+            killWipeUnit buBoard w >> return Nothing
+          else
+            return $ Just $ Right w
 
-maintainBoardUnit :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])]) -> BoardUnit -> E (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
+maintainBoardUnit
+    :: (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
+    -> BoardUnit
+    -> E (Int, [(Board, [BlastProxy])], [(Board, [BlastProxy])])
 maintainBoardUnit (!activecount, !pbanned, !pdead) bu@BoardUnit{..} = do
     E{..} <- ask
     isActive <- get buWidget
     hasWipeStarted <- get wipeStarted
     _wipeUnits <- get buWipeUnits
     (newdead, old) <-
-        fmap partitionEithers $ forMaybeM _wipeUnits $
-            maintainWipeUnit bu isActive hasWipeStarted
+        fmap partitionEithers $ forMaybeM _wipeUnits $ \wu ->
+            maintainWipeUnit bu isActive hasWipeStarted wu
     mod buDead (newdead++)
     banned <- get buBanned
     dead <- get buDead
-    new <- if isActive && hasWipeStarted
-            then do
-                regenerateExcluding buBoard (map wuProxy old ++ banned ++ dead) buMuSettings
-            else return []
+    new <-
+        if isActive && hasWipeStarted
+          then do
+            regenerateExcluding buBoard (map wuProxy old ++ banned ++ dead) buMuSettings
+          else
+            return []
     let newwus = old ++ new
     set buWipeUnits newwus
-    return (activecount + if isActive then length newwus else 0
-           ,(if isActive then ((buBoard, banned) :) else id) pbanned
-           ,(if isActive then ((buBoard, dead) :) else id) pdead)
+    if isActive
+      then return $
+        (activecount + length newwus
+        ,(buBoard, banned) : pbanned
+        ,(buBoard, dead) : pdead
+        )
+      else return $
+        (activecount, pbanned, pdead)
 
 maintainBoardUnits :: E [(Board, [BlastProxy])]
 maintainBoardUnits = do
     E{..} <- ask
-    (active, bannedl, deadl) <- foldM maintainBoardUnit (0,[],[]) boardUnits
-    let (banned, dead) = (length $ concatMap snd bannedl, length $ concatMap snd deadl)
-    set wipeStats (active, banned, dead)
+    (active, banned, dead) <- foldM maintainBoardUnit (0,[],[]) boardUnits
+    let !bannedCount = length $ concatMap snd banned
+        !deadCount = length $ concatMap snd dead
+    set wipeStats (active, bannedCount, deadCount)
     when (active == 0) $ do
         killWipe
         ifM (M.null <$> get proxies)
             (redMessage "Нет проксей, выберите прокси для вайпа или вайпайте без прокси")
-            (if banned > 0 || dead > 0
-                then return () -- uncAnnoyMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
-                else redMessage "Выберите доски для вайпа")
-    return (bannedl++deadl)
+            (if bannedCount > 0 || deadCount > 0
+              then
+                return () -- uncAnnoyMessage "Все треды забанены или наебнулись. Выберите другие доски для вайпа или найдите прокси не являющиеся калом ёбаным."
+              else
+                redMessage "Выберите доски для вайпа")
+    return (banned ++ dead)
 
 startWipe :: E ()
 startWipe = do

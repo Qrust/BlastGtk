@@ -7,32 +7,24 @@ module GtkBlast.Environment
     ,module Control.Monad.Trans.Reader
     ) where
 import Import
+
 import GtkBlast.Directory
 import GtkBlast.Type_PastaSet
 import GtkBlast.Type_CaptchaMode
+import GtkBlast.Worker
+
 import BlastItWithPiss
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Board
+
 import Graphics.UI.Gtk
+
 import GHC.Conc
 import Control.Concurrent.STM
+
 import qualified Data.Map as M
+
 import Control.Monad.Trans.Reader
-
-data WipeUnit = WipeUnit
-    {wuProxy :: !BlastProxy
-    ,wuThreadId :: !ThreadId
-    }
-  deriving Eq
-
-data BoardUnit = BoardUnit
-    {buBoard :: !Board
-    ,buWidget :: !CheckButton
-    ,buWipeUnits :: !(IORef [WipeUnit])
-    ,buBanned :: !(IORef [BlastProxy])
-    ,buDead :: !(IORef [BlastProxy])
-    ,buMuSettings :: MuSettings
-    }
 
 data Env = E
     {
