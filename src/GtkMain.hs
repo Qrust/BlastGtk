@@ -30,6 +30,8 @@ import System.Environment.Executable (splitExecutablePath)
 
 import Network (withSocketsDo)
 
+import GHC.Conc
+
 
 
 
@@ -249,6 +251,8 @@ helpMessage =
 
 main :: IO ()
 main = withSocketsDo $ do
+    setNumCapabilities =<< getNumCapabilities
+
     args <- getArgs
     when (any (`elem` args) ["--help", "-h", "-?"]) $ do
        putStrLn helpMessage
