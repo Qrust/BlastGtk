@@ -53,12 +53,13 @@ import Network (withSocketsDo)
 -- URGENT Checker with captcha
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
 -- URGENT Thread pool
+-- URGENT observer threads instead of regens
 
 -- URGENT smyvalka write Log
 -- URGENT smyvalka show captchas currently in solving
 
 -- URGENT Avoid reopening log handle
--- URGENT Use FastLogger/Text for log
+-- URGENT Use FastLogger/ByteString for log
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
 --        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
@@ -271,17 +272,17 @@ main = withSocketsDo $ do
         ". Current time is " ++ _t
 
     configfile <- (</> "config.json") <$> configDir
-
     conf <- readConfig configfile
-
     putInvisibleLog $ "Loaded config: " ++ show conf
 
     -- start
 
-    handle (\(a::SomeException) -> do
-            t <- getZonedTime
-            putInvisibleLog $ "Uncaught exception terminated program. Current time is " ++ show t ++ "\nException was: " ++ show a
-            exitFailure) $ do
+    handle (\(e::SomeException) -> do
+        t <- getZonedTime
+        putInvisibleLog $
+            "Uncaught exception terminated program. Current time is "
+            ++ show t ++ "\nException was: " ++ show e
+        exitFailure) $ do
 
         -- init
 

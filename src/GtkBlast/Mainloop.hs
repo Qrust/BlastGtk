@@ -298,7 +298,7 @@ mainloop = do
 
 setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
 setMainLoop env configfile setConf = do
-    runE env $ writeLog $ "Setting timeouts."
+    runE env $ writeLog "Setting timeouts."
     void $ timeoutAddFull (do
         whenM (get $ wipeStarted env) $ do
             progressBarPulse $ wprogresswipe env
@@ -308,97 +308,99 @@ setMainLoop env configfile setConf = do
         return True) priorityDefaultIdle 50 --kiloseconds, 20 fps.
     void $ onDestroy (window env) $ runE env $ do
         writeLog "Closing gtkblast"
-        writeConfig configfile =<< io (setConf def{coFirstLaunch=False, coLastVersion=version})
+        conf <- io $ setConf def{coFirstLaunch=False, coLastVersion=version}
+        writeConfig configfile conf
         writeLog "Shutting down GUI"
         io $ mainQuit
         writeLog "GUI shut down."
+    runE env $ writeLog "Launching..."
 
 showBoardSettings :: Board -> E ()
 showBoardSettings board = do
     e <- ask
     case find ((==board) . buBoard) $ boardUnits e of
-        Nothing -> do
-            writeLog $ "showBoardSettings: ERROR couldn't find boardunit for " ++ renderBoard board
-        Just BoardUnit{buMuSettings=MuSettings{..}} -> io $ do
-            b <- builderNew
-            builderAddFromString b $ boardSettingsGuiXML board
-            window <- builderGetObject b castToWindow "window1"
+      Nothing -> do
+        writeLog $ "showBoardSettings: ERROR couldn't find boardunit for " ++ renderBoard board
+      Just BoardUnit{buMuSettings=MuSettings{..}} -> io $ do
+        b <- builderNew
+        builderAddFromString b $ boardSettingsGuiXML board
+        window <- builderGetObject b castToWindow "window1"
 
-            mtrd <- readTVarIO mthread
-            mmod <- readTVarIO mmode
-            mposttm <- readTVarIO mposttimeout
-            mtrdtm <- readTVarIO mthreadtimeout
+        mtrd <- readTVarIO mthread
+        mmod <- readTVarIO mmode
+        mposttm <- readTVarIO mposttimeout
+        mtrdtm <- readTVarIO mthreadtimeout
 
-            walignmentthread <- builderGetObject b castToAlignment "alignmentthread"
-            wcheckwipethread <- builderGetObject b castToCheckButton "checkwipethread"
-            set wcheckwipethread $ isJust mtrd && isJust mmod
-            widgetSetSensitive walignmentthread $ isJust mtrd && isJust mmod
+        walignmentthread <- builderGetObject b castToAlignment "alignmentthread"
+        wcheckwipethread <- builderGetObject b castToCheckButton "checkwipethread"
+        set wcheckwipethread $ isJust mtrd && isJust mmod
+        widgetSetSensitive walignmentthread $ isJust mtrd && isJust mmod
 
-            wspinthreadnum <- builderGetObject b castToSpinButton "spinthreadnum"
-            whenJust mtrd $ set wspinthreadnum . fromIntegral
+        wspinthreadnum <- builderGetObject b castToSpinButton "spinthreadnum"
+        whenJust mtrd $ set wspinthreadnum . fromIntegral
 
-            wchecksage <- builderGetObject b castToCheckButton "checksage"
-            whenJust mmod $ \mode -> do
-                if mode /= SagePopular && mode /= BumpUnpopular
-                  then do
-                    runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
-                    toggleButtonSetInconsistent wchecksage True
-                  else do
-                    set wchecksage (mode==SagePopular)
+        wchecksage <- builderGetObject b castToCheckButton "checksage"
+        whenJust mmod $ \mode -> do
+            if mode /= SagePopular && mode /= BumpUnpopular
+                then do
+                runE e $ tempError 3 "TERRIBLE! showBoardSettings ERROR: Unknown mode."
+                toggleButtonSetInconsistent wchecksage True
+                else do
+                set wchecksage (mode==SagePopular)
 
-            wcheckposttimeout <- builderGetObject b castToCheckButton "checkposttimeout"
-            set wcheckposttimeout $ isJust mposttm
+        wcheckposttimeout <- builderGetObject b castToCheckButton "checkposttimeout"
+        set wcheckposttimeout $ isJust mposttm
 
-            wspinposttimeout <- builderGetObject b castToSpinButton "spinposttimeout"
-            set wspinposttimeout $ fromMaybe (ssachPostTimeout board) mposttm
+        wspinposttimeout <- builderGetObject b castToSpinButton "spinposttimeout"
+        set wspinposttimeout $ fromMaybe (ssachPostTimeout board) mposttm
 
-            wcheckthreadtimeout <- builderGetObject b castToCheckButton "checkthreadtimeout"
-            set wcheckthreadtimeout $ isJust mtrdtm
+        wcheckthreadtimeout <- builderGetObject b castToCheckButton "checkthreadtimeout"
+        set wcheckthreadtimeout $ isJust mtrdtm
 
-            wspinthreadtimeout <- builderGetObject b castToSpinButton "spinthreadtimeout"
-            set wspinthreadtimeout $ fromMaybe (ssachThreadTimeout board) mtrdtm
+        wspinthreadtimeout <- builderGetObject b castToSpinButton "spinthreadtimeout"
+        set wspinthreadtimeout $ fromMaybe (ssachThreadTimeout board) mtrdtm
 
-            wbuttonapply <- builderGetObject b castToButton "buttonapply"
-            wbuttoncancel <- builderGetObject b castToButton "buttoncancel"
-            wbuttonok <- builderGetObject b castToButton "buttonok"
+        wbuttonapply <- builderGetObject b castToButton "buttonapply"
+        wbuttoncancel <- builderGetObject b castToButton "buttoncancel"
+        wbuttonok <- builderGetObject b castToButton "buttonok"
 
-            void $ on wcheckwipethread buttonActivated $ do
-                widgetSetSensitive walignmentthread =<< get wcheckwipethread
+        void $ on wcheckwipethread buttonActivated $ do
+            widgetSetSensitive walignmentthread =<< get wcheckwipethread
 
-            void $ on wbuttoncancel buttonActivated $ do
-                widgetDestroy window
+        void $ on wbuttoncancel buttonActivated $ do
+            widgetDestroy window
 
-            void $ on wbuttonok buttonActivated $ do
-                buttonClicked wbuttonapply
-                widgetDestroy window
+        void $ on wbuttonok buttonActivated $ do
+            buttonClicked wbuttonapply
+            widgetDestroy window
 
-            let ifMJust c t = ifM c (Just <$> t) (return Nothing)
+        let ifMJust c t = ifM c (Just <$> t) (return Nothing)
 
-            void $ on wbuttonapply buttonActivated $ do
-                nmthread <- ifMJust (get wcheckwipethread)
-                                (spinButtonGetValueAsInt wspinthreadnum)
-                runE e $ writeLog $ renderBoard board ++ ": new thread: " ++ show nmthread
-                atomically $ writeTVar mthread nmthread
+        void $ on wbuttonapply buttonActivated $ do
+            nmthread <- ifMJust (get wcheckwipethread)
+                            (spinButtonGetValueAsInt wspinthreadnum)
+            runE e $ writeLog $ renderBoard board ++ ": new thread: " ++ show nmthread
+            atomically $ writeTVar mthread nmthread
 
-                nmmode <- ifMJust (get wcheckwipethread)
-                                (ifM (get wchecksage)
-                                    (return SagePopular)
-                                    (return BumpUnpopular))
-                atomically $ writeTVar mmode nmmode
-                runE e $ writeLog $ renderBoard board ++ ": new mode: " ++ show nmmode
+            nmmode <- ifMJust (get wcheckwipethread)
+                            (ifM (get wchecksage)
+                                (return SagePopular)
+                                (return BumpUnpopular))
+            atomically $ writeTVar mmode nmmode
+            runE e $ writeLog $ renderBoard board ++ ": new mode: " ++ show nmmode
 
-                nmposttimeout <- ifMJust (get wcheckposttimeout)
-                                (get wspinposttimeout)
-                atomically $ writeTVar mposttimeout nmposttimeout
-                runE e $ writeLog $ renderBoard board ++ ": new post timeout: " ++ show nmposttimeout
+            nmposttimeout <- ifMJust (get wcheckposttimeout)
+                            (get wspinposttimeout)
+            atomically $ writeTVar mposttimeout nmposttimeout
+            runE e $ writeLog $ renderBoard board ++ ": new post timeout: " ++ show nmposttimeout
 
-                nmthreadtimeout <- ifMJust (get wcheckthreadtimeout)
-                                (get wspinthreadtimeout)
-                atomically $ writeTVar mthreadtimeout nmthreadtimeout
-                runE e $ writeLog $ renderBoard board ++ ": new thread timeout: " ++ show nmthreadtimeout
-                -- TODO Config read/write post timeout & thread timeout
+            nmthreadtimeout <- ifMJust (get wcheckthreadtimeout)
+                            (get wspinthreadtimeout)
+            atomically $ writeTVar mthreadtimeout nmthreadtimeout
+            runE e $ writeLog $ renderBoard board ++ ": new thread timeout: " ++ show nmthreadtimeout
+            -- TODO Config read/write post timeout & thread timeout
 
-            widgetShowAll window
+        widgetShowAll window
 
 boardUnitsEnvPart :: Builder -> EnvPart
 boardUnitsEnvPart b = EP
@@ -444,11 +446,22 @@ boardUnitsEnvPart b = EP
 
         void $ on wchecksort buttonActivated $ do
             spd <- get wchecksort
-            foldM_ (\ !i bu -> i+1 <$ (flip whenJust (\w -> boxReorderChild wvboxboards w i) =<< widgetGetParent (buWidget bu))) 0 $
+            let
+              reorderedBoards =
                 if spd
-                    then sortBy (compare `F.on` buBoard) boardUnits
-                    else sortBy (compare `F.on` buBoard >>> \brd -> fromJustNote ("Board not in ssachBoardsSortedByPostRate, report bug: " ++ show brd) $
-                            findIndex ((==brd) . fst) ssachBoardsSortedByPostRate) boardUnits
+                  then
+                    sortBy (compare `F.on` buBoard) boardUnits
+                  else
+                    flip sortBy boardUnits (
+                      compare `F.on` \bu ->
+                        fromMaybe (fromEnum $ buBoard bu) $
+                          findIndex ((== buBoard bu) . fst) ssachBoardsSortedByPostRate)
+            foldM_ (\ !i bu -> do
+                maybeParent <- widgetGetParent (buWidget bu)
+                whenJust maybeParent $ \w ->
+                    boxReorderChild wvboxboards w i
+                return $ i+1
+                ) 0 reorderedBoards
 
         return (boardUnits, wchecksort))
     (\(v,wcs) c -> do
