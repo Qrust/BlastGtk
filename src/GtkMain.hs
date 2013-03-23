@@ -49,10 +49,10 @@ import Network (withSocketsDo)
 -- URGENT share parse results perBoard
 -- URGENT numCapabilities?
 -- URGENT --exclude
+-- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 
--- URGENT Checker with captcha
+-- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?)
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
--- URGENT Thread pool
 -- URGENT observer threads instead of regens
 
 -- URGENT smyvalka write Log
@@ -69,8 +69,6 @@ import Network (withSocketsDo)
 
 -- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 
--- URGENT global useragent makes all proxies share useragent
---        Rid of unsafePerformIO in Blast.userAgent, user-agent is a proxy property
 -- URGENT fix longposting (image)
 -- URGENT don't label non-modded threads as CreateNew
 

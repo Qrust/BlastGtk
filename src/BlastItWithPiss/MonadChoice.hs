@@ -19,10 +19,12 @@ import System.Random.Shuffle
 
 type MonadChoice a = (MonadRandom a, MonadIO a, MonadBaseControl IO a, Applicative a)
 
+{-# INLINABLE chooseFromList #-}
 chooseFromList :: MonadChoice m => [a] -> m a
 chooseFromList [] = error "chooseFromList supplied with empty list."
 chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)
 
+{-# INLINE chooseFromListMaybe #-}
 chooseFromListMaybe :: MonadChoice m => [a] -> m (Maybe a)
 chooseFromListMaybe [] = return Nothing
 chooseFromListMaybe l = Just . (l!!) <$> getRandomR (0, length l - 1)
@@ -33,6 +35,7 @@ generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
     take len <$> getRandomRs charBounds
 
+{-# INLINABLE generateSymbolString #-}
 generateSymbolString :: MonadChoice m => Int -> m String
 generateSymbolString maxlength = do
     let plength = maxlength `div` 6

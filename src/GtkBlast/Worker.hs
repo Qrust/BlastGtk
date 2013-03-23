@@ -21,5 +21,5 @@ data BoardUnit = BoardUnit
     ,buWipeUnits  :: !(IORef [WipeUnit])
     ,buBanned     :: !(IORef [BlastProxy])
     ,buDead       :: !(IORef [BlastProxy])
-    ,buMuSettings :: MuSettings
+    ,buMuSettings :: !MuSettings
     }

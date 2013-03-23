@@ -201,7 +201,8 @@ impureAnnotatedCmdargsConfig = Config
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
 checkProxy proxy = do
     Env{..} <- ask
-    liftIO $ runBlastNew manager proxy $ do
+    ua <- newUserAgent
+    liftIO $ runBlastNew manager proxy ua $ do
         -- HACK Lock log / fast-logger
         liftIO $ putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
 

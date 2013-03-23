@@ -167,7 +167,9 @@ antigate
     :: Env
     -> BlastProxy
     -> IO ProxyPoster
-antigate e@Env{..} proxy = runBlastNew manager proxy $ do
+antigate e@Env{..} proxy = do
+  ua <- newUserAgent
+  runBlastNew manager proxy ua $ do
     nc <- getNewCaptcha board Nothing ""
     case nc of
       Left adaptiveAnswer -> do

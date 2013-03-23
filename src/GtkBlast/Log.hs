@@ -24,7 +24,7 @@ import qualified Graphics.UI.Gtk as Gtk
 
 import qualified Data.ByteString as B
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+-- import qualified Data.Text.IO as TIO
 
 {-# INLINE labelSetMarkup #-}
 labelSetMarkup :: MonadIO m => Label -> Text -> m ()

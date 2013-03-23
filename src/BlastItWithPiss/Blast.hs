@@ -11,7 +11,8 @@ module BlastItWithPiss.Blast
 
     ,module Network.Mime
 
-    ,userAgents
+    ,UserAgent
+    ,newUserAgent
 
     ,Blast
     ,generateNewBrowser
@@ -66,14 +67,6 @@ import Data.Conduit.List (consume)
 import qualified Data.Conduit.List as CL (map)
 
 import Numeric (showHex)
-
--- HACK HACK HACK unsafePerformIO
--- pin user agent to avoid 403
--- Should be configured PerProxy instead.
-import qualified System.IO.Unsafe as Unsafe
-{-# NOINLINE userAgent #-}
-userAgent :: ByteString
-userAgent = Unsafe.unsafePerformIO $ chooseFromList userAgents
 
 -- | Converts a HostAddress to a String in dot-decimal notation
 -- Cannibalized from https://github.com/vincenthz/hs-socks/commit/f4a032ce8aaaeed16d051e5ae0f8abadc2f0d0ba
@@ -197,8 +190,8 @@ maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
-generateNewBrowser :: BlastProxy -> BrowserAction ()
-generateNewBrowser bproxy = do
+generateNewBrowser :: BlastProxy -> UserAgent -> BrowserAction ()
+generateNewBrowser bproxy (UserAgent userAgent) = do
     httpSetProxy bproxy
     setMaxRedirects Nothing
     setMaxRetryCount 1
@@ -213,10 +206,10 @@ generateNewBrowser bproxy = do
     --setCookieFilter $ \_ _ -> return False
     --
 
-runBlastNew :: Manager -> BlastProxy -> Blast a -> IO a
-runBlastNew m bproxy blast =
+runBlastNew :: Manager -> BlastProxy -> UserAgent -> Blast a -> IO a
+runBlastNew m bproxy ua blast =
     runResourceT $ browse m $ do
-        generateNewBrowser bproxy
+        generateNewBrowser bproxy ua
         blast
 
 newtype BlastState = BlastState BrowserState
@@ -295,6 +288,13 @@ httpGetStrTags u = do
     let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
     x
 
+newtype UserAgent = UserAgent ByteString
+
+{-# INLINE newUserAgent #-}
+newUserAgent :: MonadChoice m => m UserAgent
+newUserAgent = UserAgent <$> chooseFromList userAgents
+
+{-# NOINLINE userAgents #-}
 userAgents :: [ByteString]
 userAgents =
     [

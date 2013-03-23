@@ -15,7 +15,7 @@ import GtkBlast.Worker
 
 import BlastItWithPiss
 import BlastItWithPiss.Blast
-import BlastItWithPiss.Board
+-- import BlastItWithPiss.Board
 
 import Graphics.UI.Gtk
 

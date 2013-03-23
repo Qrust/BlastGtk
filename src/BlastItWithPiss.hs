@@ -83,8 +83,9 @@ data MuSettings = MuSettings
 
 -- | PerProxy
 data ProxySettings = ProxyS
-    {psharedCookies :: !(TMVar CookieJar)
-    ,pcloudflareCaptchaLock :: !(TMVar ())
+    {pSharedCookies :: !(TMVar CookieJar)
+    ,pCloudflareCaptchaLock :: !(TMVar ())
+    ,pUserAgent :: !UserAgent
     }
 
 data CaptchaType
@@ -127,14 +128,14 @@ data LogDetail
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 data BlastLogData = BlastLogData
-    {bldProxy :: !BlastProxy
-    ,bldBoard :: !Board
-    ,bldLogD :: !LogDetail
-    ,bldShS :: !ShSettings
-    ,bldMuS :: !MuSettings
-    ,bldPrS :: !ProxySettings
-    ,bldOut :: !(OutMessage -> IO ())
-    ,bldOtherFields :: ![Part Blast (ResourceT IO)] -- ^ Kludge
+    {bProxy :: !BlastProxy
+    ,bBoard :: !Board
+    ,bLogD :: !LogDetail
+    ,bShS :: !ShSettings
+    ,bMuS :: !MuSettings
+    ,bPrS :: !ProxySettings
+    ,bOut :: !(OutMessage -> IO ())
+    ,bOtherFields :: ![Part Blast (ResourceT IO)] -- ^ Kludge
     }
 
 data OriginInfo = OriginInfo
@@ -236,17 +237,18 @@ blastThreadTimeout = do
             return (ssachThreadTimeout board)))
 
 defMuS :: IO MuSettings
-defMuS = atomically $ do
-    mthread <- newTVar Nothing
-    mmode <- newTVar Nothing
-    mposttimeout <- newTVar Nothing
-    mthreadtimeout <- newTVar Nothing
+defMuS = do
+    mthread <- newTVarIO Nothing
+    mmode <- newTVarIO Nothing
+    mposttimeout <- newTVarIO Nothing
+    mthreadtimeout <- newTVarIO Nothing
     return MuSettings{..}
 
 defPrS :: IO ProxySettings
-defPrS = atomically $ do
-    psharedCookies <- newEmptyTMVar
-    pcloudflareCaptchaLock <- newTMVar ()
+defPrS = do
+    pSharedCookies <- newEmptyTMVarIO
+    pCloudflareCaptchaLock <- newTMVarIO ()
+    pUserAgent <- newUserAgent
     return ProxyS{..}
 
 runBlastLog :: BlastLogData -> BlastLog a -> Blast a
@@ -259,28 +261,28 @@ blast :: Blast a -> BlastLog a
 blast = lift . lift
 
 askProxy :: BlastLog BlastProxy
-askProxy = asks bldProxy
+askProxy = asks bProxy
 
 askBoard :: BlastLog Board
-askBoard = asks bldBoard
+askBoard = asks bBoard
 
 askLogDetail :: BlastLog LogDetail
-askLogDetail = asks bldLogD
+askLogDetail = asks bLogD
 
 askOriginInfo :: BlastLog OriginInfo
 askOriginInfo = bsOriginInfo <$> lift get
 
 askShSettings :: BlastLog ShSettings
-askShSettings = asks bldShS
+askShSettings = asks bShS
 
 askMuSettings :: BlastLog MuSettings
-askMuSettings = asks bldMuS
+askMuSettings = asks bMuS
 
 askProxyS :: BlastLog ProxySettings
-askProxyS = asks bldPrS
+askProxyS = asks bPrS
 
 askOut :: BlastLog (OutMessage -> IO ())
-askOut = asks bldOut
+askOut = asks bOut
 
 askAdaptive :: BlastLog Bool
 askAdaptive = bsAdaptivityIn <$> lift get
@@ -459,23 +461,23 @@ blastCloudflare md whatrsp url = do
         ProxyS{..} <- askProxyS
 
         (nothingyet, jobtaken) <- atomically $ do
-            nothingyet <- isEmptyTMVar psharedCookies
-            jobtaken <- isEmptyTMVar pcloudflareCaptchaLock
+            nothingyet <- isEmptyTMVar pSharedCookies
+            jobtaken <- isEmptyTMVar pCloudflareCaptchaLock
             when (nothingyet && not jobtaken) $
-                takeTMVar pcloudflareCaptchaLock
+                takeTMVar pCloudflareCaptchaLock
             return (nothingyet, jobtaken)
         if not nothingyet || jobtaken
           then do
             blastLog "Waiting for cloudflare cookies..."
 
-            void $ atomically $ readTMVar pcloudflareCaptchaLock
-            stillnothing <- atomically $ isEmptyTMVar psharedCookies
+            void $ atomically $ readTMVar pCloudflareCaptchaLock
+            stillnothing <- atomically $ isEmptyTMVar pSharedCookies
 
             if stillnothing
               then cloudflareChallenge
               else do
                 blastLog "Got cloudflare cookies"
-                blast $ setCookieJar =<< atomically (readTMVar psharedCookies)
+                blast $ setCookieJar =<< atomically (readTMVar pSharedCookies)
                 md =<< whatrsp
           else (do
             -- OH GOD
@@ -516,15 +518,15 @@ blastCloudflare md whatrsp url = do
                   then do
                     blastLog "Couldn't get Cloudflare cookies. Retrying."
 
-                    atomically $ putTMVar pcloudflareCaptchaLock ()
+                    atomically $ putTMVar pCloudflareCaptchaLock ()
                     blastCloudflare md whatrsp url
                   else do
                     blastLog $ "Cloudflare cookie count: " ++
                                show cookieCount
 
                     atomically $ do
-                        putTMVar pcloudflareCaptchaLock ()
-                        putTMVar psharedCookies ck
+                        putTMVar pCloudflareCaptchaLock ()
+                        putTMVar pSharedCookies ck
 
                     blastLog "finished working on captcha"
                     md =<< whatrsp
@@ -533,10 +535,10 @@ blastCloudflare md whatrsp url = do
               AbortCaptcha -> do
                 blastLog "Aborting cloudflare captcha. ???????? consequences."
 
-                atomically $ putTMVar pcloudflareCaptchaLock ()
+                atomically $ putTMVar pCloudflareCaptchaLock ()
                 md =<< whatrsp
             ) `catch` (\(a::SomeException) -> do
-                atomically $ putTMVar pcloudflareCaptchaLock ()
+                atomically $ putTMVar pCloudflareCaptchaLock ()
                 throwIO a)
 
 blastPost :: POSIXTime -> Bool -> [Part Blast (ResourceT IO)] -> Mode -> Maybe Int -> PostData -> BlastLog ()
@@ -644,7 +646,7 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
 
 blastLoop :: BlastLog ()
 blastLoop = forever $ do
-    bldOtherFields <- asks bldOtherFields
+    bOtherFields <- asks bOtherFields
     board <- askBoard
     ShSettings{..} <- askShSettings
     MuSettings{..} <- askMuSettings
@@ -705,7 +707,7 @@ blastLoop = forever $ do
     recThread thread
     blastLog $ "chose thread " ++ show thread
     postdata <- blastPostData mode mpastapage thread
-    blastPost threadtimeout False bldOtherFields mode thread postdata
+    blastPost threadtimeout False bOtherFields mode thread postdata
 
 getPage :: Int -> BlastLog Page
 getPage p = do
@@ -746,16 +748,16 @@ entryPoint
     -> (OutMessage -> IO ())
     -> IO ()
 entryPoint manager proxy board lgDetail shS muS prS output =
-    runBlastNew manager proxy $
+    runBlastNew manager proxy (pUserAgent prS) $
     runBlastLog BlastLogData
-        {bldProxy = proxy
-        ,bldBoard = board
-        ,bldLogD = lgDetail
-        ,bldShS = shS
-        ,bldMuS = muS
-        ,bldPrS = prS
-        ,bldOut = output
-        ,bldOtherFields = ssachLastRecordedFields board
+        {bProxy = proxy
+        ,bBoard = board
+        ,bLogD = lgDetail
+        ,bShS = shS
+        ,bMuS = muS
+        ,bPrS = prS
+        ,bOut = output
+        ,bOtherFields = ssachLastRecordedFields board
         }
       $ do
         blastLog "Entry point"
@@ -799,8 +801,9 @@ entryPoint manager proxy board lgDetail shS muS prS output =
                 blastLoop w 0 0-}
 
 sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
-sortSsachBoardsByPopularity boards =
-    bracket (newManager def) closeManager $ \m -> runBlastNew m NoProxy $ do
+sortSsachBoardsByPopularity boards = do
+    ua <- newUserAgent
+    bracket (newManager def) closeManager $ \m -> runBlastNew m NoProxy ua $ do
         maybeb <- forM boards $ \b -> do
             liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
             spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)

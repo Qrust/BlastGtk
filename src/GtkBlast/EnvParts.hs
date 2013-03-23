@@ -68,7 +68,7 @@ envParts b =
                                 ,wprogresswipe=wpw
                                 })
     ,EP
-        (\e c -> do
+        (\_ c -> do
             walignmentlog <- builderGetObject b castToAlignment "alignmentlog"
 
             wexpanderlog <- setir (coLogShown c) =<< builderGetObject b castToExpander "expanderlog"
@@ -156,7 +156,7 @@ envParts b =
         (\(_,wel) c -> get wel <&> \a -> c{coLogShown=a})
         (\(wbuf,_) e -> e{wbuf=wbuf})
     ,EP
-        (\e c -> do
+        (\_ c -> do
             wcheckthread <- setir (coCreateThreads c) =<< builderGetObject b castToCheckButton "check-thread"
             wcheckimages <- setir (coAttachImages c) =<< builderGetObject b castToCheckButton "check-images"
             wcheckwatermark <- setir (coWatermark c) =<< builderGetObject b castToCheckButton "check-watermark"
