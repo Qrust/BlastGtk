@@ -53,16 +53,19 @@ import GHC.Conc
 -- URGENT smyvalka: write Log
 -- URGENT Avoid reopening log handle
 -- URGENT smyvalka: use async
+-- URGENT separate "Settings" and internal shared state
+-- URGENT WeakRef ThreadId
 
 -- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 -- URGENT post parsed page info to the gui
+
+-- URGENT Use FastLogger/ByteString for log
+-- URGENT Use FastLogger for date caching
 
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
 -- URGENT observer threads instead of regens
 
 -- URGENT smyvalka show captchas currently in solving
-
--- URGENT Use FastLogger/ByteString for log
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
 --        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
