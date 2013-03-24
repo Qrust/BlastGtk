@@ -168,8 +168,6 @@ envParts b =
             wspinfluctuation <- setir (coFluctuation c) =<< builderGetObject b castToSpinButton "spinfluctuation"
             wchecksage <- setir (coSage c) =<< builderGetObject b castToCheckButton "checksage"
 
-            tqOut <- atomically $ newTQueue
-
             tappendjunkimages <- atomically $ newTVar True
             tpastagen <- atomically $ newTVar emptyPastaGen
             timagegen <- atomically $ newTVar emptyImageGen
@@ -183,8 +181,8 @@ envParts b =
                 wchecksageToSageMode False = SageDisabled
             tsagemode <- tvarCheck (fmap wchecksageToSageMode . get) wchecksage
 
-            return (tqOut, ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation, wchecksage))
-        (\(_,_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf,wcs) c -> do
+            return (ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation, wchecksage))
+        (\(_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf,wcs) c -> do
             ct <- get wct
             ci <- get wci
             cw <- get wcw
@@ -205,9 +203,8 @@ envParts b =
                     ,coUseFluctuation=cf
                     ,coFluctuation=sf
                     ,coSage=cs})
-        (\(tqOut,shS,_,_,_,_,_,_,_,_,_,_) e ->
-            e{tqOut=tqOut
-             ,shS=shS
+        (\(shS,_,_,_,_,_,_,_,_,_,_) e ->
+            e{shS=shS
              })
     ,EP
         (\_ c -> setir (coAnnoy c) =<< builderGetObject b castToCheckButton "check-annoy")

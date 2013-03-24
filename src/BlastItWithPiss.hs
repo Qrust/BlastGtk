@@ -710,8 +710,8 @@ blastLoop = forever $ do
         maybe
         (do case mp0 of
               Nothing -> do
-                blastLog "No page, throwing a dice for SagePopular/BumpUnpopular"
-                chooseFromList [SagePopular, BumpUnpopular]
+                blastLog "No page, throwing a dice for mode..."
+                chooseFromList [minBound .. maxBound]
               Just p0 -> do
                 blastLog "Choosing mode..."
                 chooseMode board canmakethread p0)

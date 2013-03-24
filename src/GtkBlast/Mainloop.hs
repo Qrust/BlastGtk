@@ -76,6 +76,9 @@ killBoardUnit bu = do
     killBoardUnitWipeUnits bu
     cleanBoardUnitBadRecord bu
 
+asyncReactToMessage :: Env -> (OutMessage -> IO ())
+asyncReactToMessage env = postGUIAsync . runE env . reactToMessage
+
 newWipeUnit
     :: Board
     -> BlastProxy
@@ -83,7 +86,7 @@ newWipeUnit
     -> ProxySettings
     -> E WipeUnit
 newWipeUnit board bproxy muSettings proxySettings = do
-    E{..} <- ask
+    env@E{..} <- ask
     writeLog $
         "Spawning new thread for " ++
         renderBoard board ++ " {" ++
@@ -94,7 +97,7 @@ newWipeUnit board bproxy muSettings proxySettings = do
     threadid <- io $ forkIO $ do
 #endif
         entryPoint connection bproxy board Log shS muSettings proxySettings $
-            atomically . writeTQueue tqOut
+            asyncReactToMessage env
     writeLog $ "Spawned " ++ renderBoard board ++ " {" ++ show bproxy ++ "}"
     return $ WipeUnit bproxy threadid
 
@@ -201,9 +204,7 @@ killWipe = do
     writeLog "Stopping wipe..."
     set wipeStarted False
     io $ closeManager connection -- TODO FIXME CLARIFY
-    processMessages
     mapM_ killBoardUnit boardUnits
-    processMessages
     killAllCaptcha
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0
@@ -223,8 +224,9 @@ setBanned board proxy = do
 
 addPost :: E ()
 addPost = do
-    modi (+1) =<< asks postCount
-    writeLog =<< ("Updated post count: " ++) . show <$> (get =<< asks postCount)
+    E{..} <- ask
+    modi (+1) postCount
+    writeLog =<< ("Updated post count: " ++) . show <$> get postCount
 
 reactToMessage :: OutMessage -> E ()
 reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
@@ -280,11 +282,6 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                        tempError 3 "Невозможно прочитать пикчи, постим капчу"
   where stamp msg = renderCompactStamp st ++ ": " ++ msg
 
-processMessages :: E ()
-processMessages = do
-    E{..} <- ask
-    mapM_ reactToMessage =<< (io $ atomically $ untilNothing $ tryReadTQueue tqOut)
-
 mainloop :: E ()
 mainloop = do
     E{..} <- ask
@@ -292,8 +289,8 @@ mainloop = do
         regeneratePastaGen
         regenerateImages
         regenerateProxies
-        maintainBoardUnits >>= maintainCaptcha
-    processMessages
+        bus <- maintainBoardUnits
+        maintainCaptcha bus
     updWipeMessage
 
 setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()

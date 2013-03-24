@@ -48,10 +48,11 @@ data Env = E
     ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
 
     ,guiReportQueue :: TQueue OriginStamp
+
     ,boardUnits :: [BoardUnit]
 
-    ,tqOut :: TQueue OutMessage
     ,shS :: ShSettings
+
     ,connection :: Manager
 
     ,window :: Window
@@ -109,7 +110,6 @@ instance NFData Env where
         `seq` guiReportQueue
         `seq` boardUnits
 
-        `seq` tqOut
         `seq` shS
         `seq` connection
 
