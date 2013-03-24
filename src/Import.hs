@@ -151,13 +151,28 @@ fromIOException handler = handle (\(_ :: IOException) -> handler)
 
 -- * Lists
 
+{-# INLINE sequenceMaybe #-}
+sequenceMaybe :: Monad m => [m (Maybe a)] -> m [a]
+sequenceMaybe ms = foldr k (return []) ms
+  where
+    k m m' = do
+        x' <- m
+        xs <- m'
+        case x' of
+          Nothing -> return xs
+          Just x -> return (x:xs)
+
 {-# INLINE mapMaybeM #-}
 mapMaybeM :: (Functor m, Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
-mapMaybeM m = fmap catMaybes . mapM m
+mapMaybeM m = sequenceMaybe . map m
 
 {-# INLINE forMaybeM #-}
 forMaybeM :: (Functor m, Monad m) => [a] -> (a -> m (Maybe b)) -> m [b]
 forMaybeM = flip mapMaybeM
+
+{-# INLINE concatMapM #-}
+concatMapM :: (Functor m, Monad m) => (a -> m [b]) -> [a] -> m [b]
+concatMapM m l = concat <$> mapM m l
 
 anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 anyM _ [] = return False

@@ -58,11 +58,12 @@ putStrLn = liftIO . S.putStrLn
 
 data Config = Config
     {_socks              :: Bool
-    ,_atatime            :: Int
+    ,_workerCount        :: Int
     ,_timeout            :: Int
     ,_board              :: String
     ,_thread             :: Int
     ,_input              :: String
+    ,_exclude            :: [String]
     ,_output             :: String
     ,_banned             :: String
     ,_four'o'four        :: String
@@ -86,12 +87,12 @@ data ProxyCat
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 data Env = Env
-    {manager            :: !Manager
-    ,board              :: !Board
-    ,atatime            :: !Int
-    ,timeout            :: !Int
-    ,thread             :: !Int
-    ,catFiles           :: !(M.Map ProxyCat FilePath)
+    {manager     :: !Manager
+    ,board       :: !Board
+    ,workerCount :: !Int
+    ,timeout     :: !Int
+    ,thread      :: !Int
+    ,catFiles    :: !(M.Map ProxyCat FilePath)
     }
 
 impureAnnotatedCmdargsConfig :: Config
@@ -102,11 +103,11 @@ impureAnnotatedCmdargsConfig = Config
         &= name "s"
         &= name "socks"
         &= help "Файл с проксями содержит Socks5 прокси? Если в имени файла есть \"socks\", то флаг включен автоматически."
-    ,_atatime =
+    ,_workerCount =
         30
         &= explicit
-        &= name "e"
-        &= name "atatime"
+        &= name "w"
+        &= name "workers"
         &= help "Сколько проксей тестить одновременно, по дефолту 30"
     ,_timeout =
         30
@@ -126,6 +127,13 @@ impureAnnotatedCmdargsConfig = Config
         []
         &= argPos 2
         &= typ "Файл_с_проксями"
+    ,_exclude =
+        []
+        &= explicit
+        &= name "e"
+        &= name "exclude"
+        &= help "Не тестировать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt /b/ 123456789 goodlist.txt"
+        &= typ "Файл_с_проксями..."
     ,_output =
         "output"
         &= explicit
@@ -271,6 +279,8 @@ proxyReader socks ip = do
       p -> return p
 
 mainloop :: [BlastProxy] -> ReaderT Env IO ()
+mainloop [] = do
+    putStrLn "Пустой список проксей."
 mainloop proxies = do
     Env{..} <- ask
 
@@ -278,13 +288,13 @@ mainloop proxies = do
 
     checkedMap <- liftIO $ newTVarIO M.empty
 
-    proxyQueue <- liftIO $ newTBMQueueIO atatime
+    proxyQueue <- liftIO $ newTBMQueueIO workerCount
 
     _ <- liftIO $ forkIO $
              CL.sourceList proxies
         C.$$ sinkTBMQueue proxyQueue
 
-    replicateM_ atatime $ fork $ fix $ \zaignoreel -> (do
+    replicateM_ workerCount $ fork $ fix $ \zaignoreel -> (do
         sourceTBMQueue proxyQueue
             C.$$ CL.mapM_ (\proxy -> do
                 outcome <- checkProxy proxy
@@ -298,6 +308,8 @@ mainloop proxies = do
                 "Worker got exception: " ++ show e
                 ++ ". POHOOY IGNOREEM."
             zaignoreel
+
+    putStrLn "Started checking."
 
     0 & fix (\recurse current -> do
         (checked, _map) <- liftIO $ atomically $ do
@@ -367,12 +379,18 @@ main = withSocketsDo $ do
             let (cats', fpaths') = unzip catFiles'
             M.fromList . zip cats' . applySuccNum fpaths' <$> filepathSuccNum fpaths'
 
-        proxyStrings <-
+        let
+          readProxyStrings file = do
              nub
            . filter (not . T.null)
            . T.lines
            . decodeUtf8
-            <$> B.readFile _input
+            <$> B.readFile file
+
+        _proxyStrings <- readProxyStrings _input
+        excludeStrings <- concatMapM readProxyStrings _exclude
+        let proxyStrings = _proxyStrings \\ excludeStrings
+
         let isSocks = _socks || "socks" `isInfixOf` map toLower _input
         proxies <- mapMaybeM (proxyReader isSocks) proxyStrings
 
@@ -382,7 +400,7 @@ main = withSocketsDo $ do
             \manager -> runReaderT (mainloop proxies)
                 Env {manager            = manager
                     ,board              = board
-                    ,atatime            = _atatime
+                    ,workerCount        = _workerCount
                     ,timeout            = _timeout
                     ,thread             = _thread
                     ,catFiles           = catFiles

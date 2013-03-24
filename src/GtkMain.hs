@@ -49,18 +49,19 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 -- URGENT share parse results perBoard
--- URGENT numCapabilities?
--- URGENT --exclude
--- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
-
 -- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?)
+-- URGENT smyvalka: write Log
+-- URGENT Avoid reopening log handle
+-- URGENT smyvalka: use async
+
+-- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
+-- URGENT post parsed page info to the gui
+
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
 -- URGENT observer threads instead of regens
 
--- URGENT smyvalka write Log
 -- URGENT smyvalka show captchas currently in solving
 
--- URGENT Avoid reopening log handle
 -- URGENT Use FastLogger/ByteString for log
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class

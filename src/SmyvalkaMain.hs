@@ -36,6 +36,7 @@ data Config = Config
     {_socks        :: Bool
     ,_board        :: String
     ,_proxyFile    :: String
+    ,_exclude      :: [String]
     ,_antigateKey  :: String
     ,_antigateHost :: String
     ,_retryCaptcha :: Bool
@@ -48,7 +49,6 @@ data Env = Env
     {manager      :: !Manager
     ,board        :: !Board
     ,antigateKey  :: !ApiKey
-    ,proxies      :: ![BlastProxy]
     ,retryCaptcha :: !Bool
     ,imageDir     :: !(Maybe FilePath)
     ,pastas       :: ![String]
@@ -70,12 +70,19 @@ impureAnnotatedCmdargsConfig =
         ,_proxyFile = []
             &= argPos 2
             &= typ "Файл_с_проксями"
+        ,_exclude =
+            []
+            &= explicit
+            &= name "e"
+            &= name "exclude"
+            &= help "Не тестировать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt /b/ 123456789 goodlist.txt"
+            &= typ "Файл_с_проксями..."
         ,_antigateKey = []
             &= argPos 0
             &= typ "Ключ_антигейта"
         ,_antigateHost = "antigate.com"
             &= explicit
-            &= name "a"
+            &= name "H"
             &= name "antigate-host"
             &= help "Домен апи антигейта, например captchabot.com"
         ,_retryCaptcha = False
@@ -221,8 +228,10 @@ antigateThread (success, fail) e proxy mvar = do
         putMVar mvar a
         success
 
-collectCaptcha :: M [MVar ProxyPoster]
-collectCaptcha = do
+collectCaptcha :: [BlastProxy] -> M [MVar ProxyPoster]
+collectCaptcha [] =
+    [] <$ (liftIO $ putStrLn "Пустой список проксей.")
+collectCaptcha proxies = do
     st@Env{..} <- ask
     liftIO $ do
         readycount <- newIORef 0
@@ -234,21 +243,24 @@ collectCaptcha = do
         let success = atomicModifyIORef readycount $ \a -> (a+1, ())
             fail = atomicModifyIORef proxycount $ \a -> (a-1, ())
 
-        res <- forM proxies $ \p -> do
+        resMVars <- forM proxies $ \p -> do
             mvar <- newEmptyMVar
             _ <- forkIO $ antigateThread (success, fail) st p mvar
             return mvar
 
         _ <- getLine
         putStrLn "BLAST IT WITH PISS"
-        return res
+        return resMVars
 
-mainloop :: M ()
-mainloop = do
+mainloop :: [BlastProxy] -> M ()
+mainloop proxies = do
     Env{..} <- ask
-    assoc <- collectCaptcha
-    waitmvars <- liftIO $ forM assoc $
+
+    resmvars <- collectCaptcha proxies
+
+    waitmvars <- liftIO $ forM resmvars $
         \mvar -> createThreadThread mvar
+
     loop waitmvars (length waitmvars)
   where
     loop [] _ = liftIO $ putStrLn "Ну вот и всё, ребята."
@@ -267,28 +279,41 @@ main = withSocketsDo $ do
     ifM (null <$> getArgs)
         (putStrLn $ show md) $ do
         Config{..} <- cmdArgsRun md
-        let board =
+        let !board =
               fromMaybe
                 (error $ "Не смог прочитать \"" ++ _board ++
                   "\" как борду, возможно вы имели ввиду \"/" ++ _board ++
                     "/\"?")
                 $ readBoard $ _board
+
+        let
+          readProxyStrings file = do
+             nub
+           . filter (not . T.null)
+           . T.lines
+           . decodeUtf8
+            <$> B.readFile file
+
+        _proxyStrings <- readProxyStrings _proxyFile
+        excludeStrings <- concatMapM readProxyStrings _exclude
+        let proxyStrings = _proxyStrings \\ excludeStrings
+
         let isSocks = _socks || "socks" `isInfixOf` map toLower _proxyFile
-        rawIps <-
-            nub . filter (not . null) . lines . T.unpack . decodeUtf8 <$>
-                B.readFile _proxyFile
-        let (errors, proxies) =
-              partitionEithers $
-                map (\x -> maybe (Left x) Right $ readBlastProxy isSocks x)
-                  rawIps
-        forM_ errors $ hPutStrLn stderr . ("Couldn't read \"" ++) . (++ "\" as a proxy")
+
+        proxies <- forMaybeM proxyStrings $ \ip ->
+            case readBlastProxy isSocks (T.unpack ip) of
+              Nothing -> do
+                hPutStrLn stderr $ "Couldn't parse as a proxy " ++ show ip
+                return Nothing
+              p -> return p
+
         pastas <- fromMaybe [] <$> maybe (return Nothing) readPastaFile _pastaFile
+
         withManagerSettings def{managerConnCount=1000000} $
-            \m -> liftIO $ runReaderT mainloop
+            \m -> liftIO $ runReaderT (mainloop proxies)
                 Env {manager = m
                     ,board = board
                     ,antigateKey = def{api_key=_antigateKey, api_host=_antigateHost}
-                    ,proxies = proxies
                     ,retryCaptcha = _retryCaptcha
                     ,imageDir = _imageDir
                     ,pastas = pastas
