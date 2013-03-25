@@ -15,12 +15,13 @@ import GtkBlast.Worker
 
 import BlastItWithPiss
 import BlastItWithPiss.Blast
--- import BlastItWithPiss.Board
 
 import Graphics.UI.Gtk
 
 import GHC.Conc
 import Control.Concurrent.STM
+
+import Control.Concurrent.Thread.Group (ThreadGroup)
 
 import qualified Data.Map as M
 
@@ -28,7 +29,8 @@ import Control.Monad.Trans.Reader
 
 data Env = E
     {
-     messageLocks :: IORef Int
+     boardUnits :: [BoardUnit]
+    ,messageLocks :: IORef Int
     ,wipeStarted :: IORef Bool
     ,postCount :: IORef Int
     ,wipeStats :: IORef (Int, Int, Int)
@@ -45,13 +47,13 @@ data Env = E
     ,captchaMode :: IORef CaptchaMode
     ,pendingAntigateCaptchas :: IORef [(ThreadId, (OriginStamp, SupplyCaptcha))]
     ,antigateLogQueue :: TQueue (Either Text Text)
-    ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
 
+    ,pendingGuiCaptchas :: IORef [(OriginStamp, SupplyCaptcha)]
     ,guiReportQueue :: TQueue OriginStamp
 
-    ,boardUnits :: [BoardUnit]
-
     ,shS :: ShSettings
+
+    ,threadGroup :: ThreadGroup
 
     ,connection :: Manager
 
@@ -92,6 +94,7 @@ type E = ReaderT Env IO
 instance NFData Env where
     rnf E{..} =
          messageLocks
+        `seq` boardUnits
         `seq` wipeStarted
         `seq` postCount
         `seq` wipeStats
@@ -104,13 +107,17 @@ instance NFData Env where
         `seq` socksproxyMod
         `seq` socksproxyLast
         `seq` captchaMode
+
         `seq` pendingAntigateCaptchas
         `seq` antigateLogQueue
+
         `seq` pendingGuiCaptchas
         `seq` guiReportQueue
-        `seq` boardUnits
 
         `seq` shS
+
+        `seq` threadGroup
+
         `seq` connection
 
         `seq` window

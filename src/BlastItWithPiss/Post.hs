@@ -46,7 +46,7 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
              ,partBS "shampoo" (T.encodeUtf8 $ T.pack text)
              ,partFileRequestBody "file"
                 (maybe mempty filename image)
-                -- HACK upload image source
+                -- TODO upload image using conduit
                 (RequestBodyLBS $ maybe mempty bytes image)
             ]) ++
             (if sage
@@ -87,34 +87,45 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
 -- Browser postprocesses the request
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
+
     let exc som = return (InternalError $ ErrorException $ toException som, Nothing)
-    catches
-        (do resp <- httpReqStrTags req
-            let !st = responseStatus resp
-                heads = responseHeaders resp
-                ~tags = responseBody resp
-                cj = responseCookieJar resp
-            case()of
-             _ | statusCode st == 303
-               , Just loc <- T.decodeASCII <$> lookup "Location" heads
-               -> if loc == "wakaba.html"
-                    then return (PostRejected, Nothing)
-                    else if T.isInfixOf "res/" loc
-                            then return (success, Nothing)
-                            else exc (StatusCodeException st heads cj)
-               | statusCode st == 503
-                -> return (Five'o'ThreeError, Nothing)
-               | statusCode st == 403
-                -> maybe (return (Four'o'ThreeBan, Nothing))
-                    (return . flip (,) (Just tags)) $ detectCloudflare tags
-               | statusCode st == 404 && (maybe False (=="NWS_QPLUS_HY") $
-                    lookup hServer heads)
-                -> return (Four'o'FourBan, Nothing)
-               | statusCode st >= 200 && statusCode st <= 300
-                -> return (detectOutcome tags, Just tags)
-               | otherwise
-                -> exc (StatusCodeException st heads cj)
-            )
+
+    (do resp <- httpReqStrTags req
+        let !st = responseStatus resp
+            heads = responseHeaders resp
+            ~tags = responseBody resp
+            cj = responseCookieJar resp
+        case () of
+          _ | statusCode st == 303
+            , Just loc <- T.decodeASCII <$> lookup "Location" heads
+             -> if loc == "wakaba.html"
+              then
+                return (PostRejected, Nothing)
+              else
+                if T.isInfixOf "res/" loc
+                  then
+                    return (success, Nothing)
+                  else
+                    exc $ StatusCodeException st heads cj
+
+            | statusCode st == 503
+             -> return (Five'o'ThreeError, Nothing)
+
+            | statusCode st == 403
+             -> case detectCloudflare tags of
+                  Nothing -> return (Four'o'ThreeBan, Nothing)
+                  Just o -> return (o, Just tags)
+
+            | statusCode st == 404
+                && maybe False (== "NWS_QPLUS_HY") (lookup hServer heads)
+             -> return (Four'o'FourBan, Nothing)
+
+            | statusCode st >= 200 && statusCode st <= 300
+             -> return (detectOutcome tags, Just tags)
+
+            | otherwise
+             -> exc (StatusCodeException st heads cj)
+     ) `catches`
         [Handler $ \(async :: AsyncException) ->
             throwIO async
         ,Handler $ \(something :: SomeException) ->

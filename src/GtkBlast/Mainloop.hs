@@ -34,8 +34,8 @@ import qualified Data.Map as M
 import Graphics.UI.Gtk hiding (get,set)
 import qualified Graphics.UI.Gtk as G (set)
 
-import Control.Concurrent
-import GHC.Conc
+import GHC.Conc hiding (forkIO)
+import qualified Control.Concurrent.Thread.Group as ThreadGroup
 import Control.Concurrent.STM
 
 updWipeMessage :: E ()
@@ -92,9 +92,9 @@ newWipeUnit board bproxy muSettings proxySettings = do
         renderBoard board ++ " {" ++
         show bproxy ++ "}"
 #ifdef mingw32_HOST_OS
-    threadid <- io $ forkOS $ do
+    threadid <- fmap fst $ io $ ThreadGroup.forkOS threadGroup $ do
 #else
-    threadid <- io $ forkIO $ do
+    threadid <- fmap fst $ io $ ThreadGroup.forkIO threadGroup $ do
 #endif
         entryPoint connection bproxy board Log shS muSettings proxySettings $
             asyncReactToMessage env
@@ -201,13 +201,19 @@ startWipe = do
 killWipe :: E ()
 killWipe = do
     E{..} <- ask
+
     writeLog "Stopping wipe..."
+
     set wipeStarted False
+
+    -- close all connections
     io $ closeManager connection -- TODO FIXME CLARIFY
+
     mapM_ killBoardUnit boardUnits
-    -- FIXME before, we waited for all queue messages before clearing captcha.
-    --       now captchas can appear after this line.
+    io $ ThreadGroup.wait threadGroup
+    -- remove captcha, once all generators are dead
     killAllCaptcha
+
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0
     --uncMessage "Вайп ещё не начат"

@@ -305,7 +305,7 @@ cloudflareCaptcha =
 
 cloudflareBan :: [Tag Text] -> Bool
 cloudflareBan =
-    isInfixOfP [(==tgOpen "title" []), maybe False (T.isPrefixOf "Access Denied") . maybeTagText]
+    isInfixOfP [(==tgOpen "title" []), maybe False (T.isPrefixOf "Access Denied |") . maybeTagText]
 
 detectCloudflare :: [Tag Text] -> Maybe Outcome
 detectCloudflare tags

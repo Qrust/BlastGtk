@@ -4,6 +4,9 @@ module GtkBlast.EnvParts
     ,createWidgetsAndFillEnv
     ) where
 import Import hiding (on, mod)
+
+import Paths_blast_it_with_piss
+
 import GtkBlast.MuVar
 import GtkBlast.Directory
 import GtkBlast.Environment
@@ -18,22 +21,27 @@ import GtkBlast.Conf
 import GtkBlast.GtkUtils
 import GtkBlast.Mainloop (wipebuttonEnvPart, boardUnitsEnvPart)
 import GtkBlast.EnvPart
-import BlastItWithPiss
-import Graphics.UI.Gtk hiding (get, set, after)
-import GHC.Conc
-import Control.Concurrent.STM
-import Paths_blast_it_with_piss
-import Data.Version (showVersion)
-import qualified Data.Map as M
-import Control.Monad.Fix
 
-import System.FilePath
-import System.Directory (getCurrentDirectory)
+import BlastItWithPiss
+
+import Graphics.UI.Gtk hiding (get, set, after)
 
 import Foreign.Ptr
 import Foreign.C.String
 import System.Glib.GError
 import System.Glib.UTFString
+
+import GHC.Conc
+-- import Control.Concurrent.STM
+import qualified Control.Concurrent.Thread.Group as ThreadGroup
+
+import Data.Version (showVersion)
+import qualified Data.Map as M
+
+import Control.Monad.Fix
+
+import System.FilePath
+import System.Directory (getCurrentDirectory)
 
 import Network.HTTP.Conduit (newManager, managerConnCount)
 
@@ -377,6 +385,8 @@ createWidgetsAndFillEnv builder conf = do
     socksproxyLast <- newIORef []
 
     connection <- newManager def{managerConnCount=20000}
+
+    threadGroup <- ThreadGroup.new
 
     (re, rs) <- mfix $ \ ~(lolhaskell, _) -> do
         (setEnv, setConf) <- runEnvParts (envParts builder) lolhaskell conf

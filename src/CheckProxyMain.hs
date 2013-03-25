@@ -11,7 +11,7 @@ import BlastItWithPiss.MonadChoice
 
 import qualified Data.ByteString as B
 import qualified Data.Text as T
--- import qualified Data.Text.IO as T (putStrLn)
+-- import qualified Data.Text.IO as TIO (putStrLn)
 
 import qualified Data.Map.Strict as M
 
@@ -232,8 +232,8 @@ checkProxy proxy = do
                 (ssachLastRecordedFields board) ssachLengthLimit
         return $ fst outcome'
 
-outcomeWrite :: BlastProxy -> Outcome -> ReaderT Env IO ProxyCat
-outcomeWrite proxy outcome = do
+outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text)
+outcomeMessage proxy outcome = do
     Env{..} <- ask
     case outcome of
       InternalError e ->
@@ -259,18 +259,8 @@ outcomeWrite proxy outcome = do
         putStrLn $ "got " ++ show x ++ ", assuming that a proxy is good..."
         ape Good $ show proxy
   where
-    ape :: ProxyCat -> Text -> ReaderT Env IO ProxyCat
-    ape cat string = cat <$ do
-        Env{..} <- ask
-        case M.lookup cat catFiles of
-          Nothing -> do
-            putStrLn $ show cat ++ ": " ++ T.unpack string
-          Just f -> do
-            putStrLn $
-                "Записываем " ++ show cat ++
-                " в файл \"" ++ f ++ "\": " ++
-                T.unpack string
-            liftIO $ B.appendFile f $ encodeUtf8 $ string ++ "\n"
+    ape :: ProxyCat -> Text -> ReaderT Env IO (ProxyCat, Text)
+    ape !cat !string = return $! (cat, string)
 
 proxyReader :: MonadIO m => Bool -> Text -> m (Maybe BlastProxy)
 proxyReader socks ip = do
@@ -279,6 +269,30 @@ proxyReader socks ip = do
         putStrLn $ "Couldn't parse as a proxy " ++ show ip
         return Nothing
       p -> return p
+
+writerThread :: M.Map ProxyCat FilePath -> TQueue (ProxyCat, Text) -> IO ()
+writerThread catFiles tq = forever $ do
+    (cat, text) <- atomically $ readTQueue tq
+
+    let {-# INLINE putStdout #-}
+#ifdef mingw32_HOST_OS
+        putStdOut = S.putStrLn . T.unpack
+#else
+        putStdout = B.hPutStrLn stdout . encodeUtf8
+#endif
+
+    case M.lookup cat catFiles of
+      Nothing -> do
+        putStdout $
+            "Нет файла для " ++ show cat ++
+            ", хотел записать: " ++ text
+      Just f -> do
+        putStdout $
+            "Записываем " ++ show cat ++
+            " в файл \"" ++ T.pack f ++ "\": " ++ text
+        withBinaryFile f AppendMode $ \h -> do
+            B.hPut h $ encodeUtf8 text
+            B.hPut h "\n"
 
 mainloop :: [BlastProxy] -> ReaderT Env IO ()
 mainloop [] = do
@@ -292,15 +306,21 @@ mainloop proxies = do
 
     proxyQueue <- liftIO $ newTBMQueueIO workerCount
 
+    writeQueue <- liftIO $ newTQueueIO
+
     _ <- liftIO $ forkIO $
-             CL.sourceList proxies
-        C.$$ sinkTBMQueue proxyQueue
+        CL.sourceList proxies C.$$ sinkTBMQueue proxyQueue
+
+    _ <- liftIO $ forkIO $
+        writerThread catFiles writeQueue
 
     replicateM_ workerCount $ fork $ fix $ \zaignoreel -> (do
         sourceTBMQueue proxyQueue
             C.$$ CL.mapM_ (\proxy -> do
                 outcome <- checkProxy proxy
-                cat <- outcomeWrite proxy outcome
+                res@(cat, _) <- outcomeMessage proxy outcome
+                liftIO $ atomically $
+                    writeTQueue writeQueue res
                 liftIO $ atomically $
                     modifyTVar' checkedMap $
                         M.insertWith (+) cat 1

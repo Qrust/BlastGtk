@@ -443,7 +443,8 @@ blastCaptcha thread = do
                 AbortCaptcha -> return (True, Nothing)
 
 -- TODO Should be buggy as hell.
--- FIXME Code duplication with "blastCaptcha"
+-- FIXME Code duplication with "post" (checking cloudflare)
+-- FIXME Code duplication with "blastCaptcha" (fetching captcha)
 -- FIXME what about strict checkStatus in request?
 blastCloudflare
     :: (Response [Tag Text] -> BlastLog b) -- ^ after we're done, feed the decloudflared page to this
@@ -804,7 +805,7 @@ entryPoint manager proxy board lgDetail shS muS prS output =
                 start -- Dunno what to do except restart.-}
               ,Handler $ \(_::AbortOutcome) -> do
                 blastLog "HACK abortOutcome"
-                start --HACK abortOutcome
+                -- wait what? {- start -} --HACK abortOutcome
               ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException a
