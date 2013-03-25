@@ -49,7 +49,8 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
--- URGENT Actually, we can't use postGUIAsync, captcha queue is not thread safe.
+-- URGENT Actually, we can't use postGUIAsync, captcha queue is not thread safe.^W^W^W^W^W^W^W^W^W^W
+--        postGUIAsync means that we run SEQUENTIALLY, IN THE MAIN THREAD.
 -- URGENT Captcha's not removed when cancelling wipe, see src/Mainloop.hs:208
 -- URGENT hang on windows, when banned by cloudflare
 

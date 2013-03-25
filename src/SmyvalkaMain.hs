@@ -15,6 +15,8 @@ import BlastItWithPiss.MonadChoice
 import qualified Data.Text       as T
 import qualified Data.ByteString as B
 
+import qualified Data.Set as Set
+
 import Text.Recognition.Antigate
 
 import System.Console.CmdArgs.Implicit hiding (def)
@@ -288,15 +290,17 @@ main = withSocketsDo $ do
 
         let
           readProxyStrings file = do
-             nub
+             Set.fromList
            . filter (not . T.null)
            . T.lines
            . decodeUtf8
             <$> B.readFile file
 
         _proxyStrings <- readProxyStrings _proxyFile
-        excludeStrings <- concatMapM readProxyStrings _exclude
-        let proxyStrings = _proxyStrings \\ excludeStrings
+        excludeStrings <- foldl' Set.union Set.empty <$> mapM readProxyStrings _exclude
+        let proxyStrings =
+                Set.toList $
+                    _proxyStrings `Set.difference` excludeStrings
 
         let isSocks = _socks || "socks" `isInfixOf` map toLower _proxyFile
 

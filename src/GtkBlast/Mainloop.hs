@@ -206,6 +206,7 @@ killWipe = do
     io $ closeManager connection -- TODO FIXME CLARIFY
     mapM_ killBoardUnit boardUnits
     -- FIXME before, we waited for all queue messages before clearing captcha.
+    --       now captchas can appear after this line.
     killAllCaptcha
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0
