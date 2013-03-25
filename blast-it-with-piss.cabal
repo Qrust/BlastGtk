@@ -64,7 +64,6 @@ library
         ,bytestring
         ,text
         ,safe
-        ,lens
         ,filepath
         ,directory
         ,MonadRandom
@@ -294,7 +293,6 @@ executable proxychecker
         ,bytestring
         ,text
         ,safe
-        ,lens
         ,deepseq
         ,failure
         ,data-default
@@ -383,7 +381,6 @@ executable smyvalka
         ,bytestring
         ,text
         ,safe
-        ,lens
         ,deepseq
         ,failure
         ,data-default
@@ -491,7 +488,6 @@ executable BlastItWithPiss
          base
         ,lifted-base
         ,safe
-        ,lens
         ,process
         ,gtk
         ,filepath
