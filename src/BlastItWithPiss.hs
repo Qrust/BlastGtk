@@ -2,16 +2,22 @@
 module BlastItWithPiss
     (ShSettings(..)
     ,MuSettings(..)
+    ,ProxySettings
+
+    ,LogDetail(..)
+    ,SageMode(..)
+
     ,CaptchaType(..)
     ,CaptchaAnswer(..)
+
     ,OriginStamp(..)
     ,renderCompactStamp
+
     ,SupplyCaptcha(..)
+
     ,Message(..)
     ,OutMessage(..)
-    ,LogDetail(..)
-    ,ProxySettings(..)
-    ,SageMode(..)
+
     ,defMuS
     ,defPrS
     ,entryPoint
@@ -502,7 +508,7 @@ blastCloudflare continueWith (getCloudyPage, url) = do
         notChanged <- tryPutMVar pSharedCookies maybeCookiesMVar
         if notChanged
           then do
-            t <- try reallySolveCloudflareCaptcha
+            t <- tryNotAsync reallySolveCloudflareCaptcha
             case t of
               Left (e::SomeException) -> do
                 putMVar maybeCookiesMVar Nothing

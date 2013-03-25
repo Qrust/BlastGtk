@@ -224,8 +224,8 @@ main = do
     putStrLn "Updated manifest..."
 
     uploadZips
-        [(lafilename, "Прыщи", labytes)
-        ,(wafilename, "Сперма. Версия для прыщей работает гораздо быстрее и лучше", wabytes)
+        [(lafilename, "Вайпалка для Linux", labytes)
+        ,(wafilename, "Вайпалка для Шiндoшs. Версия для прыщей работает гораздо быстрее и лучше", wabytes)
         ]
 
     putStrLn "Done uploading."

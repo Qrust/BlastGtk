@@ -149,6 +149,12 @@ io = liftIO
 fromIOException :: MonadBaseControl IO m => m a -> m a -> m a
 fromIOException handler = handle (\(_ :: IOException) -> handler)
 
+tryNotAsync :: (Exception e, MonadBaseControl IO m) => m a -> m (Either e a)
+tryNotAsync m = (Right <$> m) `catches`
+    [Handler $ \(e::AsyncException) -> throwIO e
+    ,Handler $ \e -> return $ Left e
+    ]
+
 -- * Lists
 
 {-# INLINE sequenceMaybe #-}

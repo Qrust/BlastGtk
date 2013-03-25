@@ -49,7 +49,10 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 -- URGENT share parse results perBoard
--- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?)
+-- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?
+--      Note that post is just a wrapper, you can put any req there
+--      — rework outcome hierarchy so that connection errors are different
+--      from post errors, handle specific connection errors(cloudflare) everywhere)
 -- URGENT smyvalka: write Log
 -- URGENT Avoid reopening log handle
 -- URGENT smyvalka: use async
@@ -108,6 +111,8 @@ import GHC.Conc
 -- TODO System.Random is slow, and might cause some lag on escaping. marsenne-random, mws-random?
 -- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
+-- CLARIFY we force [Tag Text] completely in blastCloudflare,
+--         might not be a problem, since we also parse whole page when deciding mode
 
 -- TODO http-conduit:
 --  Unify proxy types / Define proxy chains
