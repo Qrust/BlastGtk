@@ -205,6 +205,7 @@ killWipe = do
     set wipeStarted False
     io $ closeManager connection -- TODO FIXME CLARIFY
     mapM_ killBoardUnit boardUnits
+    -- FIXME before, we waited for all queue messages before clearing captcha.
     killAllCaptcha
     io $ buttonSetLabel wbuttonwipe "Начать _Вайп"
     io $ progressBarSetFraction wprogresswipe 0

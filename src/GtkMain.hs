@@ -48,6 +48,10 @@ import GHC.Conc
       - Log                 # very large log
       - EnvPart             # the gui stops
 -}
+
+-- URGENT Captcha's not removed when cancelling wipe, see src/Mainloop.hs:208
+-- URGENT hang on windows, when banned by cloudflare
+
 -- URGENT share parse results perBoard
 -- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?
 --      Note that post is just a wrapper, you can put any req there
@@ -58,6 +62,7 @@ import GHC.Conc
 -- URGENT smyvalka: use async
 -- URGENT separate "Settings" and internal shared state
 -- URGENT WeakRef ThreadId
+-- URGENT show thread captcha before cloud captcha
 
 -- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 -- URGENT post parsed page info to the gui
@@ -113,6 +118,7 @@ import GHC.Conc
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 -- CLARIFY we force [Tag Text] completely in blastCloudflare,
 --         might not be a problem, since we also parse whole page when deciding mode
+--         Does it? Only when status code is 403/404.
 
 -- TODO http-conduit:
 --  Unify proxy types / Define proxy chains

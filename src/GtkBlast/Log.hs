@@ -24,7 +24,10 @@ import qualified Graphics.UI.Gtk as Gtk
 
 import qualified Data.ByteString as B
 import qualified Data.Text as T
--- import qualified Data.Text.IO as TIO
+
+#ifdef mingw32_HOST_OS
+import qualified Data.Text.IO as TIO
+#endif
 
 {-# INLINE labelSetMarkup #-}
 labelSetMarkup :: MonadIO m => Label -> Text -> m ()
