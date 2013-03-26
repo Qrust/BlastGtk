@@ -9,6 +9,7 @@ ghc -package-confdist/package.conf.inplace \
 -XCPP \
 -XOverloadedStrings \
 -XRecordWildCards \
+-XNamedFieldPuns \
 -XScopedTypeVariables \
 -XFlexibleContexts \
 -XDeriveDataTypeable \

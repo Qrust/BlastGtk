@@ -78,6 +78,8 @@ import GHC.Conc
 
 -- URGENT smyvalka show captchas currently in solving
 
+-- TODO показывать количество проксей, а не только воркеров
+
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
 --        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
 --        (return sleep time, instead of sleeping, to allow for thread pool?)

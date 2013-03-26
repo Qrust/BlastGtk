@@ -124,6 +124,7 @@ library
         ,CPP
         ,OverloadedStrings
         ,RecordWildCards
+        ,NamedFieldPuns
         ,ScopedTypeVariables
         ,FlexibleContexts
         ,DeriveDataTypeable
@@ -250,6 +251,7 @@ executable gtkblast
         ,CPP
         ,OverloadedStrings
         ,RecordWildCards
+        ,NamedFieldPuns
         ,ScopedTypeVariables
         ,FlexibleContexts
         ,DeriveDataTypeable
@@ -339,6 +341,7 @@ executable proxychecker
         ,CPP
         ,OverloadedStrings
         ,RecordWildCards
+        ,NamedFieldPuns
         ,ScopedTypeVariables
         ,FlexibleContexts
         ,DeriveDataTypeable
@@ -427,6 +430,7 @@ executable smyvalka
         ,CPP
         ,OverloadedStrings
         ,RecordWildCards
+        ,NamedFieldPuns
         ,ScopedTypeVariables
         ,FlexibleContexts
         ,DeriveDataTypeable
@@ -535,6 +539,7 @@ executable BlastItWithPiss
         ,CPP
         ,OverloadedStrings
         ,RecordWildCards
+        ,NamedFieldPuns
         ,ScopedTypeVariables
         ,FlexibleContexts
         ,DeriveDataTypeable
