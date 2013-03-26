@@ -11,39 +11,58 @@ import BlastItWithPiss.Escaping
 import BlastItWithPiss.Image
 import BlastItWithPiss.Captcha
 import BlastItWithPiss.Blast
-import Control.Monad.Trans.Resource
+
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+
 import Control.Failure
+
+import Control.Monad.Trans.Resource
+
+
 
 
 import BlastItWithPiss.Parsing
 
 
-data PostData = PostData
-        {subject:: String
-        ,text   :: String
-        ,image  :: !(Maybe Image)
-        ,sage   :: !Bool
+
+
+data PostData
+    = PostData
+        {subject       :: !String
+        ,text          :: !String
+        ,image         :: !(Maybe Image)
+        ,sage          :: !Bool
         ,makewatermark :: !Bool
-        ,escapeInv :: !Bool
-        ,escapeWrd :: !Bool
+        ,escapeInv     :: !Bool
+        ,escapeWrd     :: !Bool
         }
+  deriving Show
 
 instance NFData PostData where
     rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
 
-prepare :: (MonadChoice m, Failure HttpException m, MonadResource m') => Board -> Maybe Int -> PostData -> CAnswer m m' -> [Part m m'] -> Int -> m (Request m', Outcome)
-prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) otherfields maxlength = do
-    let (unesctext, rest) =
-          case splitAt maxlength unesctext' of
-            (ut, []) -> (ut, [])
-            (ut, r) -> (ut, r)
+prepare
+    :: (MonadChoice m, Failure HttpException m, MonadResource m')
+    => Board
+    -> Maybe Int
+    -> PostData
+    -> CAnswer m m'
+    -> [Part m m']
+    -> Int
+    -> m (Request m', Outcome)
+prepare
+    board thread PostData{text=unesctext',..}
+    (CAnswer _ captchafields) otherfields maxlength = do
+    let
+      (unesctext, rest) = splitAt maxlength unesctext'
+
     text <- escapingFunction escapeInv escapeWrd unesctext
+
     let fields = (
             ([partBS "parent" (maybe "" show thread)
-             ,partBS "kasumi" (T.encodeUtf8 $ T.pack subject)
-             ,partBS "shampoo" (T.encodeUtf8 $ T.pack text)
+             ,partBS "kasumi" $ T.encodeUtf8 $ T.pack subject
+             ,partBS "shampoo" $ T.encodeUtf8 $ T.pack text
              ,partFileRequestBody "file"
                 (maybe mempty filename image)
                 -- TODO upload image using conduit
@@ -62,7 +81,9 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
             ))
             `union'`
             (otherfields)
+
     rreq <- parseUrl $ ssachPostUrl board thread
+
     let req' = rreq {
           requestHeaders =
            [(hReferer, ssachThread board thread)
@@ -72,19 +93,22 @@ prepare board thread PostData{text=unesctext',..} (CAnswer _ captchafields) othe
           ,redirectCount = 0
           ,checkStatus = \_ _ _ -> Nothing
           }
+
     req <- formDataBody fields req'
-    let final = (req, if null rest then Success else SuccessLongPost rest)
-    final `deepseq` return final
+
+    return $!! (req, if null rest then Success else SuccessLongPost rest)
   where
-    escapingFunction True True = escape maxlength wordfilter
+    {-# INLINE escapingFunction #-}
+    escapingFunction True True = escape maxlength ssachWordfilter
     escapingFunction True False = escapeExceptWordfilter maxlength
-    escapingFunction False True = escapeWordfilter maxlength wordfilter
+    escapingFunction False True = escapeWordfilter maxlength ssachWordfilter
     escapingFunction False False = return
 
+    {-# INLINE union' #-}
     union' :: [Part m m'] -> [Part m m'] -> [Part m m']
     union' = unionBy ((==) `on` partName)
 
--- Browser postprocesses the request
+-- It's left to the Browser module to postprocess the request
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
 
@@ -97,7 +121,7 @@ post (req, success) = do
             cj = responseCookieJar resp
         case () of
           _ | statusCode st == 303
-            , Just loc <- T.decodeASCII <$> lookup "Location" heads
+            , Just loc <- decodeASCII <$> lookup "Location" heads
              -> if loc == "wakaba.html"
               then
                 return (PostRejected, Nothing)

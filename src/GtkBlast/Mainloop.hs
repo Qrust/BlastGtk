@@ -36,7 +36,7 @@ import qualified Graphics.UI.Gtk as G (set)
 
 import GHC.Conc hiding (forkIO)
 import qualified Control.Concurrent.Thread.Group as ThreadGroup
-import Control.Concurrent.STM
+-- import Control.Concurrent.STM
 
 updWipeMessage :: E ()
 updWipeMessage = do

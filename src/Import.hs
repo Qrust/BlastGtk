@@ -32,16 +32,18 @@ import Control.DeepSeq as A
 import Control.Monad.Trans.Control as A
 import Control.Exception.Lifted as A
 import Data.ByteString as A (ByteString)
-import qualified Data.ByteString.Lazy as LB
 import Data.Text as A (Text)
-import qualified Data.Text.Encoding as TE
 import Data.Text.Encoding as A (encodeUtf8)
-import qualified Data.Text.Encoding.Error as TE
-import qualified Data.Text.Lazy as LT
-import qualified Text.Show as S
-
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
+
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.Text.Encoding as TE
+#if MIN_VERSION_text(0,11,3)
+import qualified Data.Text.Encoding.Error as TE
+#endif
+import qualified Data.Text.Lazy as LT
+import qualified Text.Show as S
 
 -- * Strings
 
@@ -64,13 +66,25 @@ toLBS = LB.fromStrict
 toLBS x = LB.fromChunks [x]
 #endif
 
+{-# INLINE decodeUtf8 #-}
+decodeUtf8 :: ByteString -> Text
+#if MIN_VERSION_text(0,11,3)
+decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
+#else
+decodeUtf8 = TE.decodeUtf8
+#endif
+
+{-# INLINE decodeASCII #-}
+decodeASCII :: ByteString -> Text
+#if MIN_VERSION_text(0,11,3)
+decodeASCII = TE.decodeLatin1
+#else
+decodeASCII = decodeUtf8
+#endif
+
 {-# INLINE show #-}
 show :: (Show a, IsString b) => a -> b
 show = fromString . S.show
-
-{-# INLINE decodeUtf8 #-}
-decodeUtf8 :: ByteString -> Text
-decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
 
 {-# INLINE (++) #-}
 (++) :: Monoid a => a -> a -> a

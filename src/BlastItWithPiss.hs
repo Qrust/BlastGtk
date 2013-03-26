@@ -369,9 +369,10 @@ abortWithOutcome o = do
 
 data TempBlastPastaChannel
     = TBPC
-        {escinv :: Bool
-        ,escwrd :: Bool
-        ,pasta :: String}
+        {escinv :: !Bool
+        ,escwrd :: !Bool
+        ,pasta  :: !String
+        }
 
 blastPostData :: Mode -> Maybe Page -> Maybe Int -> BlastLog PostData
 blastPostData mode mpastapage thread = do
