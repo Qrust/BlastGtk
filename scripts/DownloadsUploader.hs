@@ -200,9 +200,9 @@ main = do
 
     let semicolonToNewline = map (\x -> if x==';' then '\n' else x)
 
-    chlog <-
-        fmap (semicolonToNewline . fromMaybe (error "changelog is required")) $
-            readline "Changes in this version:\n"
+    !chlog <- do
+        l <-  readline "Changes in this version:\n"
+        return $ maybe (error "changelog is required") semicolonToNewline l
 
     putStrLn "Computing linux archive hash"
     labytes <- B.readFile la

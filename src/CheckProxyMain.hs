@@ -276,7 +276,7 @@ writerThread catFiles tq = forever $ do
 
     let {-# INLINE putStdout #-}
 #ifdef mingw32_HOST_OS
-        putStdOut = S.putStrLn . T.unpack
+        putStdout = S.putStrLn . T.unpack
 #else
         putStdout = B.hPutStrLn stdout . encodeUtf8
 #endif

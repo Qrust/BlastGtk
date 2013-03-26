@@ -56,6 +56,30 @@ import Text.HTML.TagSoup(Tag)
 
 import System.IO (putStrLn, putStr)
 
+
+
+
+
+
+-- two designs:
+
+-- TVar (IntMap Page)
+--  use what's in cache, otherwise parse.
+--  Reaper thread is initialized on every insert, to purge page after 10 postTimeout.
+--  ^ This will result in a lot of cache misses.
+--  When reaper destroys the page, everyone will rush to download it themselves.
+
+-- some one could also fail to get a page, same thing as blastCloudflare really.
+-- TVar (IntMap (TMVar Page))
+-- if no key in IntMap
+-- waiting for a page should timeout.
+-- If no page is got in five seconds, attempt to fetch on your own.
+
+
+
+
+
+
 {-# INLINE readTVarIO #-}
 readTVarIO :: MonadIO m => TVar a -> m a
 readTVarIO = liftIO . STM.readTVarIO
@@ -453,8 +477,11 @@ blastCloudflare
         -- snd: Url of that page, so we can post captcha answer to it
     -> BlastLog b
 blastCloudflare continueWith (getCloudyPage, url) = do
-    blastLog "Starting blastCloudflare"
-    blastCloudflare' =<< getCloudyPage
+    blastLog "Fetching page for cloudflare inspection"
+    pg <- getCloudyPage
+
+    blastLog "Inspecting"
+    blastCloudflare' pg
   where
 
     blastCloudflare' rsp

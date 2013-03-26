@@ -1,7 +1,11 @@
 {
-    "version": "1.1.26",
+    "version": "1.1.27",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.27",
+            "В чекере и смывалке добавлена опция --exclude для удаления нежелательных проксей\nНа мультикорах теперь используются дополнительные ядра\nВ чекере опция atatime переименована в workers"
+        ],
         [
             "1.1.26",
             "Убыстрение проксичекера, проксичекер теперь чекает фиксированное количество проксей одновременно, а не подходами\nПроксичекер теперь показывает отчеканные прокси по категориям\nВ смывалке и проксичекере список прокси читается как Socks, если в имени файла есть \"socks\""
@@ -175,15 +179,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.26.zip",
-                "ca20a8baf40146135fd27682094b72bc"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.27.zip",
+                "bfe2a649a629aeb20f4a07270150e118"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.26.zip",
-                "7b8679e0c6e81f53490369889917445c"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.27.zip",
+                "4742c2fc508c9d893b82b6913d913e22"
             ]
         ]
     ]

@@ -64,6 +64,9 @@ import GHC.Conc
 -- URGENT show thread captcha before cloud captcha
 -- URGENT remove wipeStarted
 
+-- URGENT write outcomes in a table to the right
+-- URGENT better error message when no threads.
+
 -- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 -- URGENT post parsed page info to the gui
 
