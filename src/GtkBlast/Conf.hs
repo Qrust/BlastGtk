@@ -46,9 +46,6 @@ data Conf = Conf
     ,coAnnoyErrors :: !Bool
     ,coTray :: !Bool
     ,coWatermark :: !Bool
-    ,coSettingsShown :: !Bool
-    ,coAdditionalShown :: !Bool
-    ,coLogShown :: !Bool
     ,coFirstLaunch :: !Bool
     ,coUseHttpProxy :: !Bool
     ,coHttpProxyFile :: !String
@@ -93,9 +90,6 @@ instance Default Conf where
         ,coTray = True
 #endif
         ,coWatermark = False
-        ,coSettingsShown = True
-        ,coAdditionalShown = False
-        ,coLogShown = False
         ,coFirstLaunch = True
         ,coUseHttpProxy = False
         ,coHttpProxyFile = ""
@@ -151,9 +145,6 @@ instance FromJSON (Conf, String) where
         F(coAnnoyErrors)
         F(coTray)
         F(coWatermark)
-        F(coSettingsShown)
-        F(coAdditionalShown)
-        F(coLogShown)
         F(coFirstLaunch)
         F(coUseHttpProxy)
         F(coHttpProxyFile)

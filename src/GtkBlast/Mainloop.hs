@@ -43,11 +43,11 @@ updWipeMessage = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
         pc <- get postCount
-        let psc = "Сделано постов: " ++ show pc ++ "\n"
+        let psc = "Постов: " ++ show pc ++ " / "
         bnd <- do
             (ac, bn, dd) <- get wipeStats
             return $ "Активно: " ++ show ac ++ " / Забанено: " ++ show bn ++
-                    (if dd > 0 then "\nНаебнулось: " ++ show dd else "")
+                    (if dd > 0 then " / Наебнулось: " ++ show dd else "")
         let ach = getAchievementString pc
         updMessage $ psc ++ bnd ++ (if T.null ach then "" else "\n" ++ ach)
 

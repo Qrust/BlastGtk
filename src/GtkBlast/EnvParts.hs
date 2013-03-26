@@ -56,14 +56,6 @@ envParts b =
     ,pastaEnvPart b
     ,imageEnvPart b
     ,EP
-        (\_ c -> setir (coSettingsShown c) =<< builderGetObject b castToExpander "expandersettings")
-        (\v c -> get v <&> \a -> c{coSettingsShown=a})
-        (const id)
-    ,EP
-        (\_ c -> setir (coAdditionalShown c) =<< builderGetObject b castToExpander "expanderadditional")
-        (\v c -> get v <&> \a -> c{coAdditionalShown=a})
-        (const id)
-    ,EP
         (\_ _ -> do
             wlabelmessage <- builderGetObject b castToLabel "labelmessage"
             wprogressalignment <- builderGetObject b castToAlignment "progressalignment"
@@ -79,7 +71,7 @@ envParts b =
         (\_ c -> do
             walignmentlog <- builderGetObject b castToAlignment "alignmentlog"
 
-            wexpanderlog <- setir (coLogShown c) =<< builderGetObject b castToExpander "expanderlog"
+            wvboxlog <- builderGetObject b castToVBox "wvboxlog"
 
             wlabeldetachlog <- builderGetObject b castToLabel "labeldetachlog"
             wlabelattachlog <- builderGetObject b castToLabel "labelattachlog"
@@ -109,17 +101,17 @@ envParts b =
             let detachedmark = "<a href=\"#\">Закрепить лог</a>"
 
             let detachLog = do
-                    containerRemove walignmentlog wexpanderlog
+                    containerRemove walignmentlog wvboxlog
                     containerRemove windowlog wlabelattachlog
-                    containerAdd windowlog wexpanderlog
+                    containerAdd windowlog wvboxlog
                     containerAdd walignmentlog wlabelattachlog
                     labelSetMarkup wlabeldetachlog detachedmark
                     widgetShow windowlog
 
             let attachLog = do
-                    containerRemove windowlog wexpanderlog
+                    containerRemove windowlog wvboxlog
                     containerRemove walignmentlog wlabelattachlog
-                    containerAdd walignmentlog wexpanderlog
+                    containerAdd walignmentlog wvboxlog
                     containerAdd windowlog wlabelattachlog
                     labelSetMarkup wlabeldetachlog attachedmark
                     widgetHide windowlog
@@ -160,9 +152,9 @@ envParts b =
                 attachLog
                 set detached False
 
-            return (wbuf,wexpanderlog))
-        (\(_,wel) c -> get wel <&> \a -> c{coLogShown=a})
-        (\(wbuf,_) e -> e{wbuf=wbuf})
+            return wbuf)
+        (const return)
+        (\wbuf e -> e{wbuf=wbuf})
     ,EP
         (\_ c -> do
             wcheckthread <- setir (coCreateThreads c) =<< builderGetObject b castToCheckButton "check-thread"

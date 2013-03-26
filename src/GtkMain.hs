@@ -49,7 +49,7 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
--- URGENT hang on windows, when banned by cloudflare
+-- URGENT s/mmode/msagemode
 
 -- URGENT share parse results perBoard
 -- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?
