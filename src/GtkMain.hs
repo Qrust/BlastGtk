@@ -49,6 +49,11 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
+-- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
+--        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
+--        (return sleep time, instead of sleeping, to allow for thread pool?)
+-- URGENT autoreport bad, see kludges in checkproxymain
+
 -- URGENT s/mmode/msagemode
 
 -- URGENT share parse results perBoard
@@ -80,9 +85,6 @@ import GHC.Conc
 
 -- TODO показывать количество проксей, а не только воркеров
 
--- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
---        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
---        (return sleep time, instead of sleeping, to allow for thread pool?)
 -- URGENT AdaptiveIn is a property of board+proxy not of a single agent
 -- URGENT ввод капчи руками в смывалке и чекере
 

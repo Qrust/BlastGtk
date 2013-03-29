@@ -1,7 +1,11 @@
 {
-    "version": "1.1.27",
+    "version": "1.1.28",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.28",
+            "На скорую руку добавлена поддержка антигейта в проксичекере\nРедизайн интерфейса, теперь вместо ебанутой вытянутости по вертикали ебанутая вытянутопо горизонтали."
+        ],
         [
             "1.1.27",
             "В чекере и смывалке добавлена опция --exclude для удаления нежелательных проксей\nНа мультикорах теперь используются дополнительные ядра\nВ чекере опция atatime переименована в workers"
@@ -179,15 +183,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.27.zip",
-                "bfe2a649a629aeb20f4a07270150e118"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.28.zip",
+                "bf2c0d49253486b0a3449876052ca6fe"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.27.zip",
-                "4742c2fc508c9d893b82b6913d913e22"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.28.zip",
+                "33b032f801bfbc35bf01311d9eef85f7"
             ]
         ]
     ]

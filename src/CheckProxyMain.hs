@@ -4,6 +4,7 @@ import Import
 import Paths_blast_it_with_piss
 
 import BlastItWithPiss.Post
+import BlastItWithPiss.Image
 import BlastItWithPiss.Parsing
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Board
@@ -19,6 +20,8 @@ import Control.Concurrent
 import Control.Concurrent.Lifted (fork)
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TBMQueue
+
+import Control.Monad.Trans.Resource
 
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
@@ -39,6 +42,8 @@ import Control.Monad.Trans.Reader
 import qualified System.IO as S (putStrLn)
 
 import System.Directory
+
+import Text.Recognition.Antigate
 
 
 {-# INLINE putStrLn #-}
@@ -74,6 +79,9 @@ data Config = Config
     ,_cloudflare_captcha :: String
     ,_cloudflare_ban     :: String
     ,_dead               :: String
+    ,_otherkludge        :: String
+    ,_antigateKey        :: Maybe String
+    ,_antigateHost       :: String
     }
   deriving (Show, Data, Typeable)
 
@@ -86,11 +94,13 @@ data ProxyCat
     | Ban503
     | Ban
     | Dead
+    | OtherKludge -- ^ Temp kludge
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 data Env = Env
     {manager     :: !Manager
     ,board       :: !Board
+    ,antigateKey :: !(Maybe ApiKey)
     ,workerCount :: !Int
     ,timeout     :: !Int
     ,thread      :: !Int
@@ -191,6 +201,24 @@ impureAnnotatedCmdargsConfig = Config
         &= name "bad"
         &= help "Файл куда писать прокси с которыми не удалось связаться по каким-то причинам"
         &= typFile
+    ,_otherkludge =
+        "OTHERPROXIES"
+        &= name "O"
+        &= name "other"
+        &= help "Куда писать все остальные прокси вместе с результатами. Временный костыль"
+        &= typFile
+    ,_antigateKey =
+        Nothing
+        &= explicit
+        &= name "K"
+        &= name "antigate-key"
+        &= typ "Ключ_антигейта"
+    ,_antigateHost =
+        "antigate.com"
+        &= explicit
+        &= name "H"
+        &= name "antigate-host"
+        &= help "Домен апи антигейта, например captchabot.com"
     }
     &= program "proxychecker"
     &= helpArg
@@ -210,27 +238,88 @@ impureAnnotatedCmdargsConfig = Config
 -- | Exceptions are handled inside 'post'
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
 checkProxy proxy = do
-    Env{..} <- ask
+    e@Env{..} <- ask
     ua <- newUserAgent
     liftIO $ runBlastNew manager proxy ua $ do
         -- HACK Lock log / fast-logger
-        liftIO $ putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
+        putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
 
         setTimeout $ Just $ timeout * 1000000
         setMaxRetryCount 0 -- why retry?
 
         -- HACK Lock log / fast-logger
-        liftIO $ putStrLn $ show proxy ++ ": Поcтим"
         outcome' <- do
-            captchaid <- generateRandomString (32,32) ('A', 'Z')
-            post =<< prepare board (Just thread)
-                (PostData
-                    "САЖА"
-                    (">>" ++ show thread ++ "\nОП-хуй, сажаскрыл.")
-                    Nothing True False False False)
-                        (unsafeMakeYandexCaptchaAnswer captchaid "42146")
-                (ssachLastRecordedFields board) ssachLengthLimit
-        return $ fst outcome'
+            case antigateKey of
+              Just k ->
+                kludgeAntigateCheckProxy proxy e k
+              Nothing -> do
+                putStrLn $ show proxy ++ ": Поcтим без капчи"
+                captchaid <- generateRandomString (32,32) ('A', 'Z')
+                (outcome, ~_) <- post =<< prepare board (Just thread)
+                    (PostData
+                        "САЖА"
+                        (">>" ++ show thread ++ "\nОП-хуй, сажаскрыл.")
+                        Nothing
+                        True
+                        False False False)
+                    (unsafeMakeYandexCaptchaAnswer captchaid "421463")
+                    (ssachLastRecordedFields board)
+                    ssachLengthLimit
+                return outcome
+        return outcome'
+
+kludgeAntigateCheckProxy :: BlastProxy -> Env -> ApiKey -> Blast Outcome
+kludgeAntigateCheckProxy proxy Env{..} key = do
+    (cAnswer, repBad) <- do
+        nc <- getNewCaptcha board (Just thread) ""
+        case nc of
+          Left answer -> do
+            return (answer, putStrLn "Guessed captcha, turned out wrong.")
+          Right (chKey :: CurrentSsachCaptchaType) -> do
+            cconf <- getCaptchaConf chKey
+            (captchaBytes, ct) <- getCaptchaImage chKey
+            fname <- mkImageFileName ct
+            (cid, answerStr) <-
+                -- Always without proxy
+                solveCaptcha def key cconf fname captchaBytes manager
+            answer <- applyCaptcha chKey answerStr
+            let
+              repBad = do
+                x <- runResourceT $ reportBad key cid manager
+                putStrLn $
+                    "Reported bad captcha " ++ show cid ++ ":"
+                    ++ show answerStr ++ "for proxy {" ++
+                    show proxy ++ "}, report result: " ++ show x
+            return (answer, repBad)
+
+    image <- do
+        fname <- mkImageFileName "image/gif"
+        return $ Image fname "image/gif" "ХУЙ ВЫГРЫЗИ УЁБИЩЕ, выпроваживает он нас."
+
+    let otherfields = ssachLastRecordedFields board
+
+    (!req, ~_) <-
+        prepare board (Just thread)
+            (PostData
+                "САЖА"
+                "Фейспалмлю с ОПа-хуя, сажа."
+                (Just image)
+                True False False False)
+            cAnswer
+            otherfields
+            ssachLengthLimit
+
+    (!outcome, ~_) <- post (req, Success)
+
+    putStrLn $ "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
+
+    case outcome of
+      o | o==NeedCaptcha || o==WrongCaptcha ->
+        liftIO $ repBad
+      _ ->
+        return ()
+
+    return outcome
 
 outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text)
 outcomeMessage proxy outcome = do
@@ -256,8 +345,20 @@ outcomeMessage proxy outcome = do
       Five'o'ThreeError -> do
         ape Ban503 $ show proxy ++ "| 503. FIXME прокся наткнулась на лимит мочаки, почему-то это ещё не починено. Наверное я просто забыл об этом."
       x -> do
-        putStrLn $ "got " ++ show x ++ ", assuming that a proxy is good..."
-        ape Good $ show proxy
+        if isJust antigateKey
+          then
+           if x == CorruptedImage
+              then do
+                putStrLn $ "SUCCESS! Got through captcha"
+                ape Good $ show proxy
+              else do
+                putStrLn $
+                    "Configured to check with captcha, but got " ++ show x
+                    ++ ". Throwing to Other"
+                ape OtherKludge $ show proxy
+          else do
+            putStrLn $ "got " ++ show x ++ ", assuming that a proxy is good..."
+            ape Good $ show proxy
   where
     ape :: ProxyCat -> Text -> ReaderT Env IO (ProxyCat, Text)
     ape !cat !string = return $! (cat, string)
@@ -395,6 +496,7 @@ main = withSocketsDo $ do
             ,(Ban503      , _five'o'three)
             ,(Ban         , _banned)
             ,(Dead        , _dead)
+            ,(OtherKludge , _otherkludge)
             ]
 
         catFiles <- do
@@ -424,6 +526,10 @@ main = withSocketsDo $ do
             \manager -> runReaderT (mainloop proxies)
                 Env {manager            = manager
                     ,board              = board
+                    ,antigateKey        =
+                        case _antigateKey of
+                          Nothing -> Nothing
+                          Just k -> Just def{api_key=k, api_host=_antigateHost}
                     ,workerCount        = _workerCount
                     ,timeout            = _timeout
                     ,thread             = _thread
