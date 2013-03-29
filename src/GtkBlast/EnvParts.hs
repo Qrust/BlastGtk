@@ -68,7 +68,7 @@ envParts b =
                                 ,wprogresswipe=wpw
                                 })
     ,EP
-        (\_ c -> do
+        (\_ _ -> do
             walignmentlog <- builderGetObject b castToAlignment "alignmentlog"
 
             wvboxlog <- builderGetObject b castToVBox "wvboxlog"

@@ -1,7 +1,11 @@
 {
-    "version": "1.1.28",
+    "version": "1.1.29",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.29",
+            "Мелкофикс эксепшенов в чекере, возможно убраны зависания."
+        ],
         [
             "1.1.28",
             "На скорую руку добавлена поддержка антигейта в проксичекере\nРедизайн интерфейса, теперь вместо ебанутой вытянутости по вертикали ебанутая вытянутопо горизонтали."
@@ -183,15 +187,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.28.zip",
-                "bf2c0d49253486b0a3449876052ca6fe"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.29.zip",
+                "87c98518ed0f630b6211796b1d7da899"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.28.zip",
-                "33b032f801bfbc35bf01311d9eef85f7"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.29.zip",
+                "6e31de2c31552aa4084a8e6c8acb9ad0"
             ]
         ]
     ]
