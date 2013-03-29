@@ -301,7 +301,7 @@ mainloop = do
         maintainCaptcha bus
     updWipeMessage
 
-setMainLoop :: Env -> FilePath -> (Conf -> IO Conf) -> IO ()
+setMainLoop :: Default Conf => Env -> FilePath -> (Conf -> IO Conf) -> IO ()
 setMainLoop env configfile setConf = do
     runE env $ writeLog "Setting timeouts."
     void $ timeoutAddFull (do

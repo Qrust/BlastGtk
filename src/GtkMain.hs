@@ -3,11 +3,15 @@ import Import hiding (on, mod)
 
 import Paths_blast_it_with_piss
 
+import BlastItWithPiss.Board
+
 import GtkBlast.Directory
 import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
 import GtkBlast.Mainloop (setMainLoop)
+import GtkBlast.Type_CaptchaMode
+import GtkBlast.Type_PastaSet
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 import Graphics.UI.Gtk hiding (get)
@@ -32,9 +36,6 @@ import Network (withSocketsDo)
 
 import GHC.Conc
 
-
-
-
 {- URGENT
     Loop / race condition stopping
     _the GUI thread_, AND _also stopping any wipe_ introduced somewhere
@@ -48,6 +49,8 @@ import GHC.Conc
       - Log                 # very large log
       - EnvPart             # the gui stops
 -}
+
+-- URGENT Checker resume.
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
 --        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
@@ -263,6 +266,49 @@ import GHC.Conc
 -- FIXME Escaping.hs: Кажется за каждый reverse мне светит по ебалу
 -- TODO cleanup
 -- TODO document
+
+instance Default Conf where
+    def = Conf
+        {coActiveBoards = []
+        ,coPastaSet = FromThread
+        ,coCreateThreads = True
+        ,coImageFolder = "images"
+        ,coAttachImages = True
+        ,coAnnoy = True
+        ,coHideOnSubmit = False
+        ,coAnnoyErrors = True
+#ifdef TEST
+        ,coTray = False
+#else
+        ,coTray = True
+#endif
+        ,coWatermark = False
+        ,coFirstLaunch = True
+        ,coUseHttpProxy = False
+        ,coHttpProxyFile = ""
+        ,coUseSocksProxy = False
+        ,coSocksProxyFile = ""
+        ,coUseNoProxy = True
+        ,coCaptchaMode = Gui
+        ,coAntigateKey = []
+        ,coAntigateHost = "antigate.com"
+        ,coLastVersion = version
+        ,coPastaFile = bundledFile "pasta/shizik"
+        ,coEscapeInv = False
+        ,coEscapeWrd = False
+        ,coPostAgitka = False
+        ,coSortingByAlphabet = True
+        ,coShuffleReposts = False
+        ,coRandomQuote = False
+        ,coUsePostTimeout = False
+        ,coPostTimeout = ssachPostTimeout SsachB
+        ,coUseThreadTimeout = False
+        ,coThreadTimeout = ssachThreadTimeout SsachB
+        ,coUseFluctuation = False
+        ,coFluctuation = 10
+        ,coSage = True
+        ,coMaxLines = 300
+        }
 
 helpMessage :: String
 helpMessage =

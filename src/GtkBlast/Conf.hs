@@ -11,12 +11,10 @@ import GtkBlast.Type_PastaSet
 import GtkBlast.Type_CaptchaMode
 import GtkBlast.Environment
 import GtkBlast.Log
-import GtkBlast.Directory
 
 import BlastItWithPiss.Board
 
 import Data.Version
-import Paths_blast_it_with_piss
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
@@ -74,49 +72,6 @@ data Conf = Conf
     }
   deriving (Eq, Show, Ord, Generic)
 
-instance Default Conf where
-    def = Conf
-        {coActiveBoards = []
-        ,coPastaSet = FromThread
-        ,coCreateThreads = True
-        ,coImageFolder = "images"
-        ,coAttachImages = True
-        ,coAnnoy = True
-        ,coHideOnSubmit = False
-        ,coAnnoyErrors = True
-#ifdef TEST
-        ,coTray = False
-#else
-        ,coTray = True
-#endif
-        ,coWatermark = False
-        ,coFirstLaunch = True
-        ,coUseHttpProxy = False
-        ,coHttpProxyFile = ""
-        ,coUseSocksProxy = False
-        ,coSocksProxyFile = ""
-        ,coUseNoProxy = True
-        ,coCaptchaMode = Gui
-        ,coAntigateKey = []
-        ,coAntigateHost = "antigate.com"
-        ,coLastVersion = version
-        ,coPastaFile = bundledFile "pasta/shizik"
-        ,coEscapeInv = False
-        ,coEscapeWrd = False
-        ,coPostAgitka = False
-        ,coSortingByAlphabet = True
-        ,coShuffleReposts = False
-        ,coRandomQuote = False
-        ,coUsePostTimeout = False
-        ,coPostTimeout = ssachPostTimeout SsachB
-        ,coUseThreadTimeout = False
-        ,coThreadTimeout = ssachThreadTimeout SsachB
-        ,coUseFluctuation = False
-        ,coFluctuation = 10
-        ,coSage = True
-        ,coMaxLines = 300
-        }
-
 _parseWithDefault
     :: (FromJSON a, Show a)
     => Object -> Text -> a -> WriterT String Parser a
@@ -131,7 +86,7 @@ _parseWithDefault obj name _def = do
         return _def
 
 -- snd contains warnings, we don't fail if some of the fields are missing.
-instance FromJSON (Conf, String) where
+instance Default Conf => FromJSON (Conf, String) where
     parseJSON (Object obj) = runWriterT $ do
 -- CLARIFICATION this macro relies on -traditional or cpphs.
 #define F(x) x <- _parseWithDefault obj "x" $ x def
@@ -210,7 +165,7 @@ instance FromJSON Board where
 instance ToJSON Board where
     toJSON = String . renderBoard
 
-readConfig :: FilePath -> IO Conf
+readConfig :: Default Conf => FilePath -> IO Conf
 readConfig configfile = do
     _x <- try $ B.readFile $ configfile
     case _x of

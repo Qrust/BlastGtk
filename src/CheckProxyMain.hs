@@ -415,22 +415,24 @@ mainloop proxies = do
     _ <- liftIO $ forkIO $
         writerThread catFiles writeQueue
 
-    replicateM_ workerCount $ fork $ fix $ \zaignoreel -> (do
+    replicateM_ workerCount $ fork $ do
         sourceTBMQueue proxyQueue
             C.$$ CL.mapM_ (\proxy -> do
-                outcome <- checkProxy proxy
-                res@(cat, _) <- outcomeMessage proxy outcome
+                res@(cat, _) <-
+                    (do outcome <- checkProxy proxy
+                        outcomeMessage proxy outcome
+                    ) `catch` (\(e::SomeException) -> do
+                        putStrLn $ "While checking {" ++ show proxy ++ "}, "
+                            ++ "worker got exception: " ++ show e
+                            ++ "; Writing as dead, IGNOREEM."
+                        return (Dead, show proxy ++ "| failed, exception was: " ++ show e)
+                        )
                 liftIO $ atomically $
                     writeTQueue writeQueue res
                 liftIO $ atomically $
                     modifyTVar' checkedMap $
                         M.insertWith (+) cat 1
                 )
-        ) `catch` \(e::SomeException) -> do
-            putStrLn $
-                "Worker got exception: " ++ show e
-                ++ ". POHOOY IGNOREEM."
-            zaignoreel
 
     putStrLn "Started checking."
 
