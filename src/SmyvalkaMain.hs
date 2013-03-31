@@ -139,11 +139,13 @@ createThread :: Env -> CAnswer Blast (ResourceT IO) -> Maybe Image -> IO () -> B
 createThread e@Env{..} cAnswer captchaImage badCaptcha = do
     proxy <- httpGetProxy
     (do
-        image <- case imageDir of
+        rawImage <- case imageDir of
               Nothing ->
                 fromMaybeM (liftIO builtinImageGen) captchaImage
               Just dir ->
                 liftIO $ fromMaybeM builtinImageGen =<< folderImageGen dir
+
+        image <- appendJunk rawImage
 
         pasta <- fromMaybe "" <$> chooseFromListMaybe pastas
 

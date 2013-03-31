@@ -32,7 +32,7 @@ instance NFData Image where
 
 appendJunkB :: MonadChoice m => LByteString -> m LByteString
 appendJunkB b = do
-    bytecount <- getRandomR (256, 20480)
+    bytecount <- getRandomR (2048, 20480)
     L.append b . L.pack . take bytecount <$> getRandomRs (1, 255)
 
 appendJunk :: MonadChoice m => Image -> m Image

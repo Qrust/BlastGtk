@@ -1,7 +1,11 @@
 {
-    "version": "1.1.29",
+    "version": "1.1.30",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.30",
+            "Забыл добавление байтов к картинкам в смывалке, пофиксено."
+        ],
         [
             "1.1.29",
             "Мелкофикс эксепшенов в чекере, возможно убраны зависания."
@@ -187,15 +191,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.29.zip",
-                "87c98518ed0f630b6211796b1d7da899"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.30.zip",
+                "a04b11252d2c0eefa282e77a3c5061b7"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.29.zip",
-                "6e31de2c31552aa4084a8e6c8acb9ad0"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.30.zip",
+                "e14d216c5f1a131955087d722349e379"
             ]
         ]
     ]
