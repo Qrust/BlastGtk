@@ -303,7 +303,7 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
             (PostData
                 "САЖА"
                 "Фейспалмлю с ОПа-хуя, сажа."
-                (Just image)
+                (Just $ JunkImage image)
                 True False False False)
             cAnswer
             otherfields

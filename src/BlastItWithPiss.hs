@@ -431,11 +431,11 @@ blastPostData mode mpastapage thread = do
               then
                 appendJunk i
               else
-                return i
+                return $ JunkImage i
     junkImage & maybe
         (blastLog "chose no image")
         (\i -> blastLog $
-            "chose image \"" ++ T.pack (filename i) ++
+            "chose image \"" ++ T.pack (filename $ fromJunkImage i) ++
                 "\", junk: " ++ show junkingEnabled)
 
     watermark <- readTVarIO tmakewatermark

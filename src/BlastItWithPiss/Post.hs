@@ -52,8 +52,12 @@ prepare
     -> Int
     -> m (Request m', Outcome)
 prepare
-    board thread PostData{text=unesctext',..}
-    (CAnswer _ captchafields) otherfields maxlength = do
+    board
+    thread
+    PostData{text=unesctext',..}
+    (CAnswer _ captchafields)
+    otherfields
+    maxlength = do
     let
       (unesctext, rest) = splitAt maxlength unesctext'
 
@@ -64,9 +68,9 @@ prepare
              ,partBS "kasumi" $ T.encodeUtf8 $ T.pack subject
              ,partBS "shampoo" $ T.encodeUtf8 $ T.pack text
              ,partFileRequestBody "file"
-                (maybe mempty filename image)
+                (maybe mempty (filename . fromJunkImage) image)
                 -- TODO upload image using conduit
-                (RequestBodyLBS $ maybe mempty bytes image)
+                (RequestBodyLBS $ maybe mempty (bytes . fromJunkImage) image)
             ]) ++
             (if sage
                 then [partBS "nabiki" "sage"

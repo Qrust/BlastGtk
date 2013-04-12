@@ -1,13 +1,13 @@
 module BlastItWithPiss.Image
-    (JunkImage(..)
-
-    ,Image(..)
-    ,appendJunkB
-    ,appendJunk
+    (Image(..)
     ,readImageWithoutJunk
-    ,mkImageFileName
 
+    ,JunkImage(..)
+    ,appendJunk
+
+    ,mkImageFileName
     ,filterImages
+    ,appendJunkB
     )where
 import Import hiding (insert)
 
@@ -25,6 +25,9 @@ import Network.Mime
 newtype JunkImage = JunkImage {fromJunkImage :: Image}
   deriving Show
 
+instance NFData JunkImage where
+    rnf = rnf . fromJunkImage
+
 data Image
     = Image
         {filename :: !String
@@ -40,10 +43,10 @@ appendJunkB b = do
     bytecount <- getRandomR (2048, 20480)
     L.append b . L.pack . take bytecount <$> getRandomRs (1, 255)
 
-appendJunk :: MonadChoice m => Image -> m Image
+appendJunk :: MonadChoice m => Image -> m JunkImage
 appendJunk i = do
     b <- appendJunkB (bytes i)
-    return i{bytes=b}
+    return $ JunkImage i{bytes=b}
 
 readImageWithoutJunk :: MonadIO m => String -> m Image
 readImageWithoutJunk fn = do
