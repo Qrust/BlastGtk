@@ -39,9 +39,7 @@ import Data.ByteString.Lazy.Char8 as A ()
 
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text.Encoding as TE
-#if MIN_VERSION_text(0,11,3)
 import qualified Data.Text.Encoding.Error as TE
-#endif
 import qualified Data.Text.Lazy as LT
 import qualified Text.Show as S
 
@@ -68,11 +66,7 @@ toLBS x = LB.fromChunks [x]
 
 {-# INLINE decodeUtf8 #-}
 decodeUtf8 :: ByteString -> Text
-#if MIN_VERSION_text(0,11,3)
 decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
-#else
-decodeUtf8 = TE.decodeUtf8
-#endif
 
 {-# INLINE decodeASCII #-}
 decodeASCII :: ByteString -> Text
@@ -149,8 +143,8 @@ untilNothing :: (Monad m, Functor m) => m (Maybe a) -> m [a]
 untilNothing m = do
     x <- m
     case x of
-        Just a -> (a :) <$> untilNothing m
-        Nothing -> return []
+      Just a -> (a :) <$> untilNothing m
+      Nothing -> return []
 
 {-# INLINE io #-}
 -- | 'liftIO'
@@ -251,33 +245,34 @@ delimitBy :: (a -> Bool) -> [a] -> [[a]]
 delimitBy _ [] = []
 delimitBy f l =
     case break f l of
-        (a, []) -> [a]
-        (a, _:xs) -> a : delimitBy f xs
+      (a, []) -> [a]
+      (a, _:xs) -> a : delimitBy f xs
 
 delimitByLE :: Eq a => [a] -> [a] -> [[a]]
 delimitByLE _ [] = []
 delimitByLE d l =
     case findWithSurroundingsLE d l of
-        Just (a, _, b) -> a : delimitByLE d b
-        Nothing -> [l]
+      Just (a, _, b) -> a : delimitByLE d b
+      Nothing -> [l]
 
 {-# INLINABLE slice #-}
 slice :: Int -> [a] -> [[a]]
 slice _ [] = []
 slice len list =
     case splitAt len list of
-        (s, ss) -> s : slice len ss
+      (s, ss) -> s : slice len ss
 
 findWithSurroundings :: (a -> Bool) -> [a] -> Maybe ([a], a, [a])
 findWithSurroundings p l =
     case break p l of
-        (_, []) -> Nothing
-        (f, (v:s)) -> Just (f, v, s)
+      (_, []) -> Nothing
+      (f, (v:s)) -> Just (f, v, s)
 
 findWithSurroundingsLE :: Eq a => [a] -> [a] -> Maybe ([a], [a], [a])
 findWithSurroundingsLE = find' []
-  where find' _ _ [] = Nothing
-        find' pas pr l@(a:as)
-            | Just ts <- stripPrefix pr l =
-                Just (reverse pas, pr, ts)
-            | otherwise = find' (a:pas) pr as
+  where
+    find' _ _ [] = Nothing
+    find' pas pr l@(a:as)
+      | Just ts <- stripPrefix pr l =
+        Just (reverse pas, pr, ts)
+      | otherwise = find' (a:pas) pr as

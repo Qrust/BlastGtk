@@ -1,5 +1,7 @@
 module BlastItWithPiss.Image
-    (Image(..)
+    (JunkImage(..)
+
+    ,Image(..)
     ,appendJunkB
     ,appendJunk
     ,readImageWithoutJunk
@@ -19,6 +21,9 @@ import Data.Map (toDescList)
 import System.FilePath (takeFileName, takeExtension)
 
 import Network.Mime
+
+newtype JunkImage = JunkImage {fromJunkImage :: Image}
+  deriving Show
 
 data Image
     = Image

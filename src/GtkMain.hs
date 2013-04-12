@@ -50,32 +50,39 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
--- URGENT Checker resume.
+-- URGENT absence of DNS caching creates real problems https://github.com/exbb2/BlastItWithPiss/issues/3
+--  We can implement kludgy DNS caching right now, without bothering http-conduit,
+--  by simply resolving ssachHost and antigateHost at initialization/config-change time.
+
+-- URGENT test proxies through direct ip
+
+-- URGENT Checker resume after shutdown.
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
---        ,Generalize BlastItWithPiss to allow it to be used in checker and smyvalka
+--        ,Generalize BlastItWithPiss.hs to allow it to be used in checker and smyvalka
 --        (return sleep time, instead of sleeping, to allow for thread pool?)
 -- URGENT autoreport bad, see kludges in checkproxymain
 
 -- URGENT s/mmode/msagemode
 
+-- URGENT AdaptiveIn is a property of board+proxy not of a single agent
 -- URGENT share parse results perBoard
--- URGENT Checker with captcha (can't get outcome without posting, posting twice,lol?
---      Note that post is just a wrapper, you can put any req there
---      — rework outcome hierarchy so that connection errors are different
+-- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
+-- URGENT Checker with captcha (already done)
+-- URGENT — rework outcome hierarchy so that connection errors are different
 --      from post errors, handle specific connection errors(cloudflare) everywhere)
 -- URGENT smyvalka: write Log
 -- URGENT Avoid reopening log handle
 -- URGENT smyvalka: use async
--- URGENT separate "Settings" and internal shared state
+-- URGENT separate read-only "Settings" TVars and internal shared state
 -- URGENT WeakRef ThreadId
 -- URGENT show thread captcha before cloud captcha
 -- URGENT remove wipeStarted
 
 -- URGENT write outcomes in a table to the right
+-- URGENT write log to a table. See
+--  https://github.com/keera-studios/keera-hails/blob/master/src/Hails/Graphics/UI/Gtk/Simplify/Logger.hs
 -- URGENT better error message when no threads.
-
--- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 -- URGENT post parsed page info to the gui
 
 -- URGENT Use FastLogger/ByteString for log
@@ -88,13 +95,13 @@ import GHC.Conc
 
 -- TODO показывать количество проксей, а не только воркеров
 
--- URGENT AdaptiveIn is a property of board+proxy not of a single agent
 -- URGENT ввод капчи руками в смывалке и чекере
 
 -- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
 
--- URGENT fix longposting (image)
--- URGENT don't label non-modded threads as CreateNew
+-- URGENT use image when longposting
+
+-- URGENT don't label new threads as CreateNew
 
 
 

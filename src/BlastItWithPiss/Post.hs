@@ -31,7 +31,7 @@ data PostData
     = PostData
         {subject       :: !String
         ,text          :: !String
-        ,image         :: !(Maybe Image)
+        ,image         :: !(Maybe JunkImage)
         ,sage          :: !Bool
         ,makewatermark :: !Bool
         ,escapeInv     :: !Bool

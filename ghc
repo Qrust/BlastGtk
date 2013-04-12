@@ -19,7 +19,6 @@ ghc -package-confdist/package.conf.inplace \
 -XFlexibleInstances \
 -XFlexibleContexts \
 -XKindSignatures \
--XScopedTypeVariables \
 -XGADTs \
 -XTypeFamilies \
 -XMultiParamTypeClasses \
