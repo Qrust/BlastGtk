@@ -17,8 +17,6 @@ import GtkBlast.Conf
 import GtkBlast.Log
 import GtkBlast.EnvPart
 import GtkBlast.Captcha
-import GtkBlast.Pasta
-import GtkBlast.Image
 import GtkBlast.Proxy
 import GtkBlast.BoardSettingsGuiXML
 
@@ -294,8 +292,6 @@ mainloop :: E ()
 mainloop = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
-        regeneratePastaGen
-        regenerateImages
         regenerateProxies
         bus <- maintainBoardUnits
         maintainCaptcha bus

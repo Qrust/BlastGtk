@@ -12,6 +12,7 @@ import GtkBlast.EnvParts (createWidgetsAndFillEnv)
 import GtkBlast.Mainloop (setMainLoop)
 import GtkBlast.Type_CaptchaMode
 import GtkBlast.Type_PastaSet
+import GtkBlast.Type_VideoSet
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 import Graphics.UI.Gtk hiding (get)
@@ -156,12 +157,14 @@ import GHC.Conc
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 
--- URGENT JunkImage type
+-- URGENT Move escaping to pastagen
 -- URGENT image upload via conduit source
 -- URGENT Fix proxychecker
 
 -- URGENT капча на несколько постов вперед.
 -- URGENT repeat on 503, database error, once on http
+
+-- URGENT Rid of postGUIAsync in pasta/video/images initialization
 
 -- URGENT Настройка темы, поле имя/трипкод, видео
 -- URGENT Разделить цитату номера поста и цитату содержимого
@@ -315,6 +318,10 @@ instance Default Conf where
         ,coFluctuation = 10
         ,coSage = True
         ,coMaxLines = 300
+        ,coPastaText = "Хуй выгрызи уёбище выпроваживает он нас\n\n\n\nГагага, шизик, да ты же смешной ПИДАР\n\n\n\n"
+        ,coVideoSet = VideoNothing
+        ,coVideoFile = bundledFile "video/shizik"
+        ,coVideoText = "http://www.youtube.com/watch?v=NkxVk-egpxs\nhttp://www.youtube.com/watch?v=_B8bSmsPzhw\nhttp://www.youtube.com/watch?v=O6PwHyBnSnY\nhttp://www.youtube.com/watch?v=r05TYkdsKho"
         }
 
 helpMessage :: String

@@ -5,6 +5,7 @@ import Paths_blast_it_with_piss
 
 import BlastItWithPiss.Post
 import BlastItWithPiss.PastaGen
+import BlastItWithPiss.Video
 import BlastItWithPiss.ImageGen
 import BlastItWithPiss.Image
 import BlastItWithPiss.Parsing
@@ -44,6 +45,7 @@ data Config = Config
     ,_retryCaptcha :: Bool
     ,_imageDir     :: (Maybe FilePath)
     ,_pastaFile    :: (Maybe FilePath)
+    ,_videoFile    :: (Maybe FilePath)
     }
   deriving (Show, Data, Typeable)
 
@@ -54,6 +56,7 @@ data Env = Env
     ,retryCaptcha :: !Bool
     ,imageDir     :: !(Maybe FilePath)
     ,pastas       :: ![String]
+    ,videos       :: ![Text]
     }
 
 type M = ReaderT Env IO
@@ -76,7 +79,7 @@ impureAnnotatedCmdargsConfig = Config
         &= explicit
         &= name "e"
         &= name "exclude"
-        &= help "Не тестировать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt /b/ 123456789 goodlist.txt"
+        &= help "Не использовать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt /b/ 123456789 goodlist.txt"
         &= typ "Файл_с_проксями..."
     ,_antigateKey = []
         &= argPos 0
@@ -102,6 +105,12 @@ impureAnnotatedCmdargsConfig = Config
         &= name "p"
         &= name "pasta-file"
         &= help "Файл с пастой"
+        &= typ "ФАЙЛ"
+    ,_videoFile = Nothing
+        &= explicit
+        &= name "v"
+        &= name "video-file"
+        &= help "Файл с ссылками на видео"
         &= typ "ФАЙЛ"
     }
     &= program "smyvalka"
@@ -139,20 +148,34 @@ createThread :: Env -> CAnswer Blast (ResourceT IO) -> Maybe Image -> IO () -> B
 createThread e@Env{..} cAnswer captchaImage badCaptcha = do
     proxy <- httpGetProxy
     (do
-        rawImage <- case imageDir of
-              Nothing ->
-                fromMaybeM (liftIO builtinImageGen) captchaImage
-              Just dir ->
-                liftIO $ fromMaybeM builtinImageGen =<< folderImageGen dir
-
-        image <- appendJunk rawImage
-
         pasta <- fromMaybe "" <$> chooseFromListMaybe pastas
+
+        video <- fromMaybe "" <$> chooseFromListMaybe videos
+
+        mimage <- do
+            if T.null video
+              then
+                fmap Just . appendJunk =<<
+                    case imageDir of
+                      Nothing ->
+                        fromMaybeM (liftIO builtinImageGen) captchaImage
+                      Just dir ->
+                        liftIO $ fromMaybeM builtinImageGen =<< folderImageGen dir
+              else
+                return Nothing
 
         let otherfields = ssachLastRecordedFields board
 
         (!req, ~_) <- prepare board Nothing
-                (PostData "" pasta (Just image) False False False False)
+                PostData
+                    {subject = ""
+                    ,text = pasta
+                    ,image = mimage
+                    ,video = video
+                    ,sage = False
+                    ,makewatermark = False
+                    ,escapeInv = False
+                    ,escapeWrd = False}
                   cAnswer otherfields ssachLengthLimit
 
         fix $ \recurse -> do
@@ -314,6 +337,8 @@ main = withSocketsDo $ do
 
         pastas <- fromMaybe [] <$> maybe (return Nothing) readPastaFile _pastaFile
 
+        videos <- fromMaybe [] <$> maybe (return Nothing) readVideoFile _videoFile
+
         withManagerSettings def{managerConnCount=1000000} $
             \m -> liftIO $ runReaderT (mainloop proxies)
                 Env {manager = m
@@ -322,4 +347,5 @@ main = withSocketsDo $ do
                     ,retryCaptcha = _retryCaptcha
                     ,imageDir = _imageDir
                     ,pastas = pastas
+                    ,videos = videos
                     }

@@ -10,6 +10,7 @@ import Import
 
 import GtkBlast.Directory
 import GtkBlast.Type_PastaSet
+import GtkBlast.Type_VideoSet
 import GtkBlast.Type_CaptchaMode
 import GtkBlast.Worker
 
@@ -34,9 +35,14 @@ data Env = E
     ,wipeStarted :: IORef Bool
     ,postCount :: IORef Int
     ,wipeStats :: IORef (Int, Int, Int)
+
     ,pastaSet :: IORef PastaSet
-    ,pastaMod :: IORef ModificationTime
-    ,imagefolderLast :: IORef FilePath
+    ,pastaText :: IORef Text
+
+    ,videoSet :: IORef VideoSet
+    ,videoText :: IORef Text
+    ,wentryvideofile :: Entry
+
     ,proxies :: IORef (M.Map BlastProxy ProxySettings)
 
     ,httpproxyMod :: IORef ModificationTime
@@ -98,10 +104,16 @@ instance NFData Env where
         `seq` wipeStarted
         `seq` postCount
         `seq` wipeStats
+
         `seq` pastaSet
-        `seq` pastaMod
-        `seq` imagefolderLast
+        `seq` pastaText
+
+        `seq` videoSet
+        `seq` videoText
+        `seq` wentryvideofile
+
         `seq` proxies
+
         `seq` httpproxyMod
         `seq` httpproxyLast
         `seq` socksproxyMod

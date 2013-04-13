@@ -8,6 +8,7 @@ module GtkBlast.Conf
 import Import
 
 import GtkBlast.Type_PastaSet
+import GtkBlast.Type_VideoSet
 import GtkBlast.Type_CaptchaMode
 import GtkBlast.Environment
 import GtkBlast.Log
@@ -69,6 +70,10 @@ data Conf = Conf
     ,coFluctuation :: !Double
     ,coSage :: !Bool
     ,coMaxLines :: !Int
+    ,coPastaText :: !Text
+    ,coVideoSet :: !VideoSet
+    ,coVideoFile :: !String
+    ,coVideoText :: !Text
     }
   deriving (Eq, Show, Ord, Generic)
 
@@ -125,6 +130,10 @@ instance Default Conf => FromJSON (Conf, String) where
         F(coFluctuation)
         F(coSage)
         F(coMaxLines)
+        F(coPastaText)
+        F(coVideoSet)
+        F(coVideoText)
+        F(coVideoFile)
 #undef F
         return Conf{..}
     parseJSON _ = mzero
@@ -156,6 +165,12 @@ instance FromJSON PastaSet where
     parseJSON = jsonReadInstance
 
 instance ToJSON PastaSet where
+    toJSON = jsonShowInstance
+
+instance FromJSON VideoSet where
+    parseJSON = jsonReadInstance
+
+instance ToJSON VideoSet where
     toJSON = jsonShowInstance
 
 instance FromJSON Board where

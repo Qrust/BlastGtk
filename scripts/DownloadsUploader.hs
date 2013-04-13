@@ -15,7 +15,7 @@ import Data.Aeson.Encode.Pretty
 import System.Console.Readline
 
 import qualified Data.Text as T
-import Data.Text.Encoding
+import Data.Text.Encoding hiding (decodeUtf8)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
@@ -114,8 +114,8 @@ getPassword desc = do
     hSetEcho stdin True
     return password
 
-uploadZip :: Text -> String -> Text -> ByteString -> IO Bool
-uploadZip pass arcfilename desc arcbytes = withManager $ \m -> do
+upload :: Text -> ByteString -> String -> Text -> ByteString -> IO Bool
+upload pass contentType arcfilename desc arcbytes = withManager $ \m -> do
     let
       _req = fromJust $ parseUrl $
         "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads"
@@ -126,7 +126,7 @@ uploadZip pass arcfilename desc arcbytes = withManager $ \m -> do
                 ["name" .= T.pack arcfilename
                 ,"size" .= B.length arcbytes
                 ,"description" .= desc
-                ,"content_type" .= ("application/zip" :: Text)
+                ,"content_type" .= decodeUtf8 contentType
                 ]
             ,checkStatus = only201
             }
@@ -156,7 +156,7 @@ uploadZips as = do
     go [] _ = return ()
     go _retry@((fname, desc, bs):us) pass = do
         putStrLn $ "Uploading " ++ T.unpack desc
-        ifM (uploadZip pass fname desc bs)
+        ifM (upload pass "application/zip" fname desc bs)
           (go us pass)
           (go _retry =<< getPassword prompt)
 

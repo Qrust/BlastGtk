@@ -38,6 +38,7 @@ import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
 
 import qualified Data.ByteString.Lazy as LB
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TE
 import qualified Data.Text.Lazy as LT
@@ -83,6 +84,10 @@ show = fromString . S.show
 {-# INLINE (++) #-}
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
+
+{-# INLINE toText #-}
+toText :: String -> Text
+toText = T.pack
 
 -- * Control
 

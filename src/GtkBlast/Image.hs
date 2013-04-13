@@ -1,6 +1,5 @@
 module GtkBlast.Image
-    (regenerateImages
-    ,imageGen
+    (imageGen
     ,emptyImageGen
     ,imageEnvPart
     ) where
@@ -25,24 +24,32 @@ import Control.Concurrent.STM
 
 import Graphics.UI.Gtk hiding (get, set, Image)
 
--- FIXME ? Bind it to signal, why the fuck should it run all the time?
-regenerateImages :: E ()
-regenerateImages = do
-    E{..} <- ask
+changeFolder :: IORef (Maybe CloseWatcher) -> E ()
+changeFolder mcw = do
+    maybe (return ()) closeWatcher =<< get mcw
+    set mcw Nothing
+    e@E{..} <- ask
     ni <- get wentryimagefolder
-    li <- get imagefolderLast
-    when (ni /= li) $ do
-        writeLog "Regen imageGen"
+    exists <- io $ doesDirectoryExist ni
+    if exists
+      then do
         agitka <- get wcheckagitka
+        writeLog $
+            "Image folder changed \""
+            ++ toText ni ++ "\", agitka: " ++ show agitka
+        cw <- postAsyncWhenPathModified ni $
+            runE e $ changeFolder mcw
+        set mcw $ Just cw
         let !gen = imageGen ni agitka
         io $ atomically $ writeTVar (timagegen shS) gen
-        set imagefolderLast ni
+      else do
+        tempError 5 $ "Папка с пикчами не существует \"" ++ toText ni ++ "\""
 
-emptyImageGen :: IO Image
-emptyImageGen = builtinImageGen
+emptyImageGen :: TempGenType Image
+emptyImageGen = mkIgnoreGen $ builtinImageGen
 
-imageGen :: FilePath -> Bool -> IO Image
-imageGen imagefolder agitka = do
+imageGen :: FilePath -> Bool -> TempGenType Image
+imageGen imagefolder agitka = mkIgnoreGen $ do
     images <- getDirectoryPics imagefolder
 
     let agitkafile = bundledFile "resources/agitka.png"
@@ -75,22 +82,28 @@ imageEnvPart b = EP
     (\e c -> do
         wentryimagefolder <- setir (coImageFolder c) =<< builderGetObject b castToEntry "entryimagefolder"
         wbuttonimagefolder <- builderGetObject b castToButton "buttonimagefolder"
-
-        onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder (runE e . writeLog) (return ())
-
         wcheckagitka <- setir (coPostAgitka c) =<< builderGetObject b castToCheckButton "checkagitka"
 
+        mclose <- newIORef Nothing
+
+        onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder
+            (runE e . tempError 3)
+            (runE e $ changeFolder mclose)
+
         void $ on wcheckagitka buttonActivated $
-            runE e $ do
-                set (imagefolderLast e) [] -- force update
-                regenerateImages
+            runE e $ changeFolder mclose
 
-        imagefolderLast <- newIORef []
+        void $ postAsyncWhenPathModified (coImageFolder c) $
+            runE e $ changeFolder mclose
 
-        return (wentryimagefolder, imagefolderLast, wcheckagitka))
-    (\(weif,_,wca) c -> do
+        postGUIAsync $ runE e $ changeFolder mclose
+
+        return (wentryimagefolder, wcheckagitka))
+    (\(weif,wca) c -> do
         cif <- get weif
         cpa <- get wca
         return $ c {coImageFolder=cif
                    ,coPostAgitka=cpa})
-    (\(weif,ifl,wca) e -> e{wentryimagefolder=weif, imagefolderLast=ifl, wcheckagitka=wca})
+    (\(weif,wca) e ->
+        e{wentryimagefolder=weif
+         ,wcheckagitka=wca})

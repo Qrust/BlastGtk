@@ -256,12 +256,15 @@ checkProxy proxy = do
                 putStrLn $ show proxy ++ ": Поcтим без капчи"
                 captchaid <- generateRandomString (32,32) ('A', 'Z')
                 (outcome, ~_) <- post =<< prepare board (Just thread)
-                    (PostData
-                        "САЖА"
-                        (">>" ++ show thread ++ "\nОП-хуй, сажаскрыл.")
-                        Nothing
-                        True
-                        False False False)
+                    PostData
+                        {subject = "САЖА"
+                        ,text = ">>" ++ show thread ++ "\nОП-хуй, сажаскрыл."
+                        ,image = Nothing
+                        ,video = ""
+                        ,sage = True
+                        ,makewatermark = False
+                        ,escapeInv = False
+                        ,escapeWrd = False}
                     (unsafeMakeYandexCaptchaAnswer captchaid "421463")
                     (ssachLastRecordedFields board)
                     ssachLengthLimit
@@ -300,11 +303,15 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
 
     (!req, ~_) <-
         prepare board (Just thread)
-            (PostData
-                "САЖА"
-                "Фейспалмлю с ОПа-хуя, сажа."
-                (Just $ JunkImage image)
-                True False False False)
+            PostData
+                {subject = "САЖА"
+                ,text = "Фейспалмлю с ОПа-хуя, сажа."
+                ,image = Just $ JunkImage image
+                ,video = ""
+                ,sage = True
+                ,makewatermark = False
+                ,escapeInv = False
+                ,escapeWrd = False}
             cAnswer
             otherfields
             ssachLengthLimit

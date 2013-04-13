@@ -39,9 +39,9 @@ instance NFData Image where
     rnf Image{..} = rnf (filename, contentType, bytes)
 
 appendJunkB :: MonadChoice m => LByteString -> m LByteString
-appendJunkB b = do
+appendJunkB img = do
     bytecount <- getRandomR (2048, 20480)
-    L.append b . L.pack . take bytecount <$> getRandomRs (1, 255)
+    (img `L.append`) . L.pack . take bytecount <$> getRandomRs (1, 255)
 
 appendJunk :: MonadChoice m => Image -> m JunkImage
 appendJunk i = do
@@ -86,6 +86,7 @@ filenames =
     ,"apocalypse-now"
     ,"ololo"
     ,"dvach"
+    ,"228"
     ]
 
 filterImages :: [FilePath] -> [FilePath]

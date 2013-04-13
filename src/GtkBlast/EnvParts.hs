@@ -13,6 +13,7 @@ import GtkBlast.Environment
 import GtkBlast.Log
 import GtkBlast.Pasta
 import GtkBlast.Image
+import GtkBlast.Video
 import GtkBlast.GuiCaptcha (guiCaptchaEnvPart)
 import GtkBlast.AntigateCaptcha (antigateCaptchaEnvPart)
 import GtkBlast.Captcha (captchaModeEnvPart)
@@ -54,6 +55,7 @@ envParts b =
     ,wipebuttonEnvPart b
     ,boardUnitsEnvPart b
     ,pastaEnvPart b
+    ,videoEnvPart b
     ,imageEnvPart b
     ,EP
         (\_ _ -> do
@@ -171,6 +173,7 @@ envParts b =
             tappendjunkimages <- atomically $ newTVar True
             tpastagen <- atomically $ newTVar emptyPastaGen
             timagegen <- atomically $ newTVar emptyImageGen
+            tvideogen <- atomically $ newTVar emptyVideoGen
             tuseimages <- tvarCheck get wcheckimages
             tcreatethreads <- tvarCheck get wcheckthread
             tmakewatermark <- tvarCheck get wcheckwatermark

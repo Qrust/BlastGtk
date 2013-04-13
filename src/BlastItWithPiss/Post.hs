@@ -32,6 +32,7 @@ data PostData
         {subject       :: !String
         ,text          :: !String
         ,image         :: !(Maybe JunkImage)
+        ,video         :: !Text
         ,sage          :: !Bool
         ,makewatermark :: !Bool
         ,escapeInv     :: !Bool
@@ -40,7 +41,7 @@ data PostData
   deriving Show
 
 instance NFData PostData where
-    rnf (PostData s t i sg mw ei ew) = rnf (s,t,i,sg,mw,ei,ew)
+    rnf (PostData s t i v sg mw ei ew) = rnf (s,t,i,v,sg,mw,ei,ew)
 
 prepare
     :: (MonadChoice m, Failure HttpException m, MonadResource m')
@@ -71,6 +72,7 @@ prepare
                 (maybe mempty (filename . fromJunkImage) image)
                 -- TODO upload image using conduit
                 (RequestBodyLBS $ maybe mempty (bytes . fromJunkImage) image)
+            ,partBS "video" $ T.encodeUtf8 video
             ]) ++
             (if sage
                 then [partBS "nabiki" "sage"

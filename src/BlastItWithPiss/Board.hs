@@ -279,7 +279,6 @@ ssachLastRecordedFields board =
     ,partBS "akane" ""
     ,partBS "sage" ""
     ,partBS "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
-    ,partBS "video" ""
     ] ++
     [partBS "anon_icon" "-1" | board == SsachPO]
 

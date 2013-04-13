@@ -18,6 +18,11 @@ module BlastItWithPiss
     ,Message(..)
     ,OutMessage(..)
 
+    ,TempGenType
+    ,mkFullGen
+    ,mkIgnoreGen
+    ,mkConstGen
+
     ,defMuS
     ,defPrS
     ,entryPoint
@@ -84,22 +89,22 @@ atomically = liftIO . STM.atomically
 -}
 -- | Global
 data ShSettings = ShSettings
-    {tpastagen         :: !(TVar
-                        (   (Int -> IO Thread)
-                         -> Maybe Page
-                         -> Maybe Int
-                         -> IO TempBlastPastaChannel
-                        )  )
-    ,timagegen         :: !(TVar (IO Image))
-    --NOTE all browser state accumulated in gens is lost.
+    -- NOTE HACK FIXME all browser state accumulated in *gens is lost.
+    -- NOTE HACK FIXME *gens do not bypass cloudflare
+    {tpastagen         :: !(TVar (TempGenType TempBlastPastaChannel))
+    ,timagegen         :: !(TVar (TempGenType Image))
+    ,tvideogen         :: !(TVar (TempGenType Text))
+
     ,tuseimages        :: !(TVar Bool)
     ,tappendjunkimages :: !(TVar Bool)
-    ,tcreatethreads    :: !(TVar Bool)
     ,tmakewatermark    :: !(TVar Bool)
+
+    ,tcreatethreads    :: !(TVar Bool)
+    ,tsagemode         :: !(TVar SageMode)
+
     ,tposttimeout      :: !(TVar (Maybe Double))
     ,tthreadtimeout    :: !(TVar (Maybe Double))
     ,tfluctuation      :: !(TVar (Maybe Double))
-    ,tsagemode         :: !(TVar SageMode)
     }
 
 -- | PerBoard
@@ -255,6 +260,22 @@ data SageMode
     | SageAccordingToMode
   deriving (Eq, Show)
 
+newtype TempGenType a =
+    TempGenType ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO a)
+
+mkFullGen :: ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO a) -> TempGenType a
+mkFullGen = TempGenType
+
+mkIgnoreGen :: IO a -> TempGenType a
+mkIgnoreGen = TempGenType . const . const . const
+
+mkConstGen :: a -> TempGenType a
+mkConstGen = mkIgnoreGen . return
+
+evalGen :: TempGenType a -> (Int -> IO Thread) -> Maybe Page -> Maybe Int -> BlastLog a
+evalGen (TempGenType gen) ioGetThread mpage thread = do
+    liftIO $ gen ioGetThread mpage thread
+
 fromSageMode :: SageMode -> Mode -> Bool
 fromSageMode SageDisabled _ = False
 fromSageMode SageEnabled _ = True
@@ -379,9 +400,10 @@ blastPostData mode mpastapage thread = do
     BlastLogData {
       bShS = ShSettings
         { tpastagen
+        , timagegen
+        , tvideogen
 
         , tuseimages
-        , timagegen
         , tappendjunkimages
 
         , tsagemode
@@ -391,17 +413,24 @@ blastPostData mode mpastapage thread = do
     } <- ask
 
     blastLog "Choosing pasta..."
+
+    _readerState <- ask
+    _stateState <- lift get
+    _blastState <- blast getBlastState
+    _manager <- blast getManager
+
+    let _getThread =
+            runBlast _manager _blastState
+              . runBlastLogSt _readerState _stateState
+                . getThread
+
+    let {-# INLINE runGen #-}
+        runGen :: TempGenType a -> BlastLog a
+        runGen g = evalGen g _getThread mpastapage thread
+
     TBPC{..} <- do
         pastagen <- readTVarIO tpastagen
-        r <- ask
-        s <- lift get
-        st <- blast getBlastState
-        manager <- blast getManager
-        liftIO $
-            pastagen
-                (runBlast manager st . runBlastLogSt r s . getThread)
-                mpastapage
-                thread
+        runGen pastagen
     blastLog $
         "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++
@@ -416,11 +445,13 @@ blastPostData mode mpastapage thread = do
     cleanImage <- do
         enableImages <- readTVarIO tuseimages
         if (enableImages && not sage) || null pasta || obligatoryImageMode mode
-          then
+          then do
             -- eval imageGen
-            fmap Just $ liftIO $ join $ readTVarIO timagegen
+            imagegen <- readTVarIO timagegen
+            fmap Just $ runGen imagegen
           else
             return Nothing
+
     junkingEnabled <- readTVarIO $ tappendjunkimages
     junkImage <-
         case cleanImage of
@@ -432,11 +463,16 @@ blastPostData mode mpastapage thread = do
                 appendJunk i
               else
                 return $ JunkImage i
-    junkImage & maybe
-        (blastLog "chose no image")
-        (\i -> blastLog $
-            "chose image \"" ++ T.pack (filename $ fromJunkImage i) ++
-                "\", junk: " ++ show junkingEnabled)
+
+    case junkImage of
+      Nothing -> blastLog "chose no image"
+      Just i -> blastLog $
+        "chose image \"" ++ T.pack (filename $ fromJunkImage i)
+        ++ "\", junk: " ++ show junkingEnabled
+
+    blastLog $ "Choosing video"
+    video <- runGen =<< readTVarIO tvideogen
+    blastLog $ "Chose video: " ++ video
 
     watermark <- readTVarIO tmakewatermark
     blastLog $ "Watermark: " ++ show watermark
@@ -445,6 +481,7 @@ blastPostData mode mpastapage thread = do
                 {subject = ""
                 ,text = pasta
                 ,image = junkImage
+                ,video = video
                 ,sage = fromSageMode sagemode mode
                 ,makewatermark = watermark
                 ,escapeInv = escinv

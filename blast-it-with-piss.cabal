@@ -12,7 +12,8 @@ category: Network
 stability: experimental
 build-type: Simple
 cabal-version: >= 1.15
-tested-with: GHC == 7.4.1, GHC == 7.6.2
+-- I highly suspect it doesn't compile on 7.4.1 anymore.
+tested-with: GHC == 7.6.2
 data-files:
     build-production.bash
    ,README.md
@@ -27,6 +28,7 @@ data-files:
    ,pasta/shizik
    ,pasta/analniy-sadism
    ,pasta/nihuya
+   ,video/shizik
 
 source-repository head
     type: git
@@ -65,6 +67,7 @@ library
         ,text
         ,safe
         ,filepath
+        ,system-filepath
         ,directory
         ,MonadRandom
         ,random-shuffle
@@ -96,6 +99,7 @@ library
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
         ,BlastItWithPiss.PastaGen
+        ,BlastItWithPiss.Video
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -148,20 +152,21 @@ executable gtkblast
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
         ,BlastItWithPiss.PastaGen
+        ,BlastItWithPiss.Video
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
 
-        ,GtkBlast.Worker
         ,GtkBlast.Achievement
+        ,GtkBlast.AntigateCaptcha
+        ,GtkBlast.BoardSettingsGuiXML
+        ,GtkBlast.Captcha
         ,GtkBlast.Conf
         ,GtkBlast.Directory
         ,GtkBlast.Environment
         ,GtkBlast.EnvPart
         ,GtkBlast.EnvParts
         ,GtkBlast.GtkUtils
-        ,GtkBlast.Captcha
-        ,GtkBlast.AntigateCaptcha
         ,GtkBlast.GuiCaptcha
         ,GtkBlast.Image
         ,GtkBlast.Log
@@ -172,7 +177,9 @@ executable gtkblast
         ,GtkBlast.ROW_ROW_FIGHT_THE_POWER
         ,GtkBlast.Type_CaptchaMode
         ,GtkBlast.Type_PastaSet
-        ,GtkBlast.BoardSettingsGuiXML
+        ,GtkBlast.Type_VideoSet
+        ,GtkBlast.Video
+        ,GtkBlast.Worker
 
     build-depends:
          base >= 4.5 && < 5
@@ -190,8 +197,10 @@ executable gtkblast
         ,time
 
         ,filepath
+        ,system-filepath
         ,directory
         ,temporary
+        ,fsnotify
 
         ,transformers
         ,monad-control
@@ -277,6 +286,7 @@ executable proxychecker
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
         ,BlastItWithPiss.PastaGen
+        ,BlastItWithPiss.Video
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -303,6 +313,7 @@ executable proxychecker
         ,random
         ,containers
         ,filepath
+        ,system-filepath
         ,directory
         ,MonadRandom
         ,random-shuffle
@@ -370,6 +381,7 @@ executable smyvalka
         ,BlastItWithPiss.Image
         ,BlastItWithPiss.ImageGen
         ,BlastItWithPiss.PastaGen
+        ,BlastItWithPiss.Video
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
@@ -392,6 +404,7 @@ executable smyvalka
         ,random
         ,containers
         ,filepath
+        ,system-filepath
         ,directory
         ,MonadRandom
         ,random-shuffle
@@ -496,6 +509,7 @@ executable BlastItWithPiss
         ,process
         ,gtk
         ,filepath
+        ,system-filepath
         ,directory
         ,deepseq
         ,failure

@@ -15,18 +15,23 @@ import BlastItWithPiss.Parsing
 import BlastItWithPiss.MonadChoice
 
 import qualified Data.Text as T
-import qualified Data.ByteString as B
+import qualified Data.Text.IO as TIO
 
-parsePasta :: String -> Maybe [String]
-parsePasta s =
-    case filter (\x -> not $ all isSpace x || null x) $ delimitByLE "\n\n\n\n" s of
+parsePasta :: Text -> Maybe [String]
+parsePasta t =
+    case
+      T.splitOn "\n\n\n\n" t
+      & filter (\x -> not (T.null x) && not (T.all isSpace x))
+      & map T.unpack of
         [] -> Nothing
         a -> Just a
 
 readPastaFile :: FilePath -> IO (Maybe [String])
 readPastaFile f =
-    fromIOException (return Nothing) $
-        parsePasta . T.unpack . decodeUtf8 <$> B.readFile f
+    fromIOException (return Nothing) $ do
+        withFile f ReadMode $ \h -> do
+            hSetNewlineMode h universalNewlineMode
+            parsePasta <$> TIO.hGetContents h
 
 probablyDescendAndGetPosts
     :: MonadChoice m
@@ -36,9 +41,12 @@ probablyDescendAndGetPosts
     -> Maybe Page
     -> Maybe Int
     -> m [Post]
-probablyDescendAndGetPosts _ _ _ Nothing Nothing = return []
-probablyDescendAndGetPosts _ _ _ (Just p0) Nothing = return $ postsFromPage p0
-probablyDescendAndGetPosts _ _ getThread Nothing (Just tid) = visibleposts <$> getThread tid
+probablyDescendAndGetPosts _ _ _ Nothing Nothing =
+    return []
+probablyDescendAndGetPosts _ _ _ (Just p0) Nothing =
+    return $ postsFromPage p0
+probablyDescendAndGetPosts _ _ getThread Nothing (Just tid) =
+    visibleposts <$> getThread tid
 probablyDescendAndGetPosts pprob tprob getThread (Just p0) (Just tid) = do
     fromThread <- fromList [(False, pprob), (True, tprob)]
     if fromThread
