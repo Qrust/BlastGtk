@@ -12,7 +12,8 @@ import BlastItWithPiss.MonadChoice
 
 import qualified Data.ByteString as B
 import qualified Data.Text as T
--- import qualified Data.Text.IO as TIO (putStrLn)
+
+import qualified Data.Text.IO.Locale as LTIO
 
 import qualified Data.Map.Strict as M
 
@@ -39,16 +40,14 @@ import System.Console.CmdArgs.Implicit hiding (def)
 
 import Control.Monad.Trans.Reader
 
-import qualified System.IO as S (putStrLn)
-
 import System.Directory
 
 import Text.Recognition.Antigate
 
 
 {-# INLINE putStrLn #-}
-putStrLn :: MonadIO m => String -> m ()
-putStrLn = liftIO . S.putStrLn
+putStrLn :: MonadIO m => Text -> m ()
+putStrLn = liftIO . LTIO.putStrLn
 
 
 
@@ -212,6 +211,7 @@ impureAnnotatedCmdargsConfig = Config
         &= explicit
         &= name "K"
         &= name "antigate-key"
+        &= help "Если указан ключ антигейта, то будет проводиться проверка на забаненность мочерами. В противном случае будут проверяться только баны по клауде, 404 и т.д."
         &= typ "Ключ_антигейта"
     ,_antigateHost =
         "antigate.com"
@@ -233,7 +233,7 @@ impureAnnotatedCmdargsConfig = Config
         ,name "version"
         ,summary (showVersion version)]
     &= summary "Проксичекер для ссача"
-    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2."
+    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если dead.1 существует, то хорошие прокси будут записаны в output.2 даже если output.1 не существует."
 
 -- | Exceptions are handled inside 'post'
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
@@ -382,20 +382,13 @@ writerThread :: M.Map ProxyCat FilePath -> TQueue (ProxyCat, Text) -> IO ()
 writerThread catFiles tq = forever $ do
     (cat, text) <- atomically $ readTQueue tq
 
-    let {-# INLINE putStdout #-}
-#ifdef mingw32_HOST_OS
-        putStdout = S.putStrLn . T.unpack
-#else
-        putStdout = B.hPutStrLn stdout . encodeUtf8
-#endif
-
     case M.lookup cat catFiles of
       Nothing -> do
-        putStdout $
+        putStrLn $
             "Нет файла для " ++ show cat ++
             ", хотел записать: " ++ text
       Just f -> do
-        putStdout $
+        putStrLn $
             "Записываем " ++ show cat ++
             " в файл \"" ++ T.pack f ++ "\": " ++ text
         withBinaryFile f AppendMode $ \h -> do
@@ -511,6 +504,9 @@ main = withSocketsDo $ do
         catFiles <- do
             let (cats', fpaths') = unzip catFiles'
             M.fromList . zip cats' . applySuccNum fpaths' <$> filepathSuccNum fpaths'
+
+        forM_ (M.toAscList catFiles) $ \(cat, fpath) -> do
+            putStrLn $ show cat ++ " -> " ++ T.pack fpath
 
         let
           readProxyStrings file = do

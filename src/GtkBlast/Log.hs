@@ -25,9 +25,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 
-#ifdef mingw32_HOST_OS
-import qualified Data.Text.IO as TIO
-#endif
+import qualified Data.Text.IO.Locale as LTIO
 
 {-# INLINE labelSetMarkup #-}
 labelSetMarkup :: MonadIO m => Label -> Text -> m ()
@@ -44,18 +42,12 @@ rawPutStdout :: Text -> IO ()
 rawPutStdout s =
     fromIOException (return ()) $
         whenM (hIsTerminalDevice stdout) $ do
-#ifdef mingw32_HOST_OS
-            TIO.hPutStrLn stdout s
-#else
-            B.hPutStrLn stdout $ encodeUtf8 s
-#endif
+            LTIO.putStrLn s
             hFlush stdout
 
 rawPutLog :: (Text -> IO ()) -> FilePath -> Text -> IO ()
 rawPutLog err' logfile str = do {
-    withFile logfile AppendMode $ \h -> do
---      hSetEncoding h utf8
---      hSeek h SeekFromEnd 0
+    withBinaryFile logfile AppendMode $ \h -> do
         B.hPutStrLn h $ encodeUtf8 str
     } `catch`
         \(a :: IOException) ->

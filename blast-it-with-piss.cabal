@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
 description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
-version: 1.1.31
+version: 1.1.32
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -65,6 +65,7 @@ library
         ,time
         ,bytestring
         ,text
+        ,text-locale-encoding
         ,safe
         ,filepath
         ,system-filepath
@@ -212,6 +213,7 @@ executable gtkblast
         ,bytestring
         ,case-insensitive >= 1 && < 2
         ,text
+        ,text-locale-encoding
 
         -- older gtk2hs doesn't work with TH on wdos
         ,gtk >= 0.12.4
@@ -305,6 +307,7 @@ executable proxychecker
         ,lifted-base
         ,bytestring
         ,text
+        ,text-locale-encoding
         ,safe
         ,deepseq
         ,failure
@@ -396,6 +399,7 @@ executable smyvalka
         ,lifted-base
         ,bytestring
         ,text
+        ,text-locale-encoding
         ,safe
         ,deepseq
         ,failure
@@ -517,6 +521,7 @@ executable BlastItWithPiss
         ,time
         ,bytestring
         ,text
+        ,text-locale-encoding
         ,transformers
         ,monad-control
         ,data-default

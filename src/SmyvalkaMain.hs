@@ -16,6 +16,8 @@ import BlastItWithPiss.MonadChoice
 import qualified Data.Text       as T
 import qualified Data.ByteString as B
 
+import qualified Data.Text.IO.Locale as LTIO
+
 import qualified Data.Set as Set
 
 import Text.Recognition.Antigate
@@ -32,7 +34,16 @@ import System.Environment
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
 
-import System.IO (putStrLn)
+
+{-# INLINE putStrLn #-}
+putStrLn :: MonadIO m => Text -> m ()
+putStrLn = liftIO . LTIO.putStrLn
+
+
+
+
+
+
 
 -- NOTE cmdargs is deeply magical, won't let me use strict fields
 data Config = Config
