@@ -61,8 +61,8 @@ import GHC.Conc
 
 -- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
 --        ,Generalize BlastItWithPiss.hs to allow it to be used in checker and smyvalka
---        (return sleep time, instead of sleeping, to allow for thread pool?)
--- URGENT autoreport bad, see kludges in checkproxymain
+--        (return sleep time, instead of sleeping, to allow for a thread pool?)
+-- URGENT auto-reportbad, see kludges in checkproxymain
 
 -- URGENT s/mmode/msagemode
 
@@ -149,16 +149,14 @@ import GHC.Conc
 -- == 2.0 RELEASE ==
 
 -- URGENT To add a new option you need to edit at least 3 files.
---  This is the worst peace of software i heard of.
 
--- URGENT post videos
 -- URGENT synchronize pastas and images/videos
 -- TODO shuffleM in pastagen is probably ungodly slow
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 
 -- URGENT Move escaping to pastagen
--- URGENT image upload via conduit source
+-- URGENT upload images via conduit source
 -- URGENT Fix proxychecker
 
 -- URGENT капча на несколько постов вперед.

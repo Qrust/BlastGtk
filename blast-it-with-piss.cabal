@@ -521,7 +521,6 @@ executable BlastItWithPiss
         ,time
         ,bytestring
         ,text
-        ,text-locale-encoding
         ,transformers
         ,monad-control
         ,data-default

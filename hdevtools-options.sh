@@ -1,0 +1,2 @@
+#!/bin/sh
+HDEVTOOLSOPTS="-g -package-confdist/package.conf.inplace -g -idist/build/autogen -g -isrc -g -optP-include -g -optPdist/build/autogen/cabal_macros.h -g -XNoImplicitPrelude -g -XPackageImports -g -XCPP -g -XOverloadedStrings -g -XRecordWildCards -g -XNamedFieldPuns -g -XScopedTypeVariables -g -XFlexibleContexts -g -XDeriveDataTypeable -g -XBangPatterns -g -XConstraintKinds -g -Wall -g -DTEST -g -fno-code"
