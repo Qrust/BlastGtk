@@ -53,7 +53,7 @@ putStrLn = liftIO . LTIO.putStrLn
 
 
 
--- TODO antigate
+-- TODO RETRY CAPTCHA
 
 
 
@@ -354,7 +354,7 @@ outcomeMessage proxy outcome = do
       x -> do
         if isJust antigateKey
           then
-           if x == CorruptedImage
+            if x == CorruptedImage
               then do
                 putStrLn $ "SUCCESS! Got through captcha"
                 ape Good $ show proxy

@@ -51,6 +51,17 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
+
+
+
+
+-- URGENT proxychecker retry captcha
+
+
+
+
+
+
 -- URGENT absence of DNS caching creates real problems https://github.com/exbb2/BlastItWithPiss/issues/3
 --  We can implement kludgy DNS caching right now, without bothering http-conduit,
 --  by simply resolving ssachHost and antigateHost at initialization/config-change time.
