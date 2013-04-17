@@ -489,6 +489,7 @@
                                             <property name="can_focus">False</property>
                                             <property name="xalign">0</property>
                                             <property name="label" translatable="yes">Доски</property>
+                                            <property name="mnemonic_widget">alignment3</property>
                                             <property name="single_line_mode">True</property>
                                             <attributes>
                                               <attribute name="weight" value="bold"/>
@@ -839,7 +840,7 @@
                                                             <property name="can_focus">False</property>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-fromthread">
-                                                            <property name="label" translatable="yes">Посты из _тредов</property>
+                                                            <property name="label" translatable="yes">_Посты из тредов</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -888,8 +889,8 @@
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
                                                             <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_markup">В файле с пастами между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы &amp;quot;resources/mocha&amp;quot;, &amp;quot;resources/analniy-sadism&amp;quot;.</property>
-                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы "resources/mocha", "resources/analniy-sadism".</property>
+                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы "resources/mocha", "resources/analniy-sadism".
+Кодировка — только UTF-8.</property>
                                                             <property name="use_underline">True</property>
                                                             <property name="xalign">0</property>
                                                             <property name="draw_indicator">True</property>
@@ -903,7 +904,7 @@
                                                             </child>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-nopasta">
-                                                            <property name="label" translatable="yes">_Пустой пост</property>
+                                                            <property name="label" translatable="yes">П_устой пост</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -924,7 +925,7 @@
                                                             <property name="can_focus">False</property>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-widget">
-                                                            <property name="label" translatable="yes">Из _виджета</property>
+                                                            <property name="label" translatable="yes">_Из виджета</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -996,7 +997,8 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".</property>
+                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".
+Кодировка — только UTF-8.</property>
                                                             <property name="xalign">0</property>
                                                             <property name="label" translatable="yes">_Файл с пастами:</property>
                                                             <property name="use_underline">True</property>
@@ -1022,7 +1024,8 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".</property>
+                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".
+Кодировка — только UTF-8.</property>
                                                             <property name="editable">False</property>
                                                             <property name="invisible_char">●</property>
                                                             <property name="invisible_char_set">True</property>
@@ -1043,7 +1046,8 @@
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">True</property>
                                                             <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".</property>
+                                                            <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки(три пустых строки), плюс четыре перевода строки в конце. См. файлы "pasta/mocha", "pasta/shizik".
+Кодировка — только UTF-8.</property>
                                                             <child>
                                                             <object class="GtkImage" id="image7">
                                                             <property name="visible">True</property>
@@ -1091,7 +1095,7 @@
                                                     </child>
                                                     <child>
                                                       <object class="GtkCheckButton" id="checkrandomquote">
-                                                        <property name="label" translatable="yes">Рандомно _цитировать</property>
+                                                        <property name="label" translatable="yes">Рандомно цитировать</property>
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="receives_default">False</property>
@@ -1205,7 +1209,7 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">_Папка с картинками:</property>
+                                                            <property name="label" translatable="yes">Папка с _картинками:</property>
                                                             <property name="use_underline">True</property>
                                                             <property name="mnemonic_widget">buttonimagefolder</property>
                                                             <property name="track_visited_links">False</property>
@@ -1321,7 +1325,7 @@
                                                             </child>
                                                             <child>
                                                             <object class="GtkCheckButton" id="check-watermark">
-                                                            <property name="label" translatable="yes">Мо_чемарка</property>
+                                                            <property name="label" translatable="yes">Мочемарка</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1340,7 +1344,7 @@
                                                             </child>
                                                             <child>
                                                             <object class="GtkCheckButton" id="checkagitka">
-                                                            <property name="label" translatable="yes">Постить а_гитку</property>
+                                                            <property name="label" translatable="yes">Постить агитку</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1441,10 +1445,12 @@
                                                             <property name="can_focus">False</property>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-video-nothing">
-                                                            <property name="label" translatable="yes">Без видео</property>
+                                                            <property name="label" translatable="yes">Без ви_део</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
+                                                            <property name="use_underline">True</property>
+                                                            <property name="xalign">0</property>
                                                             <property name="active">True</property>
                                                             <property name="draw_indicator">True</property>
                                                             <property name="group">radio-video-file</property>
@@ -1457,10 +1463,11 @@
                                                             </child>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-video-file">
-                                                            <property name="label" translatable="yes">Из файла</property>
+                                                            <property name="label" translatable="yes">Из ф_айла</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
+                                                            <property name="use_underline">True</property>
                                                             <property name="xalign">0</property>
                                                             <property name="active">True</property>
                                                             <property name="draw_indicator">True</property>
@@ -1477,10 +1484,11 @@
                                                             <property name="can_focus">False</property>
                                                             <child>
                                                             <object class="GtkRadioButton" id="radio-video-widget">
-                                                            <property name="label" translatable="yes">Из виджета</property>
+                                                            <property name="label" translatable="yes">Из вид_жета</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
+                                                            <property name="use_underline">True</property>
                                                             <property name="xalign">0</property>
                                                             <property name="active">True</property>
                                                             <property name="draw_indicator">True</property>
@@ -1539,7 +1547,9 @@
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
                                                             <property name="yalign">0</property>
-                                                            <property name="label" translatable="yes">Файл со ссылками:</property>
+                                                            <property name="label" translatable="yes">Файл со ссы_лками:</property>
+                                                            <property name="use_underline">True</property>
+                                                            <property name="mnemonic_widget">buttonvideofile</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -1644,7 +1654,8 @@
                                       <object class="GtkLabel" id="label7">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">Контент</property>
+                                        <property name="label" translatable="yes">Ко_нтент</property>
+                                        <property name="use_underline">True</property>
                                       </object>
                                       <packing>
                                         <property name="tab_fill">False</property>
@@ -2110,7 +2121,9 @@
                                                         <property name="tooltip_markup">Например captchabot.com</property>
                                                         <property name="tooltip_text" translatable="yes">Например captchabot.com</property>
                                                         <property name="xalign">0</property>
-                                                        <property name="label" translatable="yes">Хост антигейта:</property>
+                                                        <property name="label" translatable="yes">_Хост антигейта:</property>
+                                                        <property name="use_underline">True</property>
+                                                        <property name="mnemonic_widget">entryantigatehost</property>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -2167,12 +2180,6 @@
                                             <property name="position">0</property>
                                           </packing>
                                         </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
                                       </object>
                                       <packing>
                                         <property name="position">1</property>
@@ -2182,7 +2189,8 @@
                                       <object class="GtkLabel" id="label19">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">Прокси и капча</property>
+                                        <property name="label" translatable="yes">Пр_окси и капча</property>
+                                        <property name="use_underline">True</property>
                                       </object>
                                       <packing>
                                         <property name="position">1</property>
@@ -2533,7 +2541,7 @@ _ручной вайп</property>
                                             </child>
                                             <child>
                                               <object class="GtkCheckButton" id="check-tray">
-                                                <property name="label" translatable="yes">_Сворачивать в трей
+                                                <property name="label" translatable="yes">Сворачивать в трей
 вместо закрытия</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -2570,7 +2578,7 @@ _ручной вайп</property>
                                             <child>
                                               <object class="GtkCheckButton" id="check-annoyerrors">
                                                 <property name="label" translatable="yes">Разворачивать окно при
-о_шибках</property>
+ошибках</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
@@ -2630,26 +2638,6 @@ _ручной вайп</property>
                                     <property name="expand">False</property>
                                     <property name="fill">False</property>
                                     <property name="position">1</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkHBox" id="hbox4">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <child>
-                                      <placeholder/>
-                                    </child>
-                                    <child>
-                                      <placeholder/>
-                                    </child>
-                                    <child>
-                                      <placeholder/>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">True</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">2</property>
                                   </packing>
                                 </child>
                               </object>

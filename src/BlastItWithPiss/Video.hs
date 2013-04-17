@@ -17,5 +17,6 @@ readVideoFile :: FilePath -> IO (Maybe [Text])
 readVideoFile f = do
     fromIOException (return Nothing) $ do
         withFile f ReadMode $ \h -> do
+            hSetEncoding h utf8
             hSetNewlineMode h universalNewlineMode
             parseVideo <$> TIO.hGetContents h

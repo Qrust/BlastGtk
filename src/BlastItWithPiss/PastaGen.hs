@@ -30,6 +30,7 @@ readPastaFile :: FilePath -> IO (Maybe [String])
 readPastaFile f =
     fromIOException (return Nothing) $ do
         withFile f ReadMode $ \h -> do
+            hSetEncoding h utf8
             hSetNewlineMode h universalNewlineMode
             parsePasta <$> TIO.hGetContents h
 

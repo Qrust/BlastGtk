@@ -268,7 +268,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                     banMessage 7 $ stamp $ "Забанен рекапчой, охуеть."
                     setBanned board proxy
                 CloudflareCaptcha -> do
-                    banMessage 2 $ stamp $ "Если эта ошибка появляется то это баг, сообщите нам об этом"
+                    banMessage 2 $ stamp $ "Если эта ошибка появляется то это баг, сообщите нам об этом (Невозможно обойоти капчу клаудфлера во время постинга https://github.com/exbb2/BlastItWithPiss/issues/4)"
                     setBanned board proxy
                 CloudflareBan -> do
                     banMessage 2 $ stamp $ "Бан по клаудфлеру"

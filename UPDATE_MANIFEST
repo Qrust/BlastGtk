@@ -1,7 +1,11 @@
 {
-    "version": "1.1.31",
+    "version": "1.1.32",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.32",
+            "Опять кодировка, лол"
+        ],
         [
             "1.1.31",
             "* Очередной редизайн гуи\n* Добавлен постинг видео в гуи и в смывалке\n* Добавлена возможность редактировать пасту и ссылки на видео в гуи\n* Гуи теперь отслеживает изменения в файлах через fsnotify, не уверен работает ли это на шинде, но в вайне - нет."
@@ -195,15 +199,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.31.zip",
-                "2a3bb64b7bc757c88e9452cf770a4cd5"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.32.zip",
+                "e8ab11ff2064c8966af97a8b0bcd74bc"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.31.zip",
-                "6f0b0541ffcd2c4af84d0b1e3d995da9"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.32.zip",
+                "9eb5ab678207c753cb98c206746926d7"
             ]
         ]
     ]
