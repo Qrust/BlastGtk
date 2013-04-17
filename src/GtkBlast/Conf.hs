@@ -58,7 +58,6 @@ data Conf = Conf
     ,coPastaFile :: !String
     ,coEscapeInv :: !Bool
     ,coEscapeWrd :: !Bool
-    ,coPostAgitka :: !Bool
     ,coSortingByAlphabet :: !Bool
     ,coShuffleReposts :: !Bool
     ,coRandomQuote :: !Bool
@@ -118,7 +117,6 @@ instance Default Conf => FromJSON (Conf, String) where
         F(coPastaFile)
         F(coEscapeInv)
         F(coEscapeWrd)
-        F(coPostAgitka)
         F(coSortingByAlphabet)
         F(coShuffleReposts)
         F(coRandomQuote)

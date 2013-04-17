@@ -35,7 +35,7 @@ binaries =
 distribFiles :: [FilePath]
 distribFiles = binaries ++ ["resources/2ch.so.png"
                            ,"resources/blast.glade"
-                           ,"resources/agitka.png"]
+                           ]
 
 needRepair :: IO Bool
 needRepair = do

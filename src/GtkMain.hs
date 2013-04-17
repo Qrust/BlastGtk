@@ -315,7 +315,6 @@ instance Default Conf where
         ,coPastaFile = bundledFile "pasta/shizik"
         ,coEscapeInv = False
         ,coEscapeWrd = False
-        ,coPostAgitka = False
         ,coSortingByAlphabet = True
         ,coShuffleReposts = False
         ,coRandomQuote = False

@@ -92,8 +92,6 @@
         <property name="caps_lock_warning">False</property>
         <property name="primary_icon_activatable">False</property>
         <property name="secondary_icon_activatable">False</property>
-        <property name="primary_icon_sensitive">True</property>
-        <property name="secondary_icon_sensitive">True</property>
       </object>
       <packing>
         <property name="expand">False</property>
@@ -839,6 +837,23 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <child>
+                                                            <object class="GtkRadioButton" id="radio-nopasta">
+                                                            <property name="label" translatable="yes">_Без текста</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="use_underline">True</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                            <property name="group">radio-fromthread</property>
+                                                            </object>
+                                                            <packing>
+                                                            <property name="expand">False</property>
+                                                            <property name="fill">False</property>
+                                                            <property name="position">0</property>
+                                                            </packing>
+                                                            </child>
+                                                            <child>
                                                             <object class="GtkRadioButton" id="radio-fromthread">
                                                             <property name="label" translatable="yes">_Посты из тредов</property>
                                                             <property name="visible">True</property>
@@ -859,7 +874,7 @@
                                                             <packing>
                                                             <property name="expand">False</property>
                                                             <property name="fill">False</property>
-                                                            <property name="position">0</property>
+                                                            <property name="position">1</property>
                                                             </packing>
                                                             </child>
                                                             <child>
@@ -879,7 +894,7 @@
                                                             <packing>
                                                             <property name="expand">False</property>
                                                             <property name="fill">False</property>
-                                                            <property name="position">1</property>
+                                                            <property name="position">2</property>
                                                             </packing>
                                                             </child>
                                                             <child>
@@ -891,23 +906,6 @@
                                                             <property name="has_tooltip">True</property>
                                                             <property name="tooltip_text" translatable="yes">В файле с пастами между пастами должно быть четыре перевода строки, плюс четыре перевода строки в конце. См. файлы "resources/mocha", "resources/analniy-sadism".
 Кодировка — только UTF-8.</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                            <property name="group">radio-fromthread</property>
-                                                            </object>
-                                                            <packing>
-                                                            <property name="expand">False</property>
-                                                            <property name="fill">False</property>
-                                                            <property name="position">2</property>
-                                                            </packing>
-                                                            </child>
-                                                            <child>
-                                                            <object class="GtkRadioButton" id="radio-nopasta">
-                                                            <property name="label" translatable="yes">П_устой пост</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
                                                             <property name="use_underline">True</property>
                                                             <property name="xalign">0</property>
                                                             <property name="draw_indicator">True</property>
@@ -1031,8 +1029,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1201,6 +1197,25 @@
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
                                                         <child>
+                                                          <object class="GtkCheckButton" id="check-images">
+                                                            <property name="label" translatable="yes">Прикреплять _картинки</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="has_tooltip">True</property>
+                                                            <property name="tooltip_markup">Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
+                                                            <property name="tooltip_text" translatable="yes">Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
+                                                            <property name="use_underline">True</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="expand">False</property>
+                                                            <property name="fill">False</property>
+                                                            <property name="position">0</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
                                                           <object class="GtkVBox" id="vbox12">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -1245,8 +1260,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1297,32 +1310,13 @@
                                                           <packing>
                                                             <property name="expand">False</property>
                                                             <property name="fill">False</property>
-                                                            <property name="position">0</property>
+                                                            <property name="position">1</property>
                                                           </packing>
                                                         </child>
                                                         <child>
                                                           <object class="GtkVBox" id="vbox18">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <child>
-                                                            <object class="GtkCheckButton" id="check-images">
-                                                            <property name="label" translatable="yes">Прикреплять _картинки</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_markup">Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
-                                                            <property name="tooltip_text" translatable="yes">Картинки не прикрепляются с сажей или при постинге длинных паст несколькими постами.</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                            </object>
-                                                            <packing>
-                                                            <property name="expand">False</property>
-                                                            <property name="fill">False</property>
-                                                            <property name="position">0</property>
-                                                            </packing>
-                                                            </child>
                                                             <child>
                                                             <object class="GtkCheckButton" id="check-watermark">
                                                             <property name="label" translatable="yes">Мочемарка</property>
@@ -1339,35 +1333,14 @@
                                                             <packing>
                                                             <property name="expand">False</property>
                                                             <property name="fill">False</property>
-                                                            <property name="position">1</property>
-                                                            </packing>
-                                                            </child>
-                                                            <child>
-                                                            <object class="GtkCheckButton" id="checkagitka">
-                                                            <property name="label" translatable="yes">Постить агитку</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="has_tooltip">True</property>
-                                                            <property name="tooltip_markup">Постить resources/agitka.png вместо картинок из папки с вероятностью 15%.
-Агитка зазывает сосачеров на вайп, наверное.</property>
-                                                            <property name="tooltip_text" translatable="yes">Постить resources/agitka.png вместо картинок из папки с вероятностью 15%.
-Агитка зазывает сосачеров на вайп, наверное.</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                            </object>
-                                                            <packing>
-                                                            <property name="expand">True</property>
-                                                            <property name="fill">True</property>
-                                                            <property name="position">2</property>
+                                                            <property name="position">0</property>
                                                             </packing>
                                                             </child>
                                                           </object>
                                                           <packing>
                                                             <property name="expand">False</property>
                                                             <property name="fill">False</property>
-                                                            <property name="position">1</property>
+                                                            <property name="position">2</property>
                                                           </packing>
                                                         </child>
                                                       </object>
@@ -1575,8 +1548,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -1795,8 +1766,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1937,8 +1906,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -2080,8 +2047,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
@@ -2147,8 +2112,6 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
@@ -2338,8 +2301,6 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment4</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
@@ -2400,8 +2361,6 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment1</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
@@ -2458,8 +2417,6 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment3</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
@@ -2728,8 +2685,6 @@ _ручной вайп</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
-                                    <property name="primary_icon_sensitive">True</property>
-                                    <property name="secondary_icon_sensitive">True</property>
                                     <property name="adjustment">adjustment5</property>
                                     <property name="snap_to_ticks">True</property>
                                     <property name="numeric">True</property>

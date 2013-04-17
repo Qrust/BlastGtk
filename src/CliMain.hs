@@ -1,5 +1,6 @@
 module Main (main) where
 import Prelude
+{-
 import Control.Monad
 import GHC.Conc
 import Control.Concurrent.STM
@@ -11,8 +12,11 @@ import "blast-it-with-piss" BlastItWithPiss.Blast
 import "blast-it-with-piss" BlastItWithPiss.Post
 import "blast-it-with-piss" BlastItWithPiss.Board
 import qualified Data.ByteString.Lazy as L
+-}
 
 main :: IO ()
+main = return ()
+{-
 main = withSocketsDo $ do
     tpastas <- atomically $ newTVar $ [
                                     --{-
@@ -55,3 +59,4 @@ main = withSocketsDo $ do
                           if st==ThreadDied || st==ThreadFinished
                             then exitFailure
                             else threadDelay (2 * 1000000)
+-}

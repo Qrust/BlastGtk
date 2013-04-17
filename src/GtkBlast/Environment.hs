@@ -74,7 +74,6 @@ data Env = E
     ,wbuttonwipe :: Button
     ,wprogresswipe :: ProgressBar
     ,wentryimagefolder :: Entry
-    ,wcheckagitka :: CheckButton
     ,wcheckannoy :: CheckButton
     ,wcheckhideonsubmit :: CheckButton
     ,wcheckannoyerrors :: CheckButton
@@ -138,7 +137,6 @@ instance NFData Env where
         `seq` wvboxcaptcha
         `seq` wimagecaptcha
         `seq` wentrycaptcha
-        `seq` wcheckagitka
         `seq` wbuttoncaptchaok
         `seq` wprogressalignment
         `seq` wbuttonwipe

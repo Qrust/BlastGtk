@@ -1,2 +1,2 @@
 #!/bin/sh
-cabal build --ghc-options=-fno-code $@
+./hdevtools-check.sh $@
