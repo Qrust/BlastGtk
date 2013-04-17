@@ -1,7 +1,11 @@
 {
-    "version": "1.1.32",
+    "version": "1.1.33",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.33",
+            "Убрал постинг агитки. Пак с шизиком теперь дефолтный."
+        ],
         [
             "1.1.32",
             "Опять кодировка, лол"
@@ -199,15 +203,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.32.zip",
-                "e8ab11ff2064c8966af97a8b0bcd74bc"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.33.zip",
+                "77e43264f5fd17f1af97332f4f59ba76"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.32.zip",
-                "9eb5ab678207c753cb98c206746926d7"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.33.zip",
+                "89b45debc707ff3202c2fe22d554cd0f"
             ]
         ]
     ]
