@@ -22,7 +22,7 @@ import GtkBlast.MuVar
 import Graphics.UI.Gtk hiding (get, set, labelSetMarkup, labelSetText)
 import qualified Graphics.UI.Gtk as Gtk
 
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 
 import qualified Data.Text.IO.Locale as LTIO
@@ -48,11 +48,11 @@ rawPutStdout s =
 rawPutLog :: (Text -> IO ()) -> FilePath -> Text -> IO ()
 rawPutLog err' logfile str = do {
     withBinaryFile logfile AppendMode $ \h -> do
-        B.hPutStrLn h $ encodeUtf8 str
+        B8.hPutStrLn h $ encodeUtf8 str
     } `catch`
         \(a :: IOException) ->
             err' $ "Got exception while trying to write to log file \"" ++
-                    T.pack logfile ++ "\": " ++ show a ++
+                    fromString logfile ++ "\": " ++ show a ++
                     "\nAttempted to write: " ++ str
 
 rawGUILog :: TextBuffer -> Int -> Text -> IO ()
@@ -149,5 +149,5 @@ appFile :: a -> (FilePath -> IO a) -> FilePath -> E a
 appFile def' ac file =
     fromIOException err $ io $ ac file
   where err = do
-          tempError 3 $ "Невозможно прочитать файл \"" ++ T.pack file ++ "\""
+          tempError 3 $ "Невозможно прочитать файл \"" ++ fromString file ++ "\""
           return def'

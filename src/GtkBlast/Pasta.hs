@@ -12,7 +12,7 @@ import GtkBlast.Environment
 import GtkBlast.Conf
 import GtkBlast.EnvPart
 import GtkBlast.Log
-import GtkBlast.Type_PastaSet
+import GtkBlast.Types
 import GtkBlast.GtkUtils
 
 import BlastItWithPiss
@@ -118,7 +118,7 @@ regeneratePastaGen mcw = do
     e@E{..} <- ask
     ps <- get pastaSet
     newfname <- get wentrypastafile
-    writeLog $ "Pasta changed \"" ++ show ps ++ ":" ++ toText newfname ++ "\""
+    writeLog $ "Pasta changed \"" ++ show ps ++ ":" ++ fromString newfname ++ "\""
     when (ps==PastaFile) $ do
       exists <- io $ doesFileExist newfname
       if exists
@@ -126,7 +126,7 @@ regeneratePastaGen mcw = do
           cw <- postAsyncWhenPathModified newfname $ runE e $ regeneratePastaGen mcw
           set mcw $ Just cw
         else do
-          tempError 5 $ "Файл с пастой не существует \"" ++ toText newfname ++ "\""
+          tempError 5 $ "Файл с пастой не существует \"" ++ fromString newfname ++ "\""
     io . atomically . writeTVar (tpastagen shS) =<< generatePastaGen ps
 
 pastaEnvPart :: Builder -> EnvPart

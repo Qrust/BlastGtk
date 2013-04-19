@@ -13,7 +13,7 @@ import GtkBlast.Conf
 import GtkBlast.EnvPart
 import GtkBlast.GuiCaptcha
 import GtkBlast.AntigateCaptcha
-import GtkBlast.Type_CaptchaMode
+import GtkBlast.Types
 import BlastItWithPiss
 import BlastItWithPiss.Board
 import BlastItWithPiss.Blast

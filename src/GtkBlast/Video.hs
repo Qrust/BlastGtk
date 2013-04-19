@@ -12,7 +12,7 @@ import GtkBlast.Environment
 import GtkBlast.Conf
 import GtkBlast.EnvPart
 import GtkBlast.Log
-import GtkBlast.Type_VideoSet
+import GtkBlast.Types
 import GtkBlast.GtkUtils
 
 import BlastItWithPiss
@@ -34,7 +34,7 @@ regenerateVideoGen mcw = do
     e@E{..} <- ask
     vs <- get videoSet
     newfname <- get wentryvideofile
-    writeLog $ "Video changed \"" ++ show vs ++ ":" ++ toText newfname ++ "\""
+    writeLog $ "Video changed \"" ++ show vs ++ ":" ++ fromString newfname ++ "\""
     when (vs == VideoFromFile) $ do
       exists <- io $ doesFileExist newfname
       if exists
@@ -42,7 +42,7 @@ regenerateVideoGen mcw = do
           cw <- postAsyncWhenPathModified newfname $ runE e $ regenerateVideoGen mcw
           set mcw $ Just cw
         else do
-          tempError 5 $ "Файл с видео не существует \"" ++ toText newfname ++ "\""
+          tempError 5 $ "Файл с видео не существует \"" ++ fromString newfname ++ "\""
     io . atomically . writeTVar (tvideogen shS) =<< generateVideoGen vs
 
 emptyVideoGen :: TempGenType Text

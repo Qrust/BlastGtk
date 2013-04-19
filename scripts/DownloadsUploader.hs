@@ -110,7 +110,7 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
 getPassword :: String -> IO Text
 getPassword desc = do
     hSetEcho stdin False
-    password <- maybe (error "Пароль обязателен") T.pack <$> readline (desc ++ "\n")
+    password <- maybe (error "Пароль обязателен") fromString <$> readline (desc ++ "\n")
     hSetEcho stdin True
     return password
 
@@ -123,7 +123,7 @@ upload pass contentType arcfilename desc arcbytes = withManager $ \m -> do
         applyBasicAuth username (encodeUtf8 pass) $ _req
             {method = methodPost
             ,requestBody = RequestBodyLBS $ encode $ object
-                ["name" .= T.pack arcfilename
+                ["name" .= fromString arcfilename
                 ,"size" .= B.length arcbytes
                 ,"description" .= desc
                 ,"content_type" .= decodeUtf8 contentType

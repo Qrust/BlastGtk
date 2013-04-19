@@ -390,7 +390,7 @@ writerThread catFiles tq = forever $ do
       Just f -> do
         putStrLn $
             "Записываем " ++ show cat ++
-            " в файл \"" ++ T.pack f ++ "\": " ++ text
+            " в файл \"" ++ fromString f ++ "\": " ++ text
         withBinaryFile f AppendMode $ \h -> do
             B.hPut h $ encodeUtf8 text
             B.hPut h "\n"
@@ -506,7 +506,7 @@ main = withSocketsDo $ do
             M.fromList . zip cats' . applySuccNum fpaths' <$> filepathSuccNum fpaths'
 
         forM_ (M.toAscList catFiles) $ \(cat, fpath) -> do
-            putStrLn $ show cat ++ " -> " ++ T.pack fpath
+            putStrLn $ show cat ++ " -> " ++ fromString fpath
 
         let
           readProxyStrings file = do

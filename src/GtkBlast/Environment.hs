@@ -9,9 +9,7 @@ module GtkBlast.Environment
 import Import
 
 import GtkBlast.Directory
-import GtkBlast.Type_PastaSet
-import GtkBlast.Type_VideoSet
-import GtkBlast.Type_CaptchaMode
+import GtkBlast.Types
 import GtkBlast.Worker
 
 import BlastItWithPiss

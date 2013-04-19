@@ -144,14 +144,14 @@ postAsyncWhenPathModified _fileOrDir action = liftIO $ do
             isDir <- doesDirectoryExist fileOrDir
             if isDir
             then do
-                let dname = F.fromText $ toText fileOrDir
+                let dname = F.fromText $ fromString fileOrDir
                 Notify.watchDir watchman dname (const True) post
                 return $ CloseWatcher $ Notify.stopManager watchman
             else do
                 isFile <- doesFileExist fileOrDir
                 if isFile
                 then do
-                    let fname = F.fromText $ toText fileOrDir
+                    let fname = F.fromText $ fromString fileOrDir
                         dname = F.directory fname
                     Notify.watchDir watchman dname (\e -> getEventFname e == fname) post
                     return $ CloseWatcher $ Notify.stopManager watchman

@@ -19,6 +19,7 @@ import GtkBlast.EnvPart
 import GtkBlast.Captcha
 import GtkBlast.Proxy
 import GtkBlast.BoardSettingsGuiXML
+import GtkBlast.Types
 
 import BlastItWithPiss
 import BlastItWithPiss.Blast
@@ -309,7 +310,10 @@ setMainLoop env configfile setConf = do
         return True) priorityDefaultIdle 50 --kiloseconds, 20 fps.
     void $ onDestroy (window env) $ runE env $ do
         writeLog "Closing gtkblast"
-        conf <- io $ setConf def{coFirstLaunch=False, coLastVersion=version}
+        conf <- io $ setConf
+            def { coFirstLaunch=False
+                , coLastVersion=GtkBlastVersion version
+                }
         writeConfig configfile conf
         writeLog "Shutting down GUI"
         io $ mainQuit

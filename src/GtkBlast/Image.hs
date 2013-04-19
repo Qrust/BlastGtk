@@ -29,11 +29,11 @@ changeFolder = do
     exists <- io $ doesDirectoryExist ni
     if exists
       then do
-        writeLog $ "Image folder changed \"" ++ toText ni ++ "\""
+        writeLog $ "Image folder changed \"" ++ fromString ni ++ "\""
         let !gen = imageGen ni
         io $ atomically $ writeTVar (timagegen shS) gen
       else do
-        tempError 5 $ "Папка с пикчами не существует \"" ++ toText ni ++ "\""
+        tempError 5 $ "Папка с пикчами не существует \"" ++ fromString ni ++ "\""
 
 emptyImageGen :: TempGenType Image
 emptyImageGen = mkIgnoreGen $ builtinImageGen

@@ -215,25 +215,23 @@ tooFast s = s >= 200
 adjustStrategy :: Strategy -> Bool -> Page -> Strategy
 adjustStrategy strategy canmakethread Page{..}
     -- >kokoko
-    | !len <- fromIntegral $ length threads
+    | let !len = fromIntegral $ length threads
     , len /= 0
-    , !new <- fromIntegral (length $ filter newThread threads) % len
-    , !vpop <- fromIntegral (length $ filter veryPopularThread threads) % len
-    , !nps <-
-        if tooFast speed
-          then [CreateNew, BumpUnpopular]
-          else [BumpOld, ShitupSticky]
-    , !vps <-
-        if tooFast speed
-          then [SagePopular, ShitupSticky]
-          else [BumpOld, CreateNew]
-     = let aux (x, r) =
+    , let
+        !new = fromIntegral (length $ filter newThread threads) % len
+        !vpop = fromIntegral (length $ filter veryPopularThread threads) % len
+        !nps = if tooFast speed
+              then [CreateNew, BumpUnpopular]
+              else [BumpOld, ShitupSticky]
+        !vps = if tooFast speed
+            then [SagePopular, ShitupSticky]
+            else [BumpOld, CreateNew]
+        aux (x, r) |
             let y = r * if' (x `elem` nps) new 0
                 z = r * if' (x `elem` vps) vpop 0
-            in (x, r + y + z)
-       in map aux (filter goodStrategy strategy)
-    | otherwise
-     = strategy -- abort
+            = (x, r + y + z)
+     = map aux (filter goodStrategy strategy)
+    | otherwise = strategy -- abort
   where
     goodStrategy (st, _) =
         notElem st $

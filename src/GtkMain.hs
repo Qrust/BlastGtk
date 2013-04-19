@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main (main) where
 import Import hiding (on, mod)
 
@@ -10,14 +11,10 @@ import GtkBlast.Log
 import GtkBlast.Conf
 import GtkBlast.EnvParts (createWidgetsAndFillEnv)
 import GtkBlast.Mainloop (setMainLoop)
-import GtkBlast.Type_CaptchaMode
-import GtkBlast.Type_PastaSet
-import GtkBlast.Type_VideoSet
+import GtkBlast.Types
 import GtkBlast.ROW_ROW_FIGHT_THE_POWER
 
 import Graphics.UI.Gtk hiding (get)
-
-import qualified Data.Text as T
 
 import Data.Version
 
@@ -77,7 +74,6 @@ import GHC.Conc
 
 -- URGENT s/mmode/msagemode
 
--- URGENT AdaptiveIn is a property of board+proxy not of a single agent
 -- URGENT share parse results perBoard
 -- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
 -- URGENT Checker with captcha (already done)
@@ -229,7 +225,7 @@ import GHC.Conc
 -- TODO Remove smyvalka (+Updater.Repair)
 
 --GtkMain:
--- TODO BlastThreadId.
+-- TODO BlastThreadId(origin).
 -- TODO cliblast, убрать тормоза
 -- TODO показывать причину последнего бана когда все забанены
 -- TODO Записывать конфиг сразу, а не только при закрытии.
@@ -241,6 +237,8 @@ import GHC.Conc
 -- TODO фильтровать забаненные / сдохнувшие.
 -- TODO Настройка стратегии
 -- TODO Убрать жуткую вытянутость по вертикали.
+-- TODO AdaptiveIn is a property of board+proxy not of a single agent
+--  Doesn't matter since they removed adaptivity
 
 --Updater:
 -- TODO Кэширование манифеста (ETag например)
@@ -311,7 +309,7 @@ instance Default Conf where
         ,coCaptchaMode = Gui
         ,coAntigateKey = []
         ,coAntigateHost = "antigate.com"
-        ,coLastVersion = version
+        ,coLastVersion = GtkBlastVersion version
         ,coPastaFile = bundledFile "pasta/shizik"
         ,coEscapeInv = False
         ,coEscapeWrd = False
@@ -360,8 +358,8 @@ main = withSocketsDo $ do
 
     _t <- show <$> getZonedTime
     putInvisibleLog $
-        "Starting gtkblast. Version " ++ T.pack (showVersion version) ++
-        ". Current time is " ++ _t
+        "Starting gtkblast. Version "
+        ++ fromString (showVersion version) ++ ". Current time is " ++ _t
 
     configfile <- (</> "config.json") <$> configDir
     conf <- readConfig configfile

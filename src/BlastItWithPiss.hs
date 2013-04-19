@@ -240,8 +240,6 @@ instance NFData CaptchaAnswer where
 instance NFData OriginStamp where
     rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
 
-instance NFData CaptchaConf
-
 instance NFData SupplyCaptcha where
     rnf (SupplyCaptcha a b c d e) = rnf(a,b,c,d,e)
 
@@ -434,7 +432,7 @@ blastPostData mode mpastapage thread = do
     blastLog $
         "chose pasta, escaping invisibles " ++ show escinv ++
         ", escaping wordfilter " ++ show escwrd ++ ": \"" ++
-        T.pack pasta ++ "\""
+        fromString pasta ++ "\""
 
     sagemode <- readTVarIO tsagemode
     let sage = fromSageMode sagemode mode
@@ -467,7 +465,7 @@ blastPostData mode mpastapage thread = do
     case junkImage of
       Nothing -> blastLog "chose no image"
       Just i -> blastLog $
-        "chose image \"" ++ T.pack (filename $ fromJunkImage i)
+        "chose image \"" ++ fromString (filename $ fromJunkImage i)
         ++ "\", junk: " ++ show junkingEnabled
 
     blastLog $ "Choosing video"

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 module GtkBlast.Conf
@@ -7,15 +8,11 @@ module GtkBlast.Conf
     ) where
 import Import
 
-import GtkBlast.Type_PastaSet
-import GtkBlast.Type_VideoSet
-import GtkBlast.Type_CaptchaMode
+import GtkBlast.Types
 import GtkBlast.Environment
 import GtkBlast.Log
 
 import BlastItWithPiss.Board
-
-import Data.Version
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
@@ -30,8 +27,6 @@ import Control.Monad.Trans.Writer.Strict
 import Control.Monad.Trans.Class
 
 import GHC.Generics
-
-import Text.ParserCombinators.ReadP
 
 -- Fields are strict so it won't compile if anything is missing in Default or FromJSON instances
 data Conf = Conf
@@ -54,7 +49,7 @@ data Conf = Conf
     ,coCaptchaMode :: !CaptchaMode
     ,coAntigateKey :: !String
     ,coAntigateHost :: !String
-    ,coLastVersion :: !Version
+    ,coLastVersion :: !GtkBlastVersion
     ,coPastaFile :: !String
     ,coEscapeInv :: !Bool
     ,coEscapeWrd :: !Bool
@@ -89,7 +84,7 @@ _parseWithDefault obj name _def = do
             ++ "\", loading default value: " ++ show _def ++ "\n"
         return _def
 
--- snd contains warnings, we don't fail if some of the fields are missing.
+-- | 'snd' contains warnings - we don't fail if some of the fields are missing.
 instance Default Conf => FromJSON (Conf, String) where
     parseJSON (Object obj) = runWriterT $ do
 -- CLARIFICATION this macro relies on -traditional or cpphs.
@@ -136,40 +131,8 @@ instance Default Conf => FromJSON (Conf, String) where
         return Conf{..}
     parseJSON _ = mzero
 
+-- | Generic instance
 instance ToJSON Conf where
-
-jsonReadInstance :: Read a => Value -> Parser a
-jsonReadInstance (String s) = maybe mzero return $ readMay $ T.unpack s
-jsonReadInstance _ = mzero
-
-jsonShowInstance :: Show a => a -> Value
-jsonShowInstance = String . T.pack . show
-
-instance FromJSON Version where
-    parseJSON (String s) = maybe mzero return $
-        fst <$> lastMay (readP_to_S parseVersion $ T.unpack s)
-    parseJSON _ = mzero
-
-instance ToJSON Version where
-    toJSON = String . T.pack . showVersion
-
-instance FromJSON CaptchaMode where
-    parseJSON = jsonReadInstance
-
-instance ToJSON CaptchaMode where
-    toJSON = jsonShowInstance
-
-instance FromJSON PastaSet where
-    parseJSON = jsonReadInstance
-
-instance ToJSON PastaSet where
-    toJSON = jsonShowInstance
-
-instance FromJSON VideoSet where
-    parseJSON = jsonReadInstance
-
-instance ToJSON VideoSet where
-    toJSON = jsonShowInstance
 
 instance FromJSON Board where
     parseJSON (String s) = maybe mzero return $ readBoard $ T.unpack s
@@ -183,7 +146,9 @@ readConfig configfile = do
     _x <- try $ B.readFile $ configfile
     case _x of
       Left (a::SomeException) -> do
-        putInvisibleLog $ "Couldn't read config from \"" ++ T.pack configfile ++ "\" , loading defaults. Exception was: " ++ show a
+        putInvisibleLog $
+            "Couldn't read config from \"" ++ fromString configfile ++
+            "\" , loading defaults. Exception was: " ++ show a
         return def
       Right _c -> do
         let c = toLBS _c
@@ -191,13 +156,13 @@ readConfig configfile = do
           Nothing -> do
             let confbad = configfile <.> "old.faulty"
             putInvisibleLog $
-                "Couldn't read config from \"" ++ T.pack configfile ++
+                "Couldn't read config from \"" ++ fromString configfile ++
                 "\" because of syntax error, overwriting with defaults. " ++
-                "Old version saved at \"" ++ T.pack confbad ++ "\""
+                "Old version saved at \"" ++ fromString confbad ++ "\""
             fromIOException (return ()) $ LB.writeFile confbad c
             return def
           Just (n, errs) -> do
-            unless (null errs) $ putInvisibleLog $ T.pack errs
+            unless (null errs) $ putInvisibleLog $ fromString errs
             return n
 
 writeConfig :: FilePath -> Conf -> E ()
@@ -207,8 +172,8 @@ writeConfig configfile conf = do
     case tw of
         Left (a::SomeException) ->
             writeLog $
-                "Couldn't write config to \"" ++ T.pack configfile ++
+                "Couldn't write config to \"" ++ fromString configfile ++
                 "\" , got exception: " ++ show a
         Right _ ->
             writeLog $
-                "Wrote config \"" ++ T.pack configfile ++ "\": " ++ show conf
+                "Wrote config \"" ++ fromString configfile ++ "\": " ++ show conf

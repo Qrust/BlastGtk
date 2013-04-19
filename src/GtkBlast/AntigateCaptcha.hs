@@ -8,7 +8,7 @@ module GtkBlast.AntigateCaptcha
     ) where
 import Import hiding (on, mod)
 
-import GtkBlast.Type_CaptchaMode
+import GtkBlast.Types
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
@@ -18,8 +18,6 @@ import GtkBlast.EnvPart
 import BlastItWithPiss.Board
 import BlastItWithPiss.Blast
 import BlastItWithPiss
-
-import qualified Data.Text as T
 
 import Text.Recognition.Antigate
 import Graphics.UI.Gtk hiding (get, set)
@@ -48,7 +46,8 @@ antigateThread connection (st, SupplyCaptcha{..}) tq key =
         (cid, str) <- solveCaptcha sconf key captchaConf captchaFilename
                         captchaBytes connection
 
-        lg $ "Sending antigate answer \"" ++ T.pack str ++ "\" to " ++ renderCompactStamp st
+        lg $ "Sending antigate answer \"" ++ fromString str
+            ++ "\" to " ++ renderCompactStamp st
         io $ captchaSend $ Answer str (handle errex . void . report cid)
 
         lg $ "Antigate thread finished for " ++ renderCompactStamp st
