@@ -5,7 +5,8 @@ import Text.ParserCombinators.ReadP
 import System.Environment
 import System.IO hiding (putStrLn, putStr)
 
--- HORRIBLE HACK but i don't care.
+-- HORRIBLE HACK
+--  Not a hack really, what else could we possibly do?
 
 main = do
     g <- getArgs
@@ -20,7 +21,7 @@ main = do
                                                 [last (versionBranch oldv) + 1]}
                 putStrLn $ "Old version: " ++ showVersion oldv
                 putStrLn $ "New version: " ++ showVersion newv
-                writeFile "blast-it-with-piss.cabal.bak" cf
+--              writeFile "blast-it-with-piss.cabal.bak" cf
                 writeFile "blast-it-with-piss.cabal" $
                     unlines (a ++ ["version: " ++ showVersion newv] ++ b)
     

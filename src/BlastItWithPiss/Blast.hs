@@ -114,8 +114,6 @@ instance Show BlastProxy where
         renderSocksHost (socksHost s) ++ ":" ++ show (socksPort s)
     show NoProxy = "@"
 
-deriving instance Ord SocksVersion
-
 instance Eq SocksConf where
     s1 == s2 =
            socksHost s1 == socksHost s2
@@ -124,6 +122,7 @@ instance Eq SocksConf where
 
 instance Ord SocksConf where
     compare s1 s2 =
+--         compare (socksHost s1) (socksHost s2)
            compare (renderSocksHost (socksHost s1)) (renderSocksHost (socksHost s2))
         <> compare (socksPort s1) (socksPort s2)
         <> compare (socksVersion s1) (socksVersion s2)

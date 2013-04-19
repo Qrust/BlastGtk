@@ -85,7 +85,7 @@ library
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks >= 0.5 && < 0.6
+        ,socks == 0.5.1
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,deepseq
@@ -235,7 +235,7 @@ executable gtkblast
 
         ,certificate >= 1.3.1
         ,mime-types >= 0.1.0.2
-        ,socks >= 0.5 && < 0.6
+        ,socks == 0.5.1
 
         ,fast-tagsoup-utf8-only >= 1.0.4
         ,tagsoup
@@ -329,7 +329,7 @@ executable proxychecker
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks >= 0.5 && < 0.6
+        ,socks == 0.5.1
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
@@ -421,7 +421,7 @@ executable smyvalka
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks >= 0.5 && < 0.6
+        ,socks == 0.5.1
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
