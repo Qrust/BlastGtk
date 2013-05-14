@@ -189,8 +189,9 @@ parseSpeed :: [Tag Text] -> Maybe Int
 parseSpeed t = getSpeed =<< parseSpeed' t
   where
     stripSpeedPrefix a =
-        stripPrefix "[Скорость борды: " (dropWhile isSpace a)
-        <|> stripPrefix "[Posting speed: " (dropWhile isSpace a)
+        let unspace_a = dropWhile isSpace a in
+        stripPrefix "[Скорость борды: " unspace_a
+        <|> stripPrefix "[Posting speed: " unspace_a
 
     getSpeed = readMay . takeUntil isSpace
 

@@ -296,10 +296,6 @@ executable proxychecker
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
 
-        ,Data.Conduit.TMQueue
-        ,Control.Concurrent.STM.TMQueue
-        ,Control.Concurrent.STM.TBMQueue
-
     build-depends:
          base >= 4.5 && < 5
         ,cmdargs
@@ -335,6 +331,8 @@ executable proxychecker
         ,tagsoup
         ,fast-tagsoup-utf8-only >= 1.0.4
         ,antigate >= 0.6 && < 0.7
+        ,stm-conduit >= 2
+        ,stm-chans >= 2
 
     if flag(gtkonly)
         buildable: False

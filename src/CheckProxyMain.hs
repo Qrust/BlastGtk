@@ -26,7 +26,7 @@ import Control.Monad.Trans.Resource
 
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
-import Data.Conduit.TMQueue
+import Data.Conduit.TQueue
 
 import qualified Data.Set as Set
 
