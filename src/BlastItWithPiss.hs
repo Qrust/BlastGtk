@@ -78,8 +78,8 @@ import System.IO (putStrLn, putStr)
 -- use proxies with best response time
 
 -- board threads?
+{-
 
-#ifdef TEST
 import qualified Data.IntMap as I
 
 mockup :: TVar (I.IntMap (TMVar Page)) -> Int -> IO ()
@@ -96,7 +96,7 @@ mockup tpageCache pid = do
                   Nothing   -> error "ahadhadjsfj"
             Nothing -> error "lakjhoiadghoiasjgha"
 
-#endif
+-}
 
 {-# INLINE readTVarIO #-}
 readTVarIO :: MonadIO m => TVar a -> m a
