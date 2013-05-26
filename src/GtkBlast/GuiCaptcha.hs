@@ -177,14 +177,14 @@ guiCaptchaEnvPart b = EP
         void $ on weventboxcaptcha buttonPressEvent $ do
             io $ runE e $ removeCurrentCaptcha ReloadCaptcha
             return True
-    
+
         void $ on wbuttoncaptchaok buttonActivated $ do
             x <- entryGetText wentrycaptcha
             {-if null x
                 then captchaError "Пожалуйста введите капчу"
                 else removeCurrentCaptcha $ Answer x-}
             runE e $ removeCurrentCaptcha $ Answer x (atomically . writeTQueue guiReportQueue)
-    
+
         void $ on wbuttoncaptchacancel buttonActivated $ do
             runE e $ removeCurrentCaptcha AbortCaptcha
 

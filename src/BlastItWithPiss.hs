@@ -164,11 +164,19 @@ data CaptchaAnswer
     | ReloadCaptcha
     | AbortCaptcha
 
+data Perhaps a
+    = Certainly a
+    | Undecided
+
+instance Show a => Show (Perhaps a) where
+    show Undecided = "Undecided"
+    show (Certainly a) = show a
+
 data OriginStamp = OriginStamp
     {oTime   :: !ZonedTime
     ,oProxy  :: !BlastProxy
     ,oBoard  :: !Board
-    ,oMode   :: !Mode
+    ,oMode   :: !(Perhaps Mode)
     ,oThread :: !(Maybe Int)
     }
 
@@ -206,7 +214,7 @@ data BlastLogData = BlastLogData
     }
 
 data OriginInfo = OriginInfo
-    {gmode   :: !Mode
+    {gmode   :: !(Perhaps Mode)
     ,gthread :: !(Maybe Int)
     }
 
@@ -234,8 +242,8 @@ renderCompactStamp (OriginStamp _ proxy board _ _) =
 
 instance Show OriginStamp where
     show (OriginStamp time proxy board mode thread) =
-        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} " ++ renderBoard board ++
-        " " ++ show mode ++ " [| " ++
+        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} "
+        ++ renderBoard board ++ " " ++ show mode ++ " [| " ++
         ssachThread board thread ++ " |]"
 
 instance Show Message where
@@ -249,13 +257,17 @@ instance Show OutMessage where
     show (OutMessage s m) = show s ++ ": " ++ show m
 
 instance Default OriginInfo where
-    def = OriginInfo CreateNew Nothing
+    def = OriginInfo Undecided Nothing
 
 instance NFData CaptchaType
 
 instance NFData CaptchaAnswer where
     rnf (Answer s r) = r `seq` rnf s
     rnf _ = ()
+
+instance NFData a => NFData (Perhaps a) where
+    rnf (Certainly a) = rnf a
+    rnf Undecided = ()
 
 instance NFData OriginStamp where
     rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
@@ -342,22 +354,28 @@ askBoard :: BlastLog Board
 askBoard = asks bBoard
 
 setAdaptive :: Bool -> BlastLog ()
-setAdaptive n = lift $ get >>= \s -> put s{bsAdaptivityIn=n}
+setAdaptive n = lift $ modify $ \s -> s{bsAdaptivityIn=n}
 
 recMode :: Mode -> BlastLog ()
-recMode m = lift get >>= \s@BlastLogState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gmode=m}}
+recMode m = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gmode=Certainly m}}
 
 recThread :: (Maybe Int) -> BlastLog ()
-recThread t = lift get >>= \s@BlastLogState{..} -> lift $ put s{bsOriginInfo=bsOriginInfo{gthread=t}}
+recThread t = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gthread=t}}
+
+recResetMode :: BlastLog ()
+recResetMode = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gmode=Undecided}}
+
+recResetThread :: BlastLog ()
+recResetThread = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gthread=Nothing}}
 
 setLastThreadTime :: POSIXTime -> BlastLog ()
-setLastThreadTime t = lift get >>= \s -> lift $ put s{bsLastThreadTime=t}
+setLastThreadTime t = lift $ modify $ \s -> s{bsLastThreadTime=t}
 
 setOptimisticLastPostTime :: POSIXTime -> BlastLog ()
-setOptimisticLastPostTime t = lift get >>= \s -> lift $ put s{bsOptimisticLastPostTime=t}
+setOptimisticLastPostTime t = lift $ modify $ \s -> s{bsOptimisticLastPostTime=t}
 
 setPessimisticLastPostTime :: POSIXTime -> BlastLog ()
-setPessimisticLastPostTime t = lift get >>= \s -> lift $ put s{bsPessimisticLastPostTime=t}
+setPessimisticLastPostTime t = lift $ modify $ \s -> s{bsPessimisticLastPostTime=t}
 
 genOriginStamp :: BlastLog OriginStamp
 genOriginStamp = do
@@ -711,7 +729,7 @@ blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
     } <- lift get
 
     (neededcaptcha, mcap) <-
-        if captchaNeeded || mode==CreateNew || not adaptive
+        if captchaNeeded || mode == CreateNew || not adaptive
           then do
             blastLog "querying captcha"
             blastCaptcha thread
@@ -807,6 +825,9 @@ blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
 blastLoop :: BlastLog ()
 blastLoop =
     forever $ do
+
+    recResetMode
+    recResetThread
 
     BlastLogData {
       bBoard = board
