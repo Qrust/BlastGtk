@@ -64,7 +64,7 @@ import System.IO (putStrLn, putStr)
 
 
 
--- TVar (IntMap (TMVar Page))
+-- TVar (IntMap (TMVar Page)) ? TVar (IntMap (TMVar (TMVar Page)))
 
 -- agent can also fail to get a page, same thing as blastCloudflare's lock really.
 
@@ -73,10 +73,30 @@ import System.IO (putStrLn, putStr)
 
 -- if no key in IntMap?
 
+-- periodically purge redownload pages, use max one agent (how?)
 
+-- use proxies with best response time
 
+-- board threads?
 
+#ifdef TEST
+import qualified Data.IntMap as I
 
+mockup :: TVar (I.IntMap (TMVar Page)) -> Int -> IO ()
+mockup tpageCache pid = do
+    ttimeup <- registerDelay (5&millions)
+    atomically $ do
+        pageCache <- readTVar tpageCache
+        case I.lookup pid pageCache of
+            Just waitPage -> do
+                x <- Just <$> readTMVar waitPage
+                  <|> Nothing <$ check <$> readTVar ttimeup
+                case x of
+                  Just page -> return ()
+                  Nothing   -> error "ahadhadjsfj"
+            Nothing -> error "lakjhoiadghoiasjgha"
+
+#endif
 
 {-# INLINE readTVarIO #-}
 readTVarIO :: MonadIO m => TVar a -> m a
@@ -738,7 +758,7 @@ blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
                 blastLog $ "sleeping " ++ show slptime ++
                     " seconds before post. FIXME using threadDelay for sleeping"
                     ++ ", instead of a more precise timer"
-                threadDelay $ round $ slptime * 1000000
+                threadDelay $ toMicroseconds slptime
 
             blastLog "posting"
 

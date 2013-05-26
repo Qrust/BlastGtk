@@ -194,7 +194,7 @@ generateNewBrowser bproxy (UserAgent userAgent) = do
     httpSetProxy bproxy
     setMaxRedirects Nothing
     setMaxRetryCount 1
-    setTimeout $ Just $ 10 * 1000000
+    setTimeout $ Just $ 10 & millions
     setDefaultHeader hUserAgent $ Just userAgent
     setOverrideHeaders
         [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")

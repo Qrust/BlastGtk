@@ -84,6 +84,16 @@ show = fromString . S.show
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
 
+-- * Numbers
+
+{-# INLINE millions #-}
+millions :: Num a => a -> a
+millions = (* 1000000)
+
+{-# INLINE toMicroseconds #-}
+toMicroseconds :: RealFrac f => f -> Int
+toMicroseconds f = round (f * 1000000)
+
 -- * Control
 
 {-# INLINE (&) #-}

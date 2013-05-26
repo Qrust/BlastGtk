@@ -2220,7 +2220,7 @@
                                                 </child>
                                                 <child>
                                                   <object class="GtkCheckButton" id="checksage">
-                                                    <property name="label" translatable="yes">Са_гать треды</property>
+                                                    <property name="label" translatable="yes">Иногда са_гать треды</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>

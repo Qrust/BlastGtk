@@ -1,4 +1,4 @@
---inb4 >kokoko
+-- >kokoko
 module BlastItWithPiss.Choice
     (
      Mode(..)
@@ -26,18 +26,20 @@ import Import hiding ((/))
 
 import BlastItWithPiss.Board
 import BlastItWithPiss.Parsing
-import BlastItWithPiss.MonadChoice
+import BlastItWithPiss.MonadChoice (MonadChoice)
+import qualified BlastItWithPiss.MonadChoice as Choose
 
 import Data.Ratio
 
 import qualified Data.Map as M
 
-data Mode = SagePopular
-          | BumpUnpopular
-          | ShitupSticky
-          | BumpOld -- ^ Try to turn board upside down
-          | CreateNew -- ^ Try to erase threads by creating new threads
-    deriving (Eq, Show, Ord, Enum, Bounded)
+data Mode
+    = SagePopular
+    | BumpUnpopular
+    | ShitupSticky
+    | BumpOld       -- ^ Try to turn board upside down
+    | CreateNew     -- ^ Try to erase threads by creating new threads
+  deriving (Eq, Show, Ord, Enum, Bounded)
 
 type Strategy = [(Mode, Rational)]
 
@@ -73,109 +75,109 @@ strategies =
         ,BumpOld        / 20
         ,CreateNew      / 70]
     ,SsachB /
-        [SagePopular / 70
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 50
-        ,BumpOld / 10
-        ,CreateNew / 200]
+        [SagePopular    / 70
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 50
+        ,BumpOld        / 10
+        ,CreateNew      / 200]
     ,SsachCG /
-        [SagePopular / 40
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 50
-        ,BumpOld / 60
-        ,CreateNew / always]
+        [SagePopular    / 40
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 50
+        ,BumpOld        / 60
+        ,CreateNew      / always]
     ,SsachD /
-        [SagePopular / 50
-        ,BumpUnpopular / 0
-        ,ShitupSticky / 50
-        ,BumpOld / 30
-        ,CreateNew / always]
+        [SagePopular    / 50
+        ,BumpUnpopular  / 0
+        ,ShitupSticky   / 50
+        ,BumpOld        / 30
+        ,CreateNew      / always]
     ,SsachMLP /
-        [SagePopular / 60
-        ,BumpUnpopular / 10
-        ,ShitupSticky / 100
-        ,BumpOld / 30
-        ,CreateNew / always]
+        [SagePopular    / 60
+        ,BumpUnpopular  / 10
+        ,ShitupSticky   / 100
+        ,BumpOld        / 30
+        ,CreateNew      / always]
 {- FIXME BB REMOVED
     ,SsachBB /
-        [SagePopular / 20
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 40
-        ,BumpOld / 60
-        ,CreateNew / always]
+        [SagePopular    / 20
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 40
+        ,BumpOld        / 60
+        ,CreateNew      / always]
 -}
     ,SsachDEV /
-        [SagePopular / 15
-        ,BumpUnpopular / 15
-        ,ShitupSticky / 60
-        ,BumpOld / 50
-        ,CreateNew / always]
+        [SagePopular    / 15
+        ,BumpUnpopular  / 15
+        ,ShitupSticky   / 60
+        ,BumpOld        / 50
+        ,CreateNew      / always]
     ,SsachS /
-        [SagePopular / 33
-        ,BumpUnpopular / 33
-        ,ShitupSticky / 100
-        ,BumpOld / 33
-        ,CreateNew / always]
+        [SagePopular    / 33
+        ,BumpUnpopular  / 33
+        ,ShitupSticky   / 100
+        ,BumpOld        / 33
+        ,CreateNew      / always]
     ,SsachMMO /
-        [SagePopular / 50
-        ,BumpUnpopular / 40
-        ,ShitupSticky / 100
-        ,BumpOld / 10
-        ,CreateNew / always]
+        [SagePopular    / 50
+        ,BumpUnpopular  / 40
+        ,ShitupSticky   / 100
+        ,BumpOld        / 10
+        ,CreateNew      / always]
     ,SsachA /
-        [SagePopular / 70
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 40
-        ,BumpOld / 10
-        ,CreateNew / always]
+        [SagePopular    / 70
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 40
+        ,BumpOld        / 10
+        ,CreateNew      / always]
     ,SsachPO /
-        [SagePopular / 20
-        ,BumpUnpopular / 10
-        ,ShitupSticky / 40
-        ,BumpOld / 30
-        ,CreateNew / always]
+        [SagePopular    / 20
+        ,BumpUnpopular  / 10
+        ,ShitupSticky   / 40
+        ,BumpOld        / 30
+        ,CreateNew      / always]
     ,SsachSOC /
-        [SagePopular / 33
-        ,BumpUnpopular / 15
-        ,ShitupSticky / 33
-        ,BumpOld / 18
-        ,CreateNew / always]
+        [SagePopular    / 33
+        ,BumpUnpopular  / 15
+        ,ShitupSticky   / 33
+        ,BumpOld        / 18
+        ,CreateNew      / always]
     ,SsachSEX /
-        [SagePopular / 35
-        ,BumpUnpopular / 45
-        ,ShitupSticky / 50
-        ,BumpOld / 20
-        ,CreateNew / always]
+        [SagePopular    / 35
+        ,BumpUnpopular  / 45
+        ,ShitupSticky   / 50
+        ,BumpOld        / 20
+        ,CreateNew      / always]
     ,SsachTV /
-        [SagePopular / 40
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 60
-        ,BumpOld / 20
-        ,CreateNew / always]
+        [SagePopular    / 40
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 60
+        ,BumpOld        / 20
+        ,CreateNew      / always]
     ,SsachFA /
-        [SagePopular / 33
-        ,BumpUnpopular / 15
-        ,ShitupSticky / 15
-        ,BumpOld / 37
-        ,CreateNew / always]
+        [SagePopular    / 33
+        ,BumpUnpopular  / 15
+        ,ShitupSticky   / 15
+        ,BumpOld        / 37
+        ,CreateNew      / always]
     ,SsachRF /
-        [SagePopular / 33
-        ,BumpUnpopular / 33
-        ,ShitupSticky / 60
-        ,BumpOld / 34
-        ,CreateNew / always]
+        [SagePopular    / 33
+        ,BumpUnpopular  / 33
+        ,ShitupSticky   / 60
+        ,BumpOld        / 34
+        ,CreateNew      / always]
     ,SsachD /
-        [SagePopular / 10
-        ,BumpUnpopular / 20
-        ,ShitupSticky / 30
-        ,BumpOld / 40
-        ,CreateNew / always]
+        [SagePopular    / 10
+        ,BumpUnpopular  / 20
+        ,ShitupSticky   / 30
+        ,BumpOld        / 40
+        ,CreateNew      / always]
     ,SsachABU /
-        [SagePopular / 100
-        ,BumpUnpopular / 0
-        ,ShitupSticky / 100
-        ,BumpOld / 100
-        ,CreateNew / 0]
+        [SagePopular    / 100
+        ,BumpUnpopular  / 0
+        ,ShitupSticky   / 100
+        ,BumpOld        / 100
+        ,CreateNew      / 0]
     ]
 
 -- | For boards not listed in "strategies"
@@ -231,7 +233,9 @@ adjustStrategy strategy canmakethread Page{..}
                 z = r * if' (x `elem` vps) vpop 0
             = (x, r + y + z)
      = map aux (filter goodStrategy strategy)
-    | otherwise = strategy -- abort
+
+    | otherwise
+     = strategy -- abort
   where
     goodStrategy (st, _) =
         notElem st $
@@ -242,11 +246,11 @@ chooseStrategy :: Board -> Bool -> Page -> Strategy
 chooseStrategy board =
     adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
 
-chooseModeStrategy :: MonadRandom m => Strategy -> m Mode
+chooseModeStrategy :: MonadChoice m => Strategy -> m Mode
 chooseModeStrategy [] = error "chooseModeStrategy: empty list"
-chooseModeStrategy a = fromList a
+chooseModeStrategy a = Choose.fromList a
 
-chooseMode :: MonadRandom m => Board -> Bool -> Page -> m Mode
+chooseMode :: MonadChoice m => Board -> Bool -> Page -> m Mode
 chooseMode board canmakethread page =
     chooseModeStrategy $ chooseStrategy board canmakethread page
 
@@ -254,20 +258,26 @@ chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
 chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
 chooseThread' board canfail mode Page{..}
     -- >kokoko
-    | thrds' <- if mode == ShitupSticky
-                then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
-                else let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
-                     in if null nost
-                        then filter unlocked threads -- what can we do if there are only stickies left?
-                        else nost
-    , thrds <- if mode /= ShitupSticky && canfail
-                    then (Thread (-1) False False 50 [] : thrds') -- add the possibility of failure
-                                                 -- in that case we advance to the next/previous page
-                    else thrds'
-    , inv <- if mode == BumpUnpopular || mode == BumpOld -- these modes give more weight to unpopular threads
-                then ((fromIntegral $ maximumNote "Couldn't parse threads" $ map postcount thrds) -)
-                else id
-     = justIf (> (-1)) <$> fromList
+    | thrds' <-
+        if mode == ShitupSticky
+          then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
+          else
+            let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
+            in if null nost
+              then filter unlocked threads -- what can we do if there are only stickies left?
+              else nost
+    , thrds <-
+        if mode /= ShitupSticky && canfail
+          -- add the possibility of failure
+          -- in that case we advance to the next/previous page
+          then (Thread (-1) False False 50 [] : thrds')
+          else thrds'
+    , inv <-
+        -- these modes give more weight to unpopular threads
+        if mode == BumpUnpopular || mode == BumpOld
+          then ((fromIntegral $ maximumNote "Couldn't parse threads" $ map postcount thrds) -)
+          else id
+     = justIf (> (-1)) <$> Choose.fromList
             (map (threadId &&& inv . fromIntegral . postcount) thrds)
 
 chooseThread :: MonadChoice m => Board -> Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
@@ -275,10 +285,14 @@ chooseThread _ CreateNew _ p0 = return (Nothing, p0)
 chooseThread board mode getPage p0
     | iterpages <-
         if mode==BumpOld
-            then map getPage $ reverse [pageId p0 .. lastpage p0] -- traverse from end
-            else (return p0 : ) $ -- traverse from beginning while not redownloading first page
-                    map getPage $ tailSafe [pageId p0 .. lastpage p0]
-    = untilJust $ flip findMapM iterpages $ \gp -> do
-            pg <- gp
-            maybe Nothing (Just . flip (,) pg . Just) <$>
-                chooseThread' board True mode pg
+          then
+            -- traverse from end
+            map getPage $ reverse [pageId p0 .. lastpage p0]
+          else
+            -- traverse from beginning while not redownloading first page
+            (return p0 : ) $
+                map getPage $ tailSafe [pageId p0 .. lastpage p0]
+    = untilJust $ flip findMapM iterpages $ \getPage' -> do
+        page <- getPage'
+        maybe Nothing (\x -> Just (Just x, page)) <$>
+            chooseThread' board True mode page
