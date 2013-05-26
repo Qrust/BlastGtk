@@ -46,7 +46,7 @@ import Text.Recognition.Antigate
 import qualified Data.Text as T
 
 import Control.Concurrent.Lifted
-import Control.Concurrent.STM hiding (readTVarIO)
+import Control.Concurrent.STM (TVar, newTVarIO)
 import qualified Control.Concurrent.STM as STM
 
 import Control.Monad.Trans.Class
@@ -57,7 +57,7 @@ import Control.Monad.Trans.Resource
 import Data.Time.Clock.POSIX
 
 import qualified Text.Show as Show
-import Text.HTML.TagSoup(Tag)
+import Text.HTML.TagSoup (Tag)
 
 import System.IO (putStrLn, putStr)
 
