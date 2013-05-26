@@ -1,4 +1,4 @@
--- | Kludge
+-- | Kludge: the main module
 module BlastItWithPiss
     (ShSettings(..)
     ,MuSettings(..)
@@ -66,7 +66,7 @@ import System.IO (putStrLn, putStr)
 
 -- TVar (IntMap (TMVar Page))
 
--- agent can also fail to get a page, same thing as blastCloudflare really.
+-- agent can also fail to get a page, same thing as blastCloudflare's lock really.
 
 -- If got no page in five seconds, attempt to fetch on your own.
 --  use registerDelay to set timeout
@@ -383,7 +383,7 @@ abortWithOutcome :: Outcome -> BlastLog a
 abortWithOutcome o = do
     blastLog $ "Aborting with outcome: " ++ show o
     blastOut $ OutcomeMessage o
-    throwIO (AbortOutcome o)
+    throwIO  $ AbortOutcome   o
 -- /HACK
 
 data TempBlastPastaChannel
@@ -436,8 +436,8 @@ blastPostData mode mpastapage thread = do
 
     sagemode <- readTVarIO tsagemode
     let sage = fromSageMode sagemode mode
-    blastLog $ "Sage mode: " ++ show sagemode ++
-               ", Sage: " ++ show sage
+    blastLog $ "Sage mode: " ++ show sagemode
+            ++ ", Sage: " ++ show sage
 
     blastLog "Choosing image"
     cleanImage <- do
@@ -446,7 +446,7 @@ blastPostData mode mpastapage thread = do
           then do
             -- eval imageGen
             imagegen <- readTVarIO timagegen
-            fmap Just $ runGen imagegen
+            Just <$> runGen imagegen
           else
             return Nothing
 
@@ -524,10 +524,11 @@ blastCaptcha thread = do
 -- FIXME Code duplication with "blastCaptcha" (fetching captcha)
 -- FIXME what about strict checkStatus in request?
 blastCloudflare
-    :: (Response [Tag Text] -> BlastLog b) -- ^ after we're done, feed the decloudflared page to this
+    :: (Response [Tag Text] -> BlastLog b)
+        -- ^ after we're done, feed the decloudflared page to this
     -> (BlastLog (Response [Tag Text]), String)
         -- ^ fst: getter for a page possibly protected with cloudflare.
-        -- snd: Url of that page, so we can post captcha answer to it
+        --   snd: Url of that page, so we can post captcha answer to it
     -> BlastLog b
 blastCloudflare continueWith (getCloudyPage, url) = do
 
@@ -540,7 +541,7 @@ blastCloudflare continueWith (getCloudyPage, url) = do
   where
 
     blastCloudflare' rsp
-        | responseStatus rsp == status404 && (maybe False (=="NWS_QPLUS_HY") $
+        | responseStatus rsp == status404 && (maybe False (== "NWS_QPLUS_HY") $
             lookup hServer $ responseHeaders rsp) = do
             abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
         | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
@@ -598,20 +599,26 @@ blastCloudflare continueWith (getCloudyPage, url) = do
                 blastLog "Previous agent failed to solve cloudflare"
                 return $ Left newMaybeCookiesMVar
 
-    solveCloudflareCaptcha maybeCookiesMVar = do
-        t <- tryNotAsync reallySolveCloudflareCaptcha
-        case t of
-          Right (Just cookies) -> do
-            putMVar maybeCookiesMVar (Just cookies)
-            let !cookieCount = length $ destroyCookieJar cookies
-            blastLog $ "Cloudflare cookie count: " ++ show cookieCount
-          Left (e::SomeException) -> do
-            putMVar maybeCookiesMVar Nothing
-            blastLog $
-                "Exception aborted cloudflare challenge solving"
-                ++ ", exception was: " ++ show e
-          Right Nothing -> do
-            putMVar maybeCookiesMVar Nothing
+    solveCloudflareCaptcha maybeCookiesMVar =
+        (do mcookies <- reallySolveCloudflareCaptcha
+            case mcookies of
+              Just cookies -> do
+                putMVar maybeCookiesMVar (Just cookies)
+                let !cookieCount = length (destroyCookieJar cookies)
+                blastLog $ "Cloudflare cookie count: " ++ show cookieCount
+              Nothing -> do
+                putMVar maybeCookiesMVar Nothing
+        ) `catches`
+            [Handler $ \(e::AsyncException) -> do
+                putMVar maybeCookiesMVar Nothing
+                blastLog "Async exception aborted cloudflare challenge solving"
+                throwIO e
+            ,Handler $ \(e::SomeException) -> do
+                putMVar maybeCookiesMVar Nothing
+                blastLog $
+                    "Exception aborted cloudflare challenge solving"
+                    ++ ", exception was: " ++ show e
+            ]
 
     reallySolveCloudflareCaptcha = do
         blastLog "locked cloudflare captcha"
@@ -662,8 +669,15 @@ blastCloudflare continueWith (getCloudyPage, url) = do
           AbortCaptcha ->
             return Nothing
 
-blastPost :: POSIXTime -> Bool -> [Part Blast (ResourceT IO)] -> Mode -> Maybe Int -> PostData -> BlastLog ()
-blastPost threadtimeout cap otherfields mode thread postdata = do
+blastPost
+    :: POSIXTime
+    -> Bool
+    -> [Part Blast (ResourceT IO)]
+    -> Mode
+    -> Maybe Int
+    -> PostData
+    -> BlastLog ()
+blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
 
     BlastLogData {
       bBoard = board
@@ -677,13 +691,13 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
     } <- lift get
 
     (neededcaptcha, mcap) <-
-        if cap || mode==CreateNew || not adaptive
-            then do
-                blastLog "querying captcha"
-                blastCaptcha thread
-            else do
-                blastLog "skipping captcha"
-                return (False, Just (def, const $ return ()))
+        if captchaNeeded || mode==CreateNew || not adaptive
+          then do
+            blastLog "querying captcha"
+            blastCaptcha thread
+          else do
+            blastLog "skipping captcha"
+            return (False, Just (def, const $ return ()))
     case mcap of
         Nothing -> blastLog "Refused to solve captcha, aborting post"
         Just (captcha, reportbad) -> do
@@ -713,8 +727,8 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
 
                 let !orientedLastPostTime =
                         if adaptive
-                            then bsOptimisticLastPostTime
-                            else bsPessimisticLastPostTime
+                          then bsOptimisticLastPostTime
+                          else bsPessimisticLastPostTime
 
                 now <- liftIO getPOSIXTime
                 let slptime =
@@ -728,9 +742,9 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
 
             blastLog "posting"
 
-            beforePost <- liftIO getPOSIXTime --optimistic
+            beforePost <- liftIO getPOSIXTime -- optimistic
             (out, _) <- blast $ post p
-            afterPost <- liftIO getPOSIXTime --pessimistic
+            afterPost <- liftIO getPOSIXTime -- pessimistic
 
             blastOut (OutcomeMessage out)
 
@@ -749,10 +763,8 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
                 Success -> return ()
                 SuccessLongPost rest ->
                     when (mode /= CreateNew) $ do
-                        blastPost threadtimeout cap otherfields mode thread $
-                            postdata
-                                {text = rest
-                                ,image = Nothing}
+                        blastPost threadtimeout captchaNeeded otherfields mode thread $
+                            postdata{text = rest, image = Nothing}
                 TooFastThread -> do
                     let m = threadtimeout / 3
                     blastLog $ "TooFastThread, retrying in " ++ show (m/60) ++ " minutes"
@@ -773,7 +785,8 @@ blastPost threadtimeout cap otherfields mode thread postdata = do
                     setPessimisticLastPostTime $ beforePost - (posttimeout - 0.5)
 
 blastLoop :: BlastLog ()
-blastLoop = forever $ do
+blastLoop =
+    forever $ do
 
     BlastLogData {
       bBoard = board

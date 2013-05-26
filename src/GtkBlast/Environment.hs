@@ -96,7 +96,7 @@ type E = ReaderT Env IO
 -- This is to check that every field is initialized before we start.
 instance NFData Env where
     rnf E{..} =
-         messageLocks
+              messageLocks
         `seq` boardUnits
         `seq` wipeStarted
         `seq` postCount
