@@ -116,7 +116,7 @@ instance Show BlastProxy where
 
 instance Eq SocksConf where
     s1 == s2 =
-           socksHost s1 == socksHost s2
+           renderSocksHost (socksHost s1) == renderSocksHost (socksHost s2)
         && socksPort s1 == socksPort s2
         && socksVersion s1 == socksVersion s2
 

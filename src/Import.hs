@@ -12,30 +12,38 @@ import Prelude as A hiding (show, appendFile, getContents, getLine, interact
                            ,catch
 #endif
                            ,ioError, log, (++))
-import System.IO as A hiding (readFile, writeFile, appendFile, putStrLn, putStr, print)
-import Data.Monoid as A
-import Data.Maybe as A
-import Data.List as A hiding ((++))
+import System.IO as A hiding (readFile, writeFile, appendFile
+                             ,putStrLn, putStr, print)
+import Control.DeepSeq as A
+
 import Data.Char as A
+import Data.Maybe as A
+import Data.Either as A
+import Data.List as A hiding ((++))
+import Data.String as A
+import Data.Default as A
+import Data.Typeable as A
+import Data.Time as A
+import Data.IORef as A
+
+import Data.Monoid as A
 import Control.Applicative as A hiding (empty)
 import Control.Monad as A
-import Data.String as A
-import Data.Either as A
-import Data.Typeable as A
 import Control.Arrow as A
 import Data.Function as A
-import Data.Default as A
-import Data.IORef as A
-import Data.Time as A
 import Control.Monad.IO.Class as A
-import Control.DeepSeq as A
 import Control.Monad.Trans.Control as A
+
 import Control.Exception.Lifted as A
-import Data.ByteString as A (ByteString)
+
 import Data.Text as A (Text)
+import Data.ByteString as A (ByteString)
+
 import Data.Text.Encoding as A (encodeUtf8)
 import Data.ByteString.Char8 as A ()
 import Data.ByteString.Lazy.Char8 as A ()
+
+--
 
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Text.Encoding as TE

@@ -35,20 +35,20 @@ import qualified Graphics.UI.Gtk as G (set)
 
 import GHC.Conc hiding (forkIO)
 import qualified Control.Concurrent.Thread.Group as ThreadGroup
--- import Control.Concurrent.STM
 
 updWipeMessage :: E ()
 updWipeMessage = do
     E{..} <- ask
     whenM (get wipeStarted) $ do
         pc <- get postCount
-        let psc = "Постов: " ++ show pc ++ " / "
-        bnd <- do
-            (ac, bn, dd) <- get wipeStats
-            return $ "Активно: " ++ show ac ++ " / Забанено: " ++ show bn ++
-                    (if dd > 0 then " / Наебнулось: " ++ show dd else "")
+        (active, banned, dead) <- get wipeStats
         let ach = getAchievementString pc
-        updMessage $ psc ++ bnd ++ (if T.null ach then "" else "\n" ++ ach)
+        updMessage $
+               "Постов: " ++ show pc ++ " / "
+            ++ "Активно: " ++ show active
+            ++ " / Забанено: " ++ show banned
+            ++ (if dead > 0 then " / Наебнулось: " ++ show dead else "")
+            ++ (if T.null ach then "" else "\n" ++ ach)
 
 killWipeUnit :: Board -> WipeUnit -> E ()
 killWipeUnit board WipeUnit{..} = do

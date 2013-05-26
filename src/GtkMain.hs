@@ -48,53 +48,41 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
-
-
-
+-- URGENT ввод капчи руками в смывалке и чекере
 
 -- URGENT proxychecker retry captcha
-
-
-
-
-
+-- URGENT Checker resume after shutdown.
 
 -- URGENT absence of DNS caching creates real problems https://github.com/exbb2/BlastItWithPiss/issues/3
 --  We can implement kludgy DNS caching right now, without bothering http-conduit,
---  by simply resolving ssachHost and antigateHost at initialization/config-change time.
-
--- URGENT test proxies through direct ip
-
--- URGENT Checker resume after shutdown.
-
--- URGENT CaptchaAnswerWithReport type, CaptchaSolver class
---        ,Generalize BlastItWithPiss.hs to allow it to be used in checker and smyvalka
---        (return sleep time, instead of sleeping, to allow for a thread pool?)
--- URGENT auto-reportbad, see kludges in checkproxymain
+--  by simply resolving ssachHost and antigateHost at initialization time.
 
 -- URGENT s/mmode/msagemode
+-- URGENT remove wipeStarted
 
--- URGENT share parse results perBoard
+-- URGENT
+--      CaptchaAnswerWithReport type, CaptchaSolver class
+--      ,Generalize BlastItWithPiss.hs to allow it to be used in checker and smyvalka
+--      (return sleep time, instead of sleeping, to allow for a thread pool?)
+-- URGENT auto-reportbad, see kludges in checkproxymain
+
 -- URGENT Thread pool (schedule posting / network connections, don't run everything at once)
--- URGENT Checker with captcha (already done)
+-- URGENT WeakRef ThreadId
+-- URGENT separate read-only "Settings" TVars and internal shared state
+
 -- URGENT — rework outcome hierarchy so that connection errors are different
 --      from post errors, handle specific connection errors(cloudflare) everywhere)
+
 -- URGENT smyvalka: write Log
 -- URGENT Avoid reopening log handle
 -- URGENT smyvalka: use async
--- URGENT separate read-only "Settings" TVars and internal shared state
--- URGENT WeakRef ThreadId
--- URGENT show thread captcha before cloud captcha
--- URGENT remove wipeStarted
+-- URGENT Use FastLogger for date caching
 
 -- URGENT write outcomes in a table to the right
 -- URGENT write log to a table. See
 --  https://github.com/keera-studios/keera-hails/blob/master/src/Hails/Graphics/UI/Gtk/Simplify/Logger.hs
 -- URGENT better error message when no threads.
 -- URGENT post parsed page info to the gui
-
--- URGENT Use FastLogger/ByteString for log
--- URGENT Use FastLogger for date caching
 
 -- URGENT Presolve & migrate captcha (structure captcha solving as a (?term)resource pool/conduit)
 -- URGENT observer threads instead of regens
@@ -103,57 +91,38 @@ import GHC.Conc
 
 -- TODO показывать количество проксей, а не только воркеров
 
--- URGENT ввод капчи руками в смывалке и чекере
-
--- URGENT Glade destroys tooltips on cut/paste. Move setting tooltips to code.
+-- URGENT Glade-3 destroys tooltips on cut/paste. Move setting tooltips to code.
 
 -- URGENT use image when longposting
 
--- URGENT don't label new threads as CreateNew
-
-
-
-
-
-
-
 -- https://github.com/blog/1302-goodbye-uploads
---
--- dropbox, git-annex?
--- bitbucket has Downloads section, we can setup a mirror there.
--- google code and sourceforge also have Downloads sections
-
-
-
-
-
-
+--  dropbox, git-annex?
+--  bitbucket has Downloads section, we can setup a mirror there.
+--  google-code and sourceforge also have Downloads sections
 
 
 -- == PERFORMANCE ==
--- TODO benchmark fast-tagsoup
---      vs. tagstream-conduit → entities → conv-to-tagsoup-types (NOTE tagstream is not lazy, that won't work)
---      vs. regular expressions
--- TODO benchmark fast-tagsoup LByteString & LText vs. ByteString & Text
--- FIXME Blast lazyness/strictness. Now that we lazily parse everything we run in constant space(?)
+-- URGENT Don't reparse threads for every worker.
+
 -- TODO We still can't set higher priority for thread with GUI, (perhaps we could through OS API...)
 --      So it'll lag anyway, unless we move workers to different process.
 -- TODO System.Random is slow, and might cause some lag on escaping. marsenne-random, mws-random?
--- FIXME criterion fromString/drop vs. Text/drop, ghci +s doesn't use optimizations.
 -- CLARIFY Does Text leaks on drop? (seems from the source that data before the substring is not GC'd, CLARIFY)
 -- CLARIFY we force [Tag Text] completely in blastCloudflare,
 --         might not be a problem, since we also parse whole page when deciding mode
 --         Does it? Only when status code is 403/404.
 
 -- TODO http-conduit:
+--  DNS caching
 --  Unify proxy types / Define proxy chains
 --  Cookie filter / map, cookie helpers
---  DNS caching
 
 -- FIXME Is there a memory/resource leak in void $ http (parseUrl "http://example.com")?
 --       There is, see https://github.com/snoyberg/http-conduit/issues/97#issuecomment-12858211
 
 -- == 2.0 RELEASE ==
+
+-- FIXME EnvPart internal state shouldn't really lie around in global env?
 
 -- URGENT To add a new option you need to edit at least 3 files.
 
@@ -162,38 +131,58 @@ import GHC.Conc
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
 
+-- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
+
 -- URGENT Move escaping to pastagen
 -- URGENT upload images via conduit source
 -- URGENT Fix proxychecker
 
 -- URGENT капча на несколько постов вперед.
+-- URGENT show thread captcha before cloud captcha
 -- URGENT repeat on 503, database error, once on http
 
 -- URGENT Rid of postGUIAsync in pasta/video/images initialization
+-- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 
--- URGENT Настройка темы, поле имя/трипкод, видео
--- URGENT Разделить цитату номера поста и цитату содержимого
--- URGENT табовый интерфейс
--- URGENT вставлять ссылку на тред, не только номер
--- URGENT blastitwithpiss.github.com
+-- URGENT показывать причину последнего бана когда все забанены
+-- URGENT Записывать конфиг сразу, а не только при закрытии.
+
+-- URGENT Настройка темы, поле имя/трипкод
+-- URGENT Разделить ui цитату номера поста и цитату содержимого
+-- URGENT настройки тредов: вставлять ссылку на тред, не только номер
+-- URGENT blastitwithpiss.github.io
+-- TODO Manual.md
+-- TODO Stable download links using github pages
+
+-- URGENT Вайпать несколько тредов
+-- TODO Настройка стратегии
+
+-- TODO AdaptiveIn is a property of board+proxy not of a single agent
+-- TODO ugliest things: regenerations, "old" vars in disableable envparts.
+
+-- TODO Постинг в /o/
 
 -- URGENT
 --  Синхронизация юнитов, кэширование страниц(не только нулевой) между проксями
 --  на одной борде. Записывать какие треды бампнули с штампом чтобы не бампать
 --  дважды. Записывать какие треды создали с ноко, чтобы бампать вайп;
---  BumpUnpopular → BumpWipe, otherwise BumpOld. Перезаргузка некэшированных
+--  BumpUnpopular → BumpWipe, otherwise BumpOld. Перезагрузка некэшированных
 --  страниц.
 --  + Слежение за тредом, автобамп
+-- URGENT parse less often if on a slow board
 -- URGENT Rename EnvPart → Widget
 -- URGNET blastCloudflare → withCloudflare
 -- URGENT ControlCenter type/class which controls wipe units, WipeUnit type.
 -- URGENT Remove "{" ++ "}"
--- URGENT parse less often if board is slow
+
+-- TODO background mode
+
+-- TODO DETECT CLOUDFLARE WHEN POSTING
+-- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
 
 -- URGENT MANUAL + corner cases (403, wordfilter, etc.) + use cases (засирание треда, вайп борды, смыв, закос под ручной вайп, автобамп)
 -- URGENT Five'o'Three BlastItWithPiss workaround
 -- URGENT Outcome 403Ban
--- URGENT Обход клаудфлера при постинге & клаудфлер в смывалке
 -- URGENT Поставить запросы на постинг в очередь(avoid wakaba.pl 503)
 -- URGENT Better error messages (no parse, 403, etc.)
 -- URGENT GHC under Wine HaskellWiki
@@ -208,75 +197,51 @@ import GHC.Conc
 -- TODO avoid rolling a dice when createthread == always
 -- URGENT >Что за пиздец с «этот файл уже загружен»? Неужели трудно по умолчанию менять пару байт в картинке перед отправкой?
 --      УМВР вроде.
---      Может добавлять мусор ещё и в начало?
--- TODO Смывание доски с собиранием капчи
--- TODO skipCaptcha только когда уже получен один проход без капчи
+--      Добавлять мусор ещё и в начале?
 -- TODO Не расходовать капчу зря
 -- TODO avoid 403 ban
--- TODO небампание определенных тредов (планета)
--- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen into tpostdatagen. debuglog/normallog
+-- TODO небампание (только сажа) определенных тредов (планета) (чёрный список)
+-- TODO Merge Blast and BlastLog, expose BlastLog. Merge tpastagen and timagegen
+--      into tpostdatagen. debuglog/normallog
 -- TODO show offending message in SameMessage and others
--- TODO DETECT CLOUDFLARE WHEN POSTING
--- TODO Abstract out (hierarchical) config management in BlastItWithPiss
--- TODO Реже парсить страницу.
--- TODO Share parsed page between all proxies working on the same board.
+-- TODO Abstract out (hierarchical[?]) config management in BlastItWithPiss
 -- TODO Перепостинг из других досок
 -- TODO оптимизировать ещё (прекратить пложение ОС-тредов? fix network synchronous)
--- TODO Remove smyvalka (+Updater.Repair)
-
---GtkMain:
+-- TODO Remove smyvalka (& Updater.Repair)
 -- TODO BlastThreadId(origin).
 -- TODO cliblast, убрать тормоза
--- TODO показывать причину последнего бана когда все забанены
--- TODO Записывать конфиг сразу, а не только при закрытии.
--- TODO Вайпать несколько тредов
 -- TODO АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ
--- TODO Останавливать вайп и показывать ачивку после нескольких безуспешных переподключений. ("Вы охуенны, ваш титул «%s».\nЗаскрините, покажите друзьям, сосните хуйца."
+--      Останавливать вайп после нескольких безуспешных переподключений.
 -- TODO считать баны, включать в ачивки
--- TODO Писать забаненные/сдохнувшие прокси в файл+(борда X причина/ексепшн)
+-- TODO Писать забаненные/сдохнувшие прокси в файл+(борда & причина/ексепшн)
 -- TODO фильтровать забаненные / сдохнувшие.
--- TODO Настройка стратегии
--- TODO Убрать жуткую вытянутость по вертикали.
--- TODO AdaptiveIn is a property of board+proxy not of a single agent
---  Doesn't matter since they removed adaptivity
 
---Updater:
--- TODO Кэширование манифеста (ETag например)
-
---Other:
--- TODO перечислить такие-то фичи
--- TODO Новый ключ антигейта + кошелек донатов
--- TODO newscreen.jpg, oppost update, README/COMPILEGUIDE, ну вы понели
--- TODO Manual.md
--- TODO Stable download links using github pages
-
--- == FUTURE IMPROVEMENTS ==
--- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost?), cloudflare ban, detect cloudflare when posting, mochan down.
--- TODO Пикчи на тему ссания в жопу из Kuso Miso Technique.
--- TODO Configurable max_bid, sleepwait and sleepcaptcha
--- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
+--Antigate:
+-- TODO: Configurable max_bid, sleepwait and sleepcaptcha
 -- TODO отображать состояние антигейта в updWipeMessage (add hook)
 --      например количество капч решаемых в данный момент или stat.php
--- TODO add multipart/form-data to http-conduit
+
+--Updater:
+-- TODO Кэширование манифеста (записывать ETag например)
+
+-- == FUTURE IMPROVEMENTS ==
+-- TODO Support 2chru.net
+-- TODO better exceptions for 404, 403, strange 303 wakabapl(TooFastPost?), cloudflare ban, detect cloudflare when posting, mochan down.
+-- TODO Пикчи со смитанусом на тему ссания в жопу из Kuso Miso Technique.
 -- TODO add zip file permissions to zip-archive
--- TODO make updater a standalone library and release on hackage?("crude-autoupdater.cabal", it'll need quite a generalization to fit as a general purpose library.)
+-- TODO make updater a standalone library and release on hackage?
+--      ("crude-autoupdater.cabal", it'll need quite a generalization to fit as
+--      a general purpose library.)
 -- TODO i18n (represent messages by types + typeclass?)
 -- TODO config last thread time
 -- TODO Показывать несколько капч одновременно
--- TODO background mode
--- TODO Support 2chnu, alterchan.
--- TODO add API as a fallback if can't parse html
--- TODO Постинг в /o/
--- TODO лучше маскировка убрать mfod
 
 -- == REFACTORING ==
--- TODO Replace (OriginStamp, Message) with appropriate type, replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
--- TODO Move more envparts from EnvParts.hs to their own modules
--- TODO ugliest things: regenerations, "old" vars in disableable envparts.
--- TODO Being functional means modeling a program in a data-oriented fashon, not
---      effect-oriented. Right now BlastItWithPiss is as imperative as it gets.
--- FIXME EnvPart internal state shouldn't really lie around in global env?
 -- TODO Switch to immutable state, don't modify environment from widgets, send events instead.
+-- TODO Being functional means modeling a program in a data-oriented fashon, not
+--      effect-oriented. Right now it's as imperative as it gets.
+-- TODO Replace (OriginStamp, Message) with appropriate type,
+--      replace Message(SendCaptcha) with dedicated type, add a type for CompactStamp
 -- TODO Add more type safety.(Any type safety?)
 -- TODO Add more modularity.(Any modularity?)
 -- TODO Move ssach/recaptcha/cloudflare-specific functionality to their own modules

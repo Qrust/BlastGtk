@@ -70,6 +70,7 @@ import System.IO (putStrLn, putStr)
 
 -- If got no page in five seconds, attempt to fetch on your own.
 --  use registerDelay to set timeout
+--  OR simply wait for current worker to timeout
 
 -- if no key in IntMap?
 
@@ -77,7 +78,7 @@ import System.IO (putStrLn, putStr)
 
 -- use proxies with best response time
 
--- board threads?
+-- board threads? [!?]
 {-
 
 import qualified Data.IntMap as I
