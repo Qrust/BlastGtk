@@ -48,10 +48,12 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
--- URGENT ввод капчи руками в смывалке и чекере
-
 -- URGENT proxychecker retry captcha
 -- URGENT Checker resume after shutdown.
+
+-- URGENT ввод капчи руками в смывалке и чекере
+
+-- URGENT записывать все прокси с которых удалось запостить в файл
 
 -- URGENT absence of DNS caching creates real problems https://github.com/exbb2/BlastItWithPiss/issues/3
 --  We can implement kludgy DNS caching right now, without bothering http-conduit,
@@ -96,7 +98,7 @@ import GHC.Conc
 -- URGENT use image when longposting
 
 -- https://github.com/blog/1302-goodbye-uploads
---  dropbox, git-annex?
+--  dropbox, git-annex, BinTray?
 --  bitbucket has Downloads section, we can setup a mirror there.
 --  google-code and sourceforge also have Downloads sections
 

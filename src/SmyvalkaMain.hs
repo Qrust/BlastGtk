@@ -15,6 +15,7 @@ import BlastItWithPiss.MonadChoice
 
 import qualified Data.Text       as T
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 
 import qualified Data.Text.IO.Locale as LTIO
 
@@ -39,35 +40,35 @@ import Control.Monad.Trans.Resource
 putStrLn :: MonadIO m => Text -> m ()
 putStrLn = liftIO . LTIO.putStrLn
 
-
-
-
-
-
-
 -- NOTE cmdargs is deeply magical, won't let me use strict fields
 data Config = Config
-    {_socks        :: Bool
-    ,_board        :: String
-    ,_proxyFile    :: String
-    ,_exclude      :: [String]
-    ,_antigateKey  :: String
-    ,_antigateHost :: String
-    ,_retryCaptcha :: Bool
-    ,_imageDir     :: (Maybe FilePath)
-    ,_pastaFile    :: (Maybe FilePath)
-    ,_videoFile    :: (Maybe FilePath)
+    {_socks               :: Bool
+    ,_board               :: String
+    ,_proxyFile           :: String
+    ,_exclude             :: [String]
+    ,_successFile         :: String
+    ,_antigateKey         :: String
+    ,_antigateHost        :: String
+    ,_disableRetryCaptcha :: Bool
+    ,_disableRetryAlways  :: Bool
+    ,_retryExceptions     :: Bool
+    ,_imageDir            :: (Maybe FilePath)
+    ,_pastaFile           :: (Maybe FilePath)
+    ,_videoFile           :: (Maybe FilePath)
     }
   deriving (Show, Data, Typeable)
 
 data Env = Env
-    {manager      :: !Manager
-    ,board        :: !Board
-    ,antigateKey  :: !ApiKey
-    ,retryCaptcha :: !Bool
-    ,imageDir     :: !(Maybe FilePath)
-    ,pastas       :: ![String]
-    ,videos       :: ![Text]
+    {manager             :: !Manager
+    ,board               :: !Board
+    ,successFile         :: !FilePath
+    ,antigateKey         :: !ApiKey
+    ,disableRetryCaptcha :: !Bool
+    ,disableRetryAlways  :: !Bool
+    ,retryExceptions     :: !Bool
+    ,imageDir            :: !(Maybe FilePath)
+    ,pastas              :: ![String]
+    ,videos              :: ![Text]
     }
 
 type M = ReaderT Env IO
@@ -85,13 +86,17 @@ impureAnnotatedCmdargsConfig = Config
     ,_proxyFile = []
         &= argPos 2
         &= typ "Файл_с_проксями"
-    ,_exclude =
-        []
+    ,_exclude = []
         &= explicit
         &= name "e"
         &= name "exclude"
-        &= help "Не использовать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt /b/ 123456789 goodlist.txt"
+        &= help "Не использовать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt 123456789 /b/ goodlist.txt"
         &= typ "Файл_с_проксями..."
+    ,_successFile = []
+        &= explicit
+        &= name "S"
+        &= name "success"
+        &= help "Записывать прокси с которых удалось запостить в этот файл. Можно использовать вместе с -e чтобы не тратить капчу на использованные прокси: proxychecker 123456789 /b/ list.txt -S used.txt; proxychecker -e used.txt 123456789 /b/ list.txt"
     ,_antigateKey = []
         &= argPos 0
         &= typ "Ключ_антигейта"
@@ -100,11 +105,21 @@ impureAnnotatedCmdargsConfig = Config
         &= name "H"
         &= name "antigate-host"
         &= help "Домен апи антигейта, например captchabot.com"
-    ,_retryCaptcha = False
+    ,_disableRetryCaptcha = False
         &= explicit
-        &= name "r"
-        &= name "retry-captcha"
-        &= help "Пробовать решить капчу снова при фейле?"
+        &= name "dr"
+        &= name "disable-retry-captcha"
+        &= help "Отключить попытки снова решить капчу при неправильной капче."
+    ,_disableRetryAlways = False
+        &= explicit
+        &= name "d#"
+        &= name "disable-retry-always"
+        &= help "Отключить попытки пробовать снова при ошибках кроме 503/mysql."
+    ,_retryExceptions = False
+        &= explicit
+        &= name "re"
+        &= name "retry-exceptions"
+        &= help "Пробовать запостить снова при исключениях."
     ,_imageDir = Nothing
         &= explicit
         &= name "i"
@@ -194,18 +209,39 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
             liftIO $ putStrLn $
                 "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
             case outcome of
-              PostRejected -> recurse
-              Five'o'ThreeError -> recurse
-              o | o==NeedCaptcha || o==WrongCaptcha -> liftIO $ do
-                badCaptcha
-                when retryCaptcha $ do
-                    putStrLn $ "Retrying captcha for {" ++ show proxy ++ "}"
-                    new <- antigate e proxy
-                    runProxyPoster new
-              _ -> return ()
-        ) `catch` (\(ex::SomeException) ->
-                    liftIO $ putStrLn $ "{" ++ show proxy ++
-                        "} Couldn't create thread, exception was: " ++ show ex)
+              o | Banned _ <- o ->
+                    return ()
+                | o == PostRejected || o == Five'o'ThreeError ->
+                    recurse
+                | o == LongPost || o == EmptyPost
+                  || o == SameMessage || o == SameImage
+                  || o == Wordfilter || o == CorruptedImage ->
+                    -- restart
+                    createThread e cAnswer captchaImage badCaptcha
+                | o == NeedCaptcha || o == WrongCaptcha ->
+                    liftIO $ do
+                      badCaptcha
+                      unless disableRetryCaptcha $ do
+                        putStrLn $ "Retrying captcha for {" ++ show proxy ++
+                                    "}"
+                        new <- antigate e proxy
+                        runProxyPoster new
+                | successOutcome o ->
+                    liftIO $ withFile successFile AppendMode $ \h ->
+                        B8.hPutStrLn h $ encodeUtf8 $ show proxy
+                | otherwise ->
+                    if disableRetryAlways
+                      then return ()
+                      else recurse
+        ) `catch`
+            \(ex::SomeException) -> do
+                liftIO $ putStrLn $ "{" ++ show proxy ++
+                        "} Couldn't create thread, exception was: \""
+                        ++ show ex ++ "\"" ++
+                          (if retryExceptions then ", retrying." else "")
+                if retryExceptions
+                  then createThread e cAnswer captchaImage badCaptcha
+                  else return ()
 
 antigate
     :: Env
@@ -342,7 +378,7 @@ main = withSocketsDo $ do
         proxies <- forMaybeM proxyStrings $ \ip ->
             case readBlastProxy isSocks (T.unpack ip) of
               Nothing -> do
-                hPutStrLn stderr $ "Couldn't parse as a proxy " ++ show ip
+                LTIO.hPutStrLn stderr $ "Couldn't parse as a proxy " ++ show ip
                 return Nothing
               p -> return p
 
@@ -354,8 +390,11 @@ main = withSocketsDo $ do
             \m -> liftIO $ runReaderT (mainloop proxies)
                 Env {manager = m
                     ,board = board
+                    ,successFile = _successFile
                     ,antigateKey = def{api_key=_antigateKey, api_host=_antigateHost}
-                    ,retryCaptcha = _retryCaptcha
+                    ,disableRetryCaptcha = _disableRetryCaptcha
+                    ,disableRetryAlways = _disableRetryAlways
+                    ,retryExceptions = _retryExceptions
                     ,imageDir = _imageDir
                     ,pastas = pastas
                     ,videos = videos
