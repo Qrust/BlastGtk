@@ -1,7 +1,11 @@
 {
-    "version": "1.1.33",
+    "version": "1.1.34",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.34",
+            "Добавлены /fs/ и /moba/\nДобавлены опции для перепостинга в смывалке\nДобавлена опция для записи успешных проксей в смывалке\nДобавлено перерешение капчи при фейле в проксичекере"
+        ],
         [
             "1.1.33",
             "Убрал постинг агитки. Пак с шизиком теперь дефолтный."
@@ -203,15 +207,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.33.zip",
-                "77e43264f5fd17f1af97332f4f59ba76"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.34.zip",
+                "edb276d2e092d5c4c71c7518d3327e78"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.33.zip",
-                "89b45debc707ff3202c2fe22d554cd0f"
+                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.34.zip",
+                "bd73eb19e8ac2e26e631a08d2f9c3186"
             ]
         ]
     ]

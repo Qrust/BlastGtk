@@ -1,3 +1,3 @@
 #!/bin/sh
-SANDBOX="$(echo .cabal-sandbox/ghc-*-packages.conf.d)"
+SANDBOX="$(echo .cabal-sandbox/*ghc*packages.conf.d)"
 ghci -package-db=$SANDBOX $@

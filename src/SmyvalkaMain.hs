@@ -46,7 +46,7 @@ data Config = Config
     ,_board               :: String
     ,_proxyFile           :: String
     ,_exclude             :: [String]
-    ,_successFile         :: String
+    ,_successFile         :: Maybe String
     ,_antigateKey         :: String
     ,_antigateHost        :: String
     ,_disableRetryCaptcha :: Bool
@@ -61,7 +61,7 @@ data Config = Config
 data Env = Env
     {manager             :: !Manager
     ,board               :: !Board
-    ,successFile         :: !FilePath
+    ,successFile         :: !(Maybe FilePath)
     ,antigateKey         :: !ApiKey
     ,disableRetryCaptcha :: !Bool
     ,disableRetryAlways  :: !Bool
@@ -92,7 +92,7 @@ impureAnnotatedCmdargsConfig = Config
         &= name "exclude"
         &= help "Не использовать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt 123456789 /b/ goodlist.txt"
         &= typ "Файл_с_проксями..."
-    ,_successFile = []
+    ,_successFile = Nothing
         &= explicit
         &= name "S"
         &= name "success"
@@ -226,9 +226,17 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
                                     "}"
                         new <- antigate e proxy
                         runProxyPoster new
+                | o == TooFastThread || o == TooFastPost -> do
+                    putStrLn $ show proxy ++ ": " ++ show o ++ ", TODO move captcha to other proxy"
+                    return ()
                 | successOutcome o ->
-                    liftIO $ withFile successFile AppendMode $ \h ->
-                        B8.hPutStrLn h $ encodeUtf8 $ show proxy
+                    case successFile of
+                        Nothing ->
+                            putStrLn $ show proxy ++ ": SUCCESS, but no success-file specified."
+                        Just s -> do
+                            putStrLn $ show proxy ++ ": SUCCESS, appending to \"" ++ fromString s ++ "\"."
+                            liftIO $ withFile s AppendMode $ \h ->
+                                B8.hPutStrLn h $ encodeUtf8 $ show proxy
                 | otherwise ->
                     if disableRetryAlways
                       then return ()
@@ -346,6 +354,14 @@ mainloop proxies = do
                 "Завершено " ++ show (fsl-nwl) ++ " из " ++ show fsl
         loop nws fsl
 
+readProxyStrings file = do
+             Set.fromList
+           . filter (not . T.null)
+           . T.lines
+           . T.filter (/= '\r')
+           . decodeUtf8
+            <$> B.readFile file
+
 main :: IO ()
 main = withSocketsDo $ do
     let md = cmdArgsMode impureAnnotatedCmdargsConfig
@@ -358,14 +374,6 @@ main = withSocketsDo $ do
                   "\" как борду, возможно вы имели ввиду \"/" ++ _board ++
                     "/\"?")
                 $ readBoard $ _board
-
-        let
-          readProxyStrings file = do
-             Set.fromList
-           . filter (not . T.null)
-           . T.lines
-           . decodeUtf8
-            <$> B.readFile file
 
         _proxyStrings <- readProxyStrings _proxyFile
         excludeStrings <- foldl' Set.union Set.empty <$> mapM readProxyStrings _exclude

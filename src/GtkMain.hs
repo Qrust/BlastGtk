@@ -48,10 +48,12 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
+-- URGENT \r в листах прокси
+-- URGENT Preserve captcha answers after shutdown
+-- URGENT ввод капчи руками в смывалке и чекере
 -- URGENT proxychecker retry captcha
 -- URGENT Checker resume after shutdown.
-
--- URGENT ввод капчи руками в смывалке и чекере
+-- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
 
 -- URGENT записывать все прокси с которых удалось запостить в файл
 
@@ -132,8 +134,6 @@ import GHC.Conc
 -- TODO shuffleM in pastagen is probably ungodly slow
 
 -- URGENT Some lag in the GUI MIGHT be caused by unevaluated thunks in stm stuff.
-
--- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
 
 -- URGENT Move escaping to pastagen
 -- URGENT upload images via conduit source

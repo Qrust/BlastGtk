@@ -8,7 +8,8 @@ if [ -d "cabal-dev" ]
 fi
 if [ -d ".cabal-sandbox" ]
     then
-        _configure="sandbox-configure"
+#        _configure="sandbox-configure"
+        _configure="configure"
     else
         _configure="configure"
 fi

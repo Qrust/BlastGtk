@@ -233,7 +233,7 @@ impureAnnotatedCmdargsConfig = Config
         ,name "version"
         ,summary (showVersion version)]
     &= summary "Проксичекер для ссача"
-    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если dead.1 существует, то хорошие прокси будут записаны в output.2 даже если output.1 не существует."
+    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.Символы | и # используются для комментариев.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если dead.1 существует, то хорошие прокси будут записаны в output.2 даже если output.1 не существует."
 
 -- | Exceptions are handled inside 'post'
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
@@ -250,7 +250,8 @@ checkProxy proxy = do
         -- HACK Lock log / fast-logger
         outcome' <- do
             case antigateKey of
-              Just k ->
+              Just k -> do
+                putStrLn $ show proxy ++ ": Поcтим с проверкой капчи"
                 kludgeAntigateCheckProxy proxy e k
               Nothing -> do
                 putStrLn $ show proxy ++ ": Поcтим без капчи"
@@ -281,6 +282,7 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
           Right (chKey :: CurrentSsachCaptchaType) -> do
             cconf <- getCaptchaConf chKey
             (captchaBytes, ct) <- getCaptchaImage chKey
+            putStrLn $ show proxy ++ ": Got captcha"
             fname <- mkImageFileName ct
             (cid, answerStr) <-
                 -- Always without proxy
@@ -321,15 +323,16 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
     putStrLn $ "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
 
     case outcome of
-      o | o==NeedCaptcha || o==WrongCaptcha ->
+      o | o==NeedCaptcha || o==WrongCaptcha -> do
+        putStrLn $ show proxy ++ ": Reporting bad captcha"
         liftIO $ repBad
       _ ->
         return ()
 
     return outcome
 
-outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text)
-outcomeMessage proxy outcome = do
+outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text) -> ReaderT Env IO (ProxyCat, Text)
+outcomeMessage proxy outcome recurse = do
     Env{..} <- ask
     case outcome of
       InternalError e ->
@@ -358,11 +361,16 @@ outcomeMessage proxy outcome = do
               then do
                 putStrLn $ "SUCCESS! Got through captcha"
                 ape Good $ show proxy
-              else do
-                putStrLn $
-                    "Configured to check with captcha, but got " ++ show x
-                    ++ ". Throwing to Other"
-                ape OtherKludge $ show proxy
+              else if x == WrongCaptcha || x == NeedCaptcha
+                  then do
+                    putStrLn $
+                        show proxy ++ ": INCORRECT Captcha, retrying."
+                    recurse
+                  else do
+                    putStrLn $
+                        "Configured to check with captcha, but got " ++ show x
+                        ++ ". Throwing to Other"
+                    ape OtherKludge $ show proxy
           else do
             putStrLn $ "got " ++ show x ++ ", assuming that a proxy is good..."
             ape Good $ show proxy
@@ -372,7 +380,7 @@ outcomeMessage proxy outcome = do
 
 proxyReader :: MonadIO m => Bool -> Text -> m (Maybe BlastProxy)
 proxyReader socks ip = do
-    case readBlastProxy socks (T.unpack ip) of
+    case readBlastProxy socks (takeWhile (\c -> c /= '|' && c /= '#') $ T.unpack ip) of
       Nothing -> do
         putStrLn $ "Couldn't parse as a proxy " ++ show ip
         return Nothing
@@ -419,8 +427,9 @@ mainloop proxies = do
         sourceTBMQueue proxyQueue
             C.$$ CL.mapM_ (\proxy -> do
                 res@(cat, _) <-
-                    (do outcome <- checkProxy proxy
-                        outcomeMessage proxy outcome
+                    fix (\recurse -> do
+                        outcome <- checkProxy proxy
+                        outcomeMessage proxy outcome recurse
                     ) `catch` (\(e::SomeException) -> do
                         putStrLn $ "While checking {" ++ show proxy ++ "}, "
                             ++ "worker got exception: " ++ show e

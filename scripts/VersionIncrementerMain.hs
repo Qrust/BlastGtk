@@ -3,7 +3,7 @@ import Import
 import Data.Version
 import Text.ParserCombinators.ReadP
 import System.Environment
-import System.IO hiding (putStrLn, putStr)
+import System.IO
 
 -- HORRIBLE HACK
 --  Not a hack really, what else could we possibly do?
@@ -24,4 +24,4 @@ main = do
 --              writeFile "blast-it-with-piss.cabal.bak" cf
                 writeFile "blast-it-with-piss.cabal" $
                     unlines (a ++ ["version: " ++ showVersion newv] ++ b)
-    
+

@@ -122,8 +122,9 @@ upload pass contentType arcfilename desc arcbytes = withManager $ \m -> do
       req =
         applyBasicAuth username (encodeUtf8 pass) $ _req
             {method = methodPost
+            ,requestHeaders = [(hUserAgent, "http-conduit")]
             ,requestBody = RequestBodyLBS $ encode $ object
-                ["name" .= fromString arcfilename
+                ["name" .= (fromString arcfilename :: Text)
                 ,"size" .= B.length arcbytes
                 ,"description" .= desc
                 ,"content_type" .= decodeUtf8 contentType
