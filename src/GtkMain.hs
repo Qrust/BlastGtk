@@ -48,12 +48,22 @@ import GHC.Conc
       - EnvPart             # the gui stops
 -}
 
+-- GOAL merge gtkblast, smyvalka and proxychecker
+
 -- URGENT \r в листах прокси
 -- URGENT Preserve captcha answers after shutdown
 -- URGENT ввод капчи руками в смывалке и чекере
 -- URGENT proxychecker retry captcha
 -- URGENT Checker resume after shutdown.
+-- URGENT Лимит TVar с количеством соединений с мочаном, check (< limit): Blast.post
+--      Проблема: Нету никакой "честности", прокси могут задохнуться
+--      Pool?
+-- URGENT Reclaim proxies after failure/Don't discard. Write failures.
+--      Таймаут? Подождать 30 секунд после фейла и попробовать ещё?
+--      Увеличивать таймаут при повторных фейлах?
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
+-- URGENT "в вашем сообщении спам" message
+-- URGENT categorize log messages to reduce clutter, switch to table to add speed (keera)
 
 -- URGENT записывать все прокси с которых удалось запостить в файл
 
