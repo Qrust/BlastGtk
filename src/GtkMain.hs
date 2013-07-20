@@ -50,6 +50,8 @@ import GHC.Conc
 
 -- GOAL merge gtkblast, smyvalka and proxychecker
 
+-- URGENT blacklist pasta labeled as spam.
+-- URGENT Update SpamFiltered outcome
 -- URGENT \r в листах прокси
 -- URGENT Preserve captcha answers after shutdown
 -- URGENT ввод капчи руками в смывалке и чекере
