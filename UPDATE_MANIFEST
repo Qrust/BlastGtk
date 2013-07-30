@@ -1,7 +1,11 @@
 {
-    "version": "1.1.34",
+    "version": "1.1.35",
     "imagePackZipArchives": [],
     "changelog": [
+        [
+            "1.1.35",
+            "В смывалку добавлено рудиментарное чеканье проксей.\nВ засиралке сообщение о ошибках больше не заслоняют статистику.\nВ засиралке пофикшено клаудфлеровское 403.\nЧекер теперь перерешает капчу.\nЧекер и смывалка теперь игнорят 5** ошибки и пробуют снова.\nПофикшены проблемы с чтением списков проксей с CRLF окончаниями строк.\nВ засиралке пофикшено непроизвольное создание тредов когда не удается распарсить страницу."
+        ],
         [
             "1.1.34",
             "Добавлены /fs/ и /moba/\nДобавлены опции для перепостинга в смывалке\nДобавлена опция для записи успешных проксей в смывалке\nДобавлено перерешение капчи при фейле в проксичекере"
@@ -207,15 +211,15 @@
         [
             "Linux",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-linux-x86-1.1.34.zip",
-                "edb276d2e092d5c4c71c7518d3327e78"
+                "https://github.com/exbb2/BlastItWithPiss/releases/download/1.1.35/BlastItWithPiss-linux-x86-1.1.35.zip",
+                "80470065c52fe21896bfe9be86732548"
             ]
         ],
         [
             "Windows",
             [
-                "https://github.com/downloads/exbb2/BlastItWithPiss/BlastItWithPiss-windows-x86-1.1.34.zip",
-                "bd73eb19e8ac2e26e631a08d2f9c3186"
+                "https://github.com/exbb2/BlastItWithPiss/releases/download/1.1.35/BlastItWithPiss-windows-x86-1.1.35.zip",
+                "554c040a44b945dd5fa941e7ec55d2d3"
             ]
         ]
     ]

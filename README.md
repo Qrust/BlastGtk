@@ -3,7 +3,7 @@
 **TODO** перечислить такие-то фичи
 
 #Как установить
-+ [Скачайте версию для вашей ОС](https://github.com/exbb2/BlastItWithPiss/downloads)
++ [Скачайте версию для вашей ОС](https://github.com/exbb2/BlastItWithPiss/releases)
 + Распакуйте
 + Запустите BlastItWithPiss(.exe)
 + Ну охуеть теперь
