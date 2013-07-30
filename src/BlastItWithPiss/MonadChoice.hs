@@ -47,14 +47,14 @@ generateSymbolString maxlength = do
     spc <- generateRandomString (0, plength) (' ', ' ')
     shuffleM (num++beng++seng++brus++srus++spc)
 
-instance MonadIO m => MonadRandom (ResourceT m) where
-    getRandom = liftIO getRandom
-    getRandoms = liftIO getRandoms
-    getRandomR = liftIO . getRandomR
-    getRandomRs = liftIO . getRandomRs
+instance MonadRandom m => MonadRandom (ResourceT m) where
+    getRandom   = lift getRandom
+    getRandoms  = lift getRandoms
+    getRandomR  = lift . getRandomR
+    getRandomRs = lift . getRandomRs
 
 instance MonadRandom m => MonadRandom (StateT s m) where
-    getRandom = lift getRandom
-    getRandoms = lift getRandoms
-    getRandomR = lift . getRandomR
+    getRandom   = lift getRandom
+    getRandoms  = lift getRandoms
+    getRandomR  = lift . getRandomR
     getRandomRs = lift . getRandomRs

@@ -213,6 +213,11 @@ main = do
     wabytes <- B.readFile wa
     let !wasum = renderMD5 $ hash' wabytes
 
+    uploadZips
+        [(lafilename, "Вайпалка для Linux", labytes)
+        ,(wafilename, "Вайпалка для Шiндoшs. Версия для прыщей работает гораздо быстрее и лучше", wabytes)
+        ]
+
     putStrLn "Updating manifest"
     let manifest = manifest'
             {version = v
@@ -223,11 +228,6 @@ main = do
             }
     L.writeFile "UPDATE_MANIFEST" $ encodePretty manifest
     putStrLn "Updated manifest..."
-
-    uploadZips
-        [(lafilename, "Вайпалка для Linux", labytes)
-        ,(wafilename, "Вайпалка для Шiндoшs. Версия для прыщей работает гораздо быстрее и лучше", wabytes)
-        ]
 
     putStrLn "Done uploading."
 

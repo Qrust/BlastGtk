@@ -55,7 +55,7 @@ class Captcha a where
     getNewCaptcha :: (MonadChoice m, MonadResource m') => Board -> Maybe Int -> UserCode -> Blast (Either (CAnswer m m') a)
 
     -- | If they use systems like recaptcha or solveMedia, then we know their
-    -- public key before hand, so we don't have to query makaba to get our challenge.
+    -- public key beforehand, so we don't have to query makaba to get our challenge.
     unsafeGenNewCaptcha :: Maybe (Blast a)
     unsafeGenNewCaptcha = Nothing
 
@@ -98,8 +98,9 @@ instance Captcha Yandex where
           else
             let !str = T.unpack res
             in return $ Right $ Yandex $ lastNote (yandexerr str) $ lines str
-      where yandexerr a = "Yandex captcha: Challenge ID not found in \"" ++ a ++
-                            "\". Update code."
+      where
+      yandexerr a =
+       "Yandex captcha: Challenge ID not found in \"" ++ a ++ "\". Update code."
 
     unsafeGenNewCaptcha = Nothing
 

@@ -11,6 +11,7 @@ import BlastItWithPiss.Escaping
 import BlastItWithPiss.Image
 import BlastItWithPiss.Captcha
 import BlastItWithPiss.Blast
+import BlastItWithPiss.Parsing
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -18,14 +19,6 @@ import qualified Data.Text.Encoding as T
 import Control.Failure
 
 import Control.Monad.Trans.Resource
-
-
-
-
-import BlastItWithPiss.Parsing
-
-
-
 
 data PostData
     = PostData
@@ -51,6 +44,7 @@ prepare
     -> CAnswer m m'
     -> [Part m m']
     -> Int
+    -> ([Part m m'] -> [Part m m'])
     -> m (Request m', Outcome)
 prepare
     board
@@ -58,13 +52,16 @@ prepare
     PostData{text=unesctext',..}
     (CAnswer _ captchafields)
     otherfields
-    maxlength = do
+    maxlength
+    postprocess
+    = do
     let
       (unesctext, rest) = splitAt maxlength unesctext'
 
     text <- escapingFunction escapeInv escapeWrd unesctext
 
-    let fields = (
+    let fields =
+          postprocess $
             ([partBS "parent" (maybe "" show thread)
              ,partBS "kasumi" $ T.encodeUtf8 $ T.pack subject
              ,partBS "shampoo" $ T.encodeUtf8 $ T.pack text
@@ -72,8 +69,8 @@ prepare
                 (maybe mempty (filename . fromJunkImage) image)
                 -- TODO upload image using conduit
                 (RequestBodyLBS $ maybe mempty (bytes . fromJunkImage) image)
-            ,partBS "video" $ T.encodeUtf8 video
-            ]) ++
+             ,partBS "video" $ T.encodeUtf8 video
+            ] ++
             (if sage
                 then [partBS "nabiki" "sage"
                      ,partBS "sage" "on"]
@@ -83,17 +80,16 @@ prepare
                 then [partBS "makewatermark" "on"]
                 else []
             ) ++
-            (captchafields
-            ))
+            captchafields
+            )
             `union'`
-            (otherfields)
+            otherfields
 
     rreq <- parseUrl $ ssachPostUrl board thread
 
     let req' = rreq {
           requestHeaders =
            [(hReferer, ssachThread board thread)
-           ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
            ]
           ,responseTimeout = Just 30
           ,redirectCount = 0
@@ -118,7 +114,10 @@ prepare
 post :: (Request (ResourceT IO), Outcome) -> Blast (Outcome, Maybe Html)
 post (req, success) = do
 
-    let exc som = return (InternalError $ ErrorException $ toException som, Nothing)
+    let exc someex =
+          return
+            ( InternalError $ ErrorException $ toException someex
+            , Nothing)
 
     (do resp <- httpReqStrTags req
         let !st = responseStatus resp
@@ -137,6 +136,11 @@ post (req, success) = do
                     return (success, Nothing)
                   else
                     exc $ StatusCodeException st heads cj
+
+            |   statusCode st == 502
+             || statusCode st == 520
+             || statusCode st == 522
+             -> return (PostRejected, Nothing)
 
             | statusCode st == 503
              -> return (Five'o'ThreeError, Nothing)

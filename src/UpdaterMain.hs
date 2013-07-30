@@ -9,8 +9,6 @@ import Updater.GuiXML
 
 import qualified Paths_blast_it_with_piss as Paths
 
-import System.IO (putStrLn)
-
 import Data.Version
 
 import Control.Concurrent
@@ -202,10 +200,10 @@ main = withSocketsDo $ do
     (executablePath, _) <- splitExecutablePath
     args <- getArgs
     when (any (`elem` args) ["--help", "-h", "-?"]) $ do
-        putStrLn helpMessage
+        putStrLn $ fromString $ helpMessage
         exitSuccess
     when (any (`elem` args) ["-V", "--version"]) $ do
-        putStrLn $ showVersion Paths.version
+        putStrLn $ fromString $ showVersion Paths.version
         exitSuccess
     case args of
         ["--postinstall", rawv] -> do

@@ -63,6 +63,7 @@ data Env = E
 
     ,window :: Window
     ,wbuf :: TextBuffer
+    ,wlabelstats :: Label
     ,wlabelmessage :: Label
     ,wvboxcaptcha :: VBox
     ,wimagecaptcha :: Image
@@ -131,6 +132,7 @@ instance NFData Env where
 
         `seq` window
         `seq` wbuf
+        `seq` wlabelstats
         `seq` wlabelmessage
         `seq` wvboxcaptcha
         `seq` wimagecaptcha

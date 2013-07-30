@@ -10,9 +10,7 @@ import GtkBlast.Environment
 
 import BlastItWithPiss
 import BlastItWithPiss.Blast
-
-import qualified Data.Text as T
-import qualified Data.ByteString as B (readFile)
+import BlastItWithPiss.ProxyReader
 
 import qualified Data.Map as M
 
@@ -29,29 +27,40 @@ regenerateProxies = do
     modM proxies
         (`robustEnterpriseQualityBestPracticesSolution` (nnp ++ nhps ++ nsps))
 
-getProxyMap :: Bool -> CheckButton -> Entry -> IORef ModificationTime -> IORef [BlastProxy] -> E [BlastProxy]
+getProxyMap
+    :: Bool -> CheckButton -> Entry -> IORef ModificationTime -> IORef [BlastProxy]
+    -> E [BlastProxy]
 getProxyMap isSocks wcheckproxy wentryproxyfile proxymod proxylast = do
     enabled <- get wcheckproxy
     if enabled
-        then do
+      then do
         pf <- get wentryproxyfile
         d <- get proxymod
         nd <- appFile nullTime getModificationTime pf
         if (nd > d)
-            then do
-            writeLog $ "regen " ++ (if isSocks then "socks" else "http") ++ " proxy"
+          then do
+            let pType = if isSocks then "socks" else "http" :: Text
+            writeLog $ "regen " ++ pType ++ " proxy"
             set proxymod nd
-            nps <- mapMaybe (readBlastProxy isSocks) . lines <$>
-                    appFile [] (fmap (T.unpack . decodeUtf8) . B.readFile) pf
+            nps' <- liftIO $ readProxyFile isSocks pf
+            nps <- forMaybeM nps' $ either
+                (\ip -> Nothing <$ (writeLog $
+                    pType
+                 ++ " file \"" ++ fromString pf ++ "\": "
+                 ++ "Couln't parse as a proxy \""
+                 ++ ip ++ "\""))
+                (return . Just)
             set proxylast nps
             return nps
-            else
+          else
             get proxylast
-        else do
+      else do
         set proxylast []
         return []
 
-robustEnterpriseQualityBestPracticesSolution :: M.Map BlastProxy ProxySettings -> [BlastProxy] -> E (M.Map BlastProxy ProxySettings)
+robustEnterpriseQualityBestPracticesSolution
+    :: M.Map BlastProxy ProxySettings -> [BlastProxy]
+    -> E (M.Map BlastProxy ProxySettings)
 robustEnterpriseQualityBestPracticesSolution x a = do
     y <- M.fromList <$> forM a (\p -> (,) p <$> io defPrS)
     return $ M.intersection x y `M.union` y

@@ -235,7 +235,7 @@ adjustStrategy strategy canmakethread Page{..}
      = map aux (filter goodStrategy strategy)
 
     | otherwise
-     = strategy -- abort
+     = filter goodStrategy strategy -- abort
   where
     goodStrategy (st, _) =
         notElem st $
@@ -257,6 +257,7 @@ chooseMode board canmakethread page =
 chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
 chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
 chooseThread' board canfail mode Page{..}
+    | null threads = error "chooseThread': No threads to choose from"
     -- >kokoko
     | thrds' <-
         if mode == ShitupSticky

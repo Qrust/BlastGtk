@@ -12,12 +12,10 @@ import BlastItWithPiss.Parsing
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Board
 import BlastItWithPiss.MonadChoice
+import BlastItWithPiss.ProxyReader
 
 import qualified Data.Text       as T
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
-
-import qualified Data.Text.IO.Locale as LTIO
 
 import qualified Data.Set as Set
 
@@ -28,17 +26,14 @@ import System.Console.CmdArgs.Implicit hiding (def)
 import Data.Version
 
 import Control.Concurrent
+import Control.Concurrent.STM
 
 import Network.Socket
+import System.Directory
 import System.Environment
 
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
-
-
-{-# INLINE putStrLn #-}
-putStrLn :: MonadIO m => Text -> m ()
-putStrLn = liftIO . LTIO.putStrLn
 
 -- NOTE cmdargs is deeply magical, won't let me use strict fields
 data Config = Config
@@ -46,7 +41,6 @@ data Config = Config
     ,_board               :: String
     ,_proxyFile           :: String
     ,_exclude             :: [String]
-    ,_successFile         :: Maybe String
     ,_antigateKey         :: String
     ,_antigateHost        :: String
     ,_disableRetryCaptcha :: Bool
@@ -55,13 +49,17 @@ data Config = Config
     ,_imageDir            :: (Maybe FilePath)
     ,_pastaFile           :: (Maybe FilePath)
     ,_videoFile           :: (Maybe FilePath)
+    ,_captchaFieldName    :: String
+    ,_output              :: FilePath
+    ,_banned              :: FilePath
+    ,_dead                :: FilePath
+    ,_other               :: FilePath
     }
   deriving (Show, Data, Typeable)
 
 data Env = Env
     {manager             :: !Manager
     ,board               :: !Board
-    ,successFile         :: !(Maybe FilePath)
     ,antigateKey         :: !ApiKey
     ,disableRetryCaptcha :: !Bool
     ,disableRetryAlways  :: !Bool
@@ -69,9 +67,18 @@ data Env = Env
     ,imageDir            :: !(Maybe FilePath)
     ,pastas              :: ![String]
     ,videos              :: ![Text]
+    ,captchaFieldName    :: !Text
+    ,writeQueue          :: !(TQueue (ProxyCat, Text))
     }
 
 type M = ReaderT Env IO
+
+data ProxyCat
+    = Good
+    | Ban
+    | Dead
+    | Other
+  deriving (Eq, Show)
 
 impureAnnotatedCmdargsConfig :: Config
 impureAnnotatedCmdargsConfig = Config
@@ -92,11 +99,6 @@ impureAnnotatedCmdargsConfig = Config
         &= name "exclude"
         &= help "Не использовать прокси из этого списка. Аргумент аккумулируется, пример: ./proxychecker -e badlist1.txt -e badlist2.txt -e badlist3.txt 123456789 /b/ goodlist.txt"
         &= typ "Файл_с_проксями..."
-    ,_successFile = Nothing
-        &= explicit
-        &= name "S"
-        &= name "success"
-        &= help "Записывать прокси с которых удалось запостить в этот файл. Можно использовать вместе с -e чтобы не тратить капчу на использованные прокси: proxychecker 123456789 /b/ list.txt -S used.txt; proxychecker -e used.txt 123456789 /b/ list.txt"
     ,_antigateKey = []
         &= argPos 0
         &= typ "Ключ_антигейта"
@@ -138,45 +140,55 @@ impureAnnotatedCmdargsConfig = Config
         &= name "video-file"
         &= help "Файл с ссылками на видео"
         &= typ "ФАЙЛ"
+    ,_captchaFieldName = "captcha_value_id_06"
+        &= explicit
+        &= name "C"
+        &= name "captcha-field-name"
+        &= help "TEMPORARY KLUDGE: переименовать captcha_value_id_06 в аргумент"
+        &= typ "СТРОКА"
+    ,_output =
+        "smyvalka-output"
+        &= explicit
+        &= name "o"
+        &= name "output"
+        &= help "Записывать прокси с которых удалось запостить в этот файл. Можно использовать вместе с -e чтобы не тратить капчу на использованные прокси: proxychecker 123456789 /b/ list.txt -S used.txt; proxychecker -e used.txt 123456789 /b/ list.txt. По дефолту \"smyvalka-output\""
+        &= typFile
+    ,_banned =
+        "smyvalka-banned"
+        &= explicit
+        &= name "b"
+        &= name "banned"
+        &= help "Файл куда писать забаненные прокси, по дефолту \"smyvalka-banned\""
+        &= typFile
+    ,_dead =
+        "smyvalka-dead"
+        &= name "d"
+        &= name "bad"
+        &= help "Файл куда писать прокси с которыми не удалось связаться по каким-то причинам, по дефолту \"dead\""
+        &= typFile
+    ,_other =
+        "smyvalka-other"
+        &= name "O"
+        &= name "other"
+        &= help "Куда писать остальные прокси, например те у которых обнаружился действующий таймаут на постинг"
+        &= typFile
     }
     &= program "smyvalka"
     &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
     &= versionArg [explicit, name "V", name "version", summary (showVersion version)]
     &= summary "Смывалка доски"
-    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт."
-
-displayCaptchaCounters :: IORef Int -> IORef Int -> IO ()
-displayCaptchaCounters ready all = go 0 0
-  where
-    go r a = do
-        rd <- readIORef ready
-        al <- readIORef all
-        when (rd /= r || a /= al) $ do
-            putStrLn $ "Готово капчи: " ++ show rd ++ "/" ++ show al
-        threadDelay 100000
-        go rd al
+    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.Символы | и # используются для комментариев.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если smyvalka-dead существует, то дохлота будет записываться в smyvalka-dead.1, если smyvalka-dead.1 существует, то в smyvalka-dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если smyvalka-dead.1 существует, то хорошие прокси будут записаны в smyvalka-output.2 даже если smyvalka-output.1 не существует. Такая схема может показаться неудобной, что собственно так и есть. Мы работаем над этим по мере мотивации, а пока cat и man bash в руки."
 
 newtype ProxyPoster
     = ProxyPoster {runProxyPoster :: IO ()}
-
-createThreadThread
-    :: MVar ProxyPoster
-    -> IO (MVar ())
-createThreadThread posterMVar = do
-    doneMVar <- newEmptyMVar
-    _ <- forkIO $ do
-        poster <- takeMVar posterMVar
-        runProxyPoster poster
-            `finally` putMVar doneMVar ()
-    return doneMVar
 
 createThread :: Env -> CAnswer Blast (ResourceT IO) -> Maybe Image -> IO () -> Blast ()
 createThread e@Env{..} cAnswer captchaImage badCaptcha = do
     proxy <- httpGetProxy
     (do
-        pasta <- fromMaybe "" <$> chooseFromListMaybe pastas
+        pasta <- fromMaybe mempty <$> chooseFromListMaybe pastas
 
-        video <- fromMaybe "" <$> chooseFromListMaybe videos
+        video <- fromMaybe mempty <$> chooseFromListMaybe videos
 
         mimage <- do
             if T.null video
@@ -192,7 +204,10 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
 
         let otherfields = ssachLastRecordedFields board
 
-        (!req, ~_) <- prepare board Nothing
+        (!req, ~_) <-
+            prepare
+                board
+                Nothing
                 PostData
                     {subject = ""
                     ,text = pasta
@@ -202,7 +217,13 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
                     ,makewatermark = False
                     ,escapeInv = False
                     ,escapeWrd = False}
-                  cAnswer otherfields ssachLengthLimit
+                cAnswer
+                otherfields
+                ssachLengthLimit
+                (map $ \x ->
+                    if partName x == "captcha_value_id_06"
+                      then x{partName = captchaFieldName}
+                      else x)
 
         fix $ \recurse -> do
             (!outcome, ~_) <- post (req, Success)
@@ -210,37 +231,39 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
                 "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
             case outcome of
               o | Banned _ <- o ->
-                    return ()
+                    ape Ban $ show proxy ++ "| Ban, reason was: " ++ show o
+                | o == TooFastThread || o == TooFastPost -> do
+                    putStrLn $
+                        show proxy ++ ": " ++ show o ++
+                        ", too fast, FIXME move captcha to other proxy"
+                    ape Other $
+                        show proxy
+                        ++ "| Too fast, FIXME move captcha to other proxy "
+                        ++ show o
                 | o == PostRejected || o == Five'o'ThreeError ->
                     recurse
-                | o == LongPost || o == EmptyPost
+                |    o == LongPost    || o == EmptyPost
                   || o == SameMessage || o == SameImage
-                  || o == Wordfilter || o == CorruptedImage ->
+                  || o == Wordfilter  || o == CorruptedImage ->
                     -- restart
                     createThread e cAnswer captchaImage badCaptcha
                 | o == NeedCaptcha || o == WrongCaptcha ->
                     liftIO $ do
                       badCaptcha
                       unless disableRetryCaptcha $ do
-                        putStrLn $ "Retrying captcha for {" ++ show proxy ++
-                                    "}"
+                        putStrLn $
+                            "Retrying captcha for {" ++ show proxy ++ "}"
                         new <- antigate e proxy
                         runProxyPoster new
-                | o == TooFastThread || o == TooFastPost -> do
-                    putStrLn $ show proxy ++ ": " ++ show o ++ ", TODO move captcha to other proxy"
-                    return ()
-                | successOutcome o ->
-                    case successFile of
-                        Nothing ->
-                            putStrLn $ show proxy ++ ": SUCCESS, but no success-file specified."
-                        Just s -> do
-                            putStrLn $ show proxy ++ ": SUCCESS, appending to \"" ++ fromString s ++ "\"."
-                            liftIO $ withFile s AppendMode $ \h ->
-                                B8.hPutStrLn h $ encodeUtf8 $ show proxy
+                | successOutcome o -> do
+                    ape Good $ show proxy
                 | otherwise ->
                     if disableRetryAlways
-                      then return ()
-                      else recurse
+                      then
+                        ape Dead $
+                            show proxy ++ "| failed, exception was: " ++ show o
+                      else
+                        recurse
         ) `catch`
             \(ex::SomeException) -> do
                 liftIO $ putStrLn $ "{" ++ show proxy ++
@@ -250,6 +273,8 @@ createThread e@Env{..} cAnswer captchaImage badCaptcha = do
                 if retryExceptions
                   then createThread e cAnswer captchaImage badCaptcha
                   else return ()
+  where
+    ape c t = liftIO $ atomically $ writeTQueue writeQueue (c, t)
 
 antigate
     :: Env
@@ -258,13 +283,22 @@ antigate
 antigate e@Env{..} proxy = do
   ua <- newUserAgent
   runBlastNew manager proxy ua $ do
-    nc <- getNewCaptcha board Nothing ""
+    nc <- fix $ \recurse ->
+        getNewCaptcha board Nothing ""
+        `catch` \_e -> case _e of
+          (StatusCodeException st _ _)
+            | statusCode st >= 500 && statusCode st <= 599 -> do
+                putStrLn $
+                    "{" ++ show proxy ++ "} couldn't fetch captcha, retrying,"
+                    ++ " exception was: " ++ show _e
+                recurse
+          _ -> throwIO _e
     case nc of
       Left adaptiveAnswer -> do
         let repBad = putStrLn $
-                if cAdaptive adaptiveAnswer
-                    then "Adaptive captcha failed"
-                    else "Guessed captcha, but it was wrong."
+              if cAdaptive adaptiveAnswer
+                then "Adaptive captcha failed"
+                else "Guessed captcha, but it was wrong."
         st <- getBlastState
         return $ ProxyPoster $ runBlast manager st $
             createThread e adaptiveAnswer Nothing repBad
@@ -282,7 +316,7 @@ antigate e@Env{..} proxy = do
                 x <- runResourceT $ reportBad antigateKey cid manager
                 putStrLn $
                     "Reported bad captcha " ++ show cid ++ ":"
-                    ++ show answerStr ++ "for proxy {" ++
+                    ++ show answerStr ++ " for proxy {" ++
                     show proxy ++ "}, report result: " ++ show x
         st <- getBlastState
 
@@ -304,10 +338,24 @@ antigateThread (success, fail) e proxy mvar = do
         putStrLn $
             "{" ++ show proxy ++ "} Failed to get captcha, exception was: "
                 ++ show ex
+        atomically $ writeTQueue (writeQueue e) $ (,) Dead $
+            show proxy ++ "| Failed to get captcha, exception was: "
+            ++ show ex
         fail
       Right a -> do
         putMVar mvar a
         success
+
+displayCaptchaCounters :: IORef Int -> IORef Int -> IO ()
+displayCaptchaCounters ready all = go 0 0
+  where
+    go r a = do
+        rd <- readIORef ready
+        al <- readIORef all
+        when (rd /= r || a /= al) $ do
+            putStrLn $ "Готово капчи: " ++ show rd ++ "/" ++ show al
+        threadDelay 100000
+        go rd al
 
 collectCaptcha :: [BlastProxy] -> M [MVar ProxyPoster]
 collectCaptcha [] =
@@ -333,6 +381,17 @@ collectCaptcha proxies = do
         putStrLn "BLAST IT WITH PISS"
         return resMVars
 
+createThreadThread
+    :: MVar ProxyPoster
+    -> IO (MVar ())
+createThreadThread posterMVar = do
+    doneMVar <- newEmptyMVar
+    _ <- forkIO $ do
+        poster <- takeMVar posterMVar
+        runProxyPoster poster
+            `finally` putMVar doneMVar ()
+    return doneMVar
+
 mainloop :: [BlastProxy] -> M ()
 mainloop proxies = do
     Env{..} <- ask
@@ -354,13 +413,49 @@ mainloop proxies = do
                 "Завершено " ++ show (fsl-nwl) ++ " из " ++ show fsl
         loop nws fsl
 
-readProxyStrings file = do
-             Set.fromList
-           . filter (not . T.null)
-           . T.lines
-           . T.filter (/= '\r')
-           . decodeUtf8
-            <$> B.readFile file
+applySuccNum :: [String] -> Int -> [String]
+applySuccNum fpaths 0 = fpaths
+applySuccNum fpaths i = map (\x -> x ++ "." ++ show i) fpaths
+
+filepathSuccNum :: [String] -> IO Int
+filepathSuccNum fpaths' = go fpaths' 0
+  where
+    go fpaths !scnum = do
+        somethingThere <-
+            flip anyM (applySuccNum fpaths scnum) $ \fpath ->
+                (||) <$> doesFileExist fpath <*> doesDirectoryExist fpath
+        if somethingThere
+          then do
+            (+ 1) <$> go fpaths (scnum + 1)
+          else
+            return 0
+
+proxyReader :: MonadIO m => Bool -> Text -> m (Maybe BlastProxy)
+proxyReader socks ip = do
+    case readBlastProxy socks (takeWhile (\c -> c /= '|' && c /= '#') $ T.unpack ip) of
+      Nothing -> do
+        putStrLn $ "Couldn't parse as a proxy " ++ show ip
+        return Nothing
+      p -> return p
+
+writerThread
+    :: TQueue (ProxyCat, Text)
+    -> FilePath -> FilePath -> FilePath -> FilePath -> IO ()
+writerThread tq output banned dead other = forever $ do
+    (cat, text) <- atomically $ readTQueue tq
+
+    let f = case cat of
+            Good  -> output
+            Ban   -> banned
+            Dead  -> dead
+            Other -> other
+
+    putStrLn $
+        "Записываем " ++ show cat ++
+        " в файл \"" ++ fromString f ++ "\": "
+        ++ text
+    withBinaryFile f AppendMode $ \h -> do
+        B8.hPutStrLn h $ encodeUtf8 text
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -375,30 +470,43 @@ main = withSocketsDo $ do
                     "/\"?")
                 $ readBoard $ _board
 
-        _proxyStrings <- readProxyStrings _proxyFile
-        excludeStrings <- foldl' Set.union Set.empty <$> mapM readProxyStrings _exclude
-        let proxyStrings =
-                Set.toList $
-                    _proxyStrings `Set.difference` excludeStrings
+        let isSocks = _socks || filenameIsSocks _proxyFile
 
-        let isSocks = _socks || "socks" `isInfixOf` map toLower _proxyFile
+        let readProxyStrings file = do
+              b <- doesFileExist file
+              if b
+                then do
+                  xs <- readProxyFile isSocks file
+                  forMaybeM xs $ either
+                    ((Nothing <$) . putStrLn . ("Couln't read as a proxy: " ++))
+                    (return . Just)
+                else do
+                  putStrLn $ "Can't read proxy from file \""
+                      ++ T.pack file ++ "\": File does not exist"
+                  return []
 
-        proxies <- forMaybeM proxyStrings $ \ip ->
-            case readBlastProxy isSocks (T.unpack ip) of
-              Nothing -> do
-                LTIO.hPutStrLn stderr $ "Couldn't parse as a proxy " ++ show ip
-                return Nothing
-              p -> return p
+        proxySet1 <- Set.fromList <$> readProxyStrings _proxyFile
+        excludeProxies <- foldl' Set.union Set.empty
+                        <$> mapM (fmap Set.fromList . readProxyStrings) _exclude
+
+        let proxies = Set.toList $ proxySet1 `Set.difference` excludeProxies
 
         pastas <- fromMaybe [] <$> maybe (return Nothing) readPastaFile _pastaFile
 
         videos <- fromMaybe [] <$> maybe (return Nothing) readVideoFile _videoFile
 
+        [output, banned, dead, other] <- do
+            let fs = [_output, _banned, _dead, _other]
+            applySuccNum fs <$> filepathSuccNum  fs
+
+        writeQueue <- newTQueueIO
+
+        _ <- forkIO $ writerThread writeQueue output banned dead other
+
         withManagerSettings def{managerConnCount=1000000} $
             \m -> liftIO $ runReaderT (mainloop proxies)
                 Env {manager = m
                     ,board = board
-                    ,successFile = _successFile
                     ,antigateKey = def{api_key=_antigateKey, api_host=_antigateHost}
                     ,disableRetryCaptcha = _disableRetryCaptcha
                     ,disableRetryAlways = _disableRetryAlways
@@ -406,4 +514,6 @@ main = withSocketsDo $ do
                     ,imageDir = _imageDir
                     ,pastas = pastas
                     ,videos = videos
+                    ,captchaFieldName = T.pack _captchaFieldName
+                    ,writeQueue = writeQueue
                     }

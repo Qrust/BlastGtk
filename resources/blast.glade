@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <!-- interface-naming-policy project-wide -->
   <object class="GtkActionGroup" id="actiongroup1"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="upper">999999999</property>
@@ -44,10 +43,12 @@
     <property name="xpad">2</property>
     <property name="ypad">2</property>
     <property name="stock">gtk-dialog-warning</property>
+    <property name="icon-size">2</property>
   </object>
   <object class="GtkImage" id="image4">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="pixel_size">16</property>
     <property name="icon_name">edit-clear</property>
   </object>
   <object class="GtkImage" id="image8">
@@ -59,6 +60,7 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-sort-ascending</property>
+    <property name="icon-size">2</property>
   </object>
   <object class="GtkTextBuffer" id="textbuffer1"/>
   <object class="GtkVBox" id="vboxcaptcha">
@@ -173,8 +175,6 @@
               <object class="GtkScrolledWindow" id="scrolledwindow1">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="hscrollbar_policy">automatic</property>
-                <property name="vscrollbar_policy">automatic</property>
                 <child>
                   <object class="GtkTextView" id="textview-edit-pasta">
                     <property name="visible">True</property>
@@ -283,8 +283,6 @@
               <object class="GtkScrolledWindow" id="scrolledwindow4">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="hscrollbar_policy">automatic</property>
-                <property name="vscrollbar_policy">automatic</property>
                 <child>
                   <object class="GtkTextView" id="textview-edit-video">
                     <property name="visible">True</property>
@@ -387,16 +385,42 @@
                 <property name="can_focus">False</property>
                 <property name="spacing">3</property>
                 <child>
-                  <object class="GtkLabel" id="labelmessage">
+                  <object class="GtkVBox" id="vbox1111">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Вайп ещё не начат</property>
-                    <property name="use_markup">True</property>
-                    <property name="wrap">True</property>
+                    <child>
+                      <object class="GtkLabel" id="labelstats">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Постов: 0 / Активно: 0 / Забанено: 0</property>
+                        <property name="wrap">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="labelmessage">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Вайп ещё не начат</property>
+                        <property name="use_markup">True</property>
+                        <property name="wrap">True</property>
+                        <property name="selectable">True</property>
+                        <property name="track_visited_links">False</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
                   <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
@@ -429,6 +453,8 @@
                         <property name="height_request">41</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="has_focus">True</property>
+                        <property name="is_focus">True</property>
                         <property name="can_default">True</property>
                         <property name="has_default">True</property>
                         <property name="receives_default">True</property>
@@ -482,16 +508,47 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
-                                          <object class="GtkLabel" id="label2">
+                                          <object class="GtkHBox" id="hbox4">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
-                                            <property name="label" translatable="yes">Доски</property>
-                                            <property name="mnemonic_widget">alignment3</property>
-                                            <property name="single_line_mode">True</property>
-                                            <attributes>
-                                              <attribute name="weight" value="bold"/>
-                                            </attributes>
+                                            <child>
+                                              <object class="GtkLabel" id="label2">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">Доски</property>
+                                                <property name="mnemonic_widget">alignment3</property>
+                                                <property name="single_line_mode">True</property>
+                                                <attributes>
+                                                  <attribute name="weight" value="bold"/>
+                                                </attributes>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">True</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="checksort">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="has_tooltip">True</property>
+                                                <property name="tooltip_markup">Сортировать по алфавиту</property>
+                                                <property name="tooltip_text" translatable="yes">Сортировать по алфавиту</property>
+                                                <property name="image">image9</property>
+                                                <property name="xalign">0</property>
+                                                <property name="always_show_image">True</property>
+                                                <property name="active">True</property>
+                                                <property name="draw_indicator">False</property>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">False</property>
+                                                <property name="position">1</property>
+                                              </packing>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -715,25 +772,6 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkCheckButton" id="checksort">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="receives_default">False</property>
-                                                <property name="has_tooltip">True</property>
-                                                <property name="tooltip_markup">Сортировать по алфавиту</property>
-                                                <property name="tooltip_text" translatable="yes">Сортировать по алфавиту</property>
-                                                <property name="image">image9</property>
-                                                <property name="xalign">0</property>
-                                                <property name="active">True</property>
-                                                <property name="draw_indicator">False</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="position">1</property>
-                                              </packing>
-                                            </child>
-                                            <child>
                                               <object class="GtkButton" id="buttonselectnone">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -746,7 +784,7 @@
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
-                                                <property name="position">2</property>
+                                                <property name="position">1</property>
                                               </packing>
                                             </child>
                                           </object>

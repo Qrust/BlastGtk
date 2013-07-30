@@ -50,6 +50,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TE
 import qualified Data.Text.Lazy as LT
 import qualified Text.Show as S
+import qualified Data.Text.IO.Locale as LTIO
 
 -- * Strings
 
@@ -91,6 +92,12 @@ show = fromString . S.show
 {-# INLINE (++) #-}
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
+
+-- * IO
+
+{-# INLINE putStrLn #-}
+putStrLn :: MonadIO m => Text -> m ()
+putStrLn = liftIO . LTIO.putStrLn
 
 -- * Numbers
 

@@ -119,10 +119,12 @@ updMessage s = do
     E{..} <- ask
     locks <- io $ readIORef messageLocks
     if locks==0
-        then labelSetText wlabelmessage s
-        else when (locks < 0) $ do
-                io $ writeIORef messageLocks 0
-                tempError 5 "Ой-ой, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
+      then
+        labelSetText wlabelmessage s
+      else
+        when (locks < 0) $ do
+          io $ writeIORef messageLocks 0
+          tempError 5 "Ёбаный насрать, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
 
 uncMessage :: Text -> E ()
 uncMessage s = do

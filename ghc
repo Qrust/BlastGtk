@@ -23,8 +23,6 @@ ghc -package-confdist/package.conf.inplace \
 -XTypeFamilies \
 -XMultiParamTypeClasses \
 -XFunctionalDependencies \
--XQuasiQuotes \
--XTemplateHaskell \
 -XBangPatterns \
 -XMagicHash \
 -XConstraintKinds \

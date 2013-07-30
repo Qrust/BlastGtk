@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall #-}
 module GtkBlast.Mainloop
     (wipebuttonEnvPart
     ,boardUnitsEnvPart
@@ -43,7 +44,9 @@ updWipeMessage = do
         pc <- get postCount
         (active, banned, dead) <- get wipeStats
         let ach = getAchievementString pc
-        updMessage $
+        -- HACK clear message
+        updMessage ""
+        io $ labelSetText wlabelstats $ T.unpack $
                "Постов: " ++ show pc ++ " / "
             ++ "Активно: " ++ show active
             ++ " / Забанено: " ++ show banned
@@ -248,6 +251,7 @@ reactToMessage s@(OutMessage st@(OriginStamp _ proxy board _ _) m) = do
                 Success -> addPost
                 SuccessLongPost _ -> addPost
                 Wordfilter -> tempError 3 "Не удалось обойти вордфильтр"
+                ThreadDoesNotExist -> tempError 5 "Тред удалён"
                 SameMessage -> tempError 2 $ stamp $ "Вы уже постили это сообщение"
                 SameImage -> tempError 2 $ stamp $ "Этот файл уже загружен"
                 TooFastPost -> writeLog $ stamp $ "Вы постите слишком часто, умерьте пыл"

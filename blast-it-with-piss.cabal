@@ -108,6 +108,7 @@ library
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
+        ,BlastItWithPiss.ProxyReader
 
     other-modules: Import
 
@@ -161,6 +162,7 @@ executable gtkblast
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
+        ,BlastItWithPiss.ProxyReader
 
         ,GtkBlast.Achievement
         ,GtkBlast.AntigateCaptcha
@@ -295,6 +297,7 @@ executable proxychecker
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
+        ,BlastItWithPiss.ProxyReader
 
     build-depends:
          base >= 4.5 && < 5
@@ -389,6 +392,7 @@ executable smyvalka
         ,BlastItWithPiss.Board
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
+        ,BlastItWithPiss.ProxyReader
 
     build-depends:
          base >= 4.5 && < 5
@@ -522,6 +526,7 @@ executable BlastItWithPiss
         ,time
         ,bytestring
         ,text
+        ,text-locale-encoding
         ,transformers
         ,monad-control
         ,data-default

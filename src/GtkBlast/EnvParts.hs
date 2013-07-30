@@ -1,4 +1,7 @@
-{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+{-# OPTIONS_GHC
+    -fno-warn-unused-do-bind
+    -fno-warn-missing-fields
+    #-}
 module GtkBlast.EnvParts
     (envParts
     ,createWidgetsAndFillEnv
@@ -59,16 +62,19 @@ envParts b =
     ,imageEnvPart b
     ,EP
         (\_ _ -> do
+            wlabelstats <- builderGetObject b castToLabel "labelstats"
             wlabelmessage <- builderGetObject b castToLabel "labelmessage"
             wprogressalignment <- builderGetObject b castToAlignment "progressalignment"
             wprogresswipe <- builderGetObject b castToProgressBar "wipeprogress"
 
-            return (wlabelmessage, wprogressalignment, wprogresswipe))
+            return (wlabelstats, wlabelmessage, wprogressalignment, wprogresswipe))
         (const return)
-        (\(wlm, wpa, wpw) e -> e{wlabelmessage=wlm
-                                ,wprogressalignment=wpa
-                                ,wprogresswipe=wpw
-                                })
+        (\(wls,wlm, wpa, wpw) e ->
+            e{wlabelstats=wls
+             ,wlabelmessage=wlm
+             ,wprogressalignment=wpa
+             ,wprogresswipe=wpw
+             })
     ,EP
         (\_ _ -> do
             walignmentlog <- builderGetObject b castToAlignment "alignmentlog"

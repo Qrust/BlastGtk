@@ -179,7 +179,8 @@ instance NFData (Request a) where
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =
     case break (==':') (dropWhile isSpace s) of
-        (host@(_:_), (_:port)) ->
+        (host@(_:_), (_:port')) ->
+            let port = takeWhile isNumber port' in
             if isSocks
                 then SocksProxy . defaultSocksConf host . (fromIntegral :: Int -> PortNumber) <$> readMay port
                 else HttpProxy . Proxy (fromString host) <$> readMay port
@@ -197,8 +198,8 @@ generateNewBrowser bproxy (UserAgent userAgent) = do
     setTimeout $ Just $ 10 & millions
     setDefaultHeader hUserAgent $ Just userAgent
     setOverrideHeaders
-        [(hAcceptLanguage, "ru;q=1.0, en;q=0.1")
-        -- ,("Accept-Encoding", "")
+        [(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        ,(hAcceptLanguage, "ru,en;q=0.5")
         ,(hConnection, "keep-alive")
         ]
     --

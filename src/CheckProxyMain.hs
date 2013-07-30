@@ -9,11 +9,10 @@ import BlastItWithPiss.Parsing
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Board
 import BlastItWithPiss.MonadChoice
+import BlastItWithPiss.ProxyReader
 
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
-
-import qualified Data.Text.IO.Locale as LTIO
 
 import qualified Data.Map.Strict as M
 
@@ -31,56 +30,39 @@ import Data.Conduit.TQueue
 import qualified Data.Set as Set
 
 import System.Environment (getArgs)
-
+import qualified System.Exit
+import System.Directory
 import Network (withSocketsDo)
 
-import Data.Version (showVersion)
+import Text.Recognition.Antigate
 
+import Data.Version (showVersion)
 import System.Console.CmdArgs.Implicit hiding (def)
 
 import Control.Monad.Trans.Reader
 
-import System.Directory
-
-import Text.Recognition.Antigate
-
-
-{-# INLINE putStrLn #-}
-putStrLn :: MonadIO m => Text -> m ()
-putStrLn = liftIO . LTIO.putStrLn
-
-
-
-
-
--- TODO RETRY CAPTCHA
-
-
-
-
-
-
-
 
 data Config = Config
-    {_socks              :: Bool
-    ,_workerCount        :: Int
-    ,_timeout            :: Int
-    ,_board              :: String
-    ,_thread             :: Int
-    ,_input              :: String
-    ,_exclude            :: [String]
-    ,_output             :: String
-    ,_banned             :: String
-    ,_four'o'four        :: String
-    ,_four'o'three       :: String
-    ,_five'o'three       :: String
-    ,_cloudflare_captcha :: String
-    ,_cloudflare_ban     :: String
-    ,_dead               :: String
-    ,_otherkludge        :: String
-    ,_antigateKey        :: Maybe String
-    ,_antigateHost       :: String
+    {_socks                :: Bool
+    ,_workerCount          :: Int
+    ,_timeout              :: Int
+    ,_board                :: String
+    ,_thread               :: Int
+    ,_input                :: String
+    ,_exclude              :: [String]
+    ,_output               :: String
+    ,_banned               :: String
+    ,_four'o'four          :: String
+    ,_four'o'three         :: String
+    ,_five'o'three         :: String
+    ,_cloudflare_captcha   :: String
+    ,_cloudflare_ban       :: String
+    ,_dead                 :: String
+    ,_otherkludge          :: String
+    ,_antigateKey          :: Maybe String
+    ,_antigateHost         :: String
+    ,_disableRetryCaptcha  :: Bool
+    ,_disableRetryRejected :: Bool
     }
   deriving (Show, Data, Typeable)
 
@@ -97,13 +79,15 @@ data ProxyCat
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 data Env = Env
-    {manager     :: !Manager
-    ,board       :: !Board
-    ,antigateKey :: !(Maybe ApiKey)
-    ,workerCount :: !Int
-    ,timeout     :: !Int
-    ,thread      :: !Int
-    ,catFiles    :: !(M.Map ProxyCat FilePath)
+    {manager              :: !Manager
+    ,board                :: !Board
+    ,antigateKey          :: !(Maybe ApiKey)
+    ,workerCount          :: !Int
+    ,timeout              :: !Int
+    ,thread               :: !Int
+    ,catFiles             :: !(M.Map ProxyCat FilePath)
+    ,disableRetryCaptcha  :: !Bool
+    ,disableRetryRejected :: !Bool
     }
 
 impureAnnotatedCmdargsConfig :: Config
@@ -198,7 +182,7 @@ impureAnnotatedCmdargsConfig = Config
         "dead"
         &= name "d"
         &= name "bad"
-        &= help "Файл куда писать прокси с которыми не удалось связаться по каким-то причинам"
+        &= help "Файл куда писать прокси с которыми не удалось связаться по каким-то причинам, по дефолту \"dead\""
         &= typFile
     ,_otherkludge =
         "OTHERPROXIES"
@@ -219,6 +203,16 @@ impureAnnotatedCmdargsConfig = Config
         &= name "H"
         &= name "antigate-host"
         &= help "Домен апи антигейта, например captchabot.com"
+    ,_disableRetryCaptcha = False
+        &= explicit
+        &= name "dr"
+        &= name "disable-retry-captcha"
+        &= help "Отключить попытки снова решить капчу при неправильной капче."
+    ,_disableRetryRejected = False
+        &= explicit
+        &= name "dR"
+        &= name "disable-retry-rejected"
+        &= help "Отключить перепроверку при перегруженности вакабы (PostRejected)."
     }
     &= program "proxychecker"
     &= helpArg
@@ -233,7 +227,7 @@ impureAnnotatedCmdargsConfig = Config
         ,name "version"
         ,summary (showVersion version)]
     &= summary "Проксичекер для ссача"
-    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.Символы | и # используются для комментариев.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если dead.1 существует, то хорошие прокси будут записаны в output.2 даже если output.1 не существует."
+    &= help "Формат файла прокси - по прокси на строку, обязательно указывать порт.Символы | и # используются для комментариев.\nФайлы banned и dead включают причины бана и эксепшоны http соответственно.\nЕсли файлы существуют, то запись будет производится в файлах помеченных номером, например если dead существует, то дохлота будет записываться в dead.1, если dead.1 существует, то в dead.2. При этом номер для всех файлов синхронизируется, чтобы легче было опознать из от какого чека образовался список, то есть если dead.1 существует, то хорошие прокси будут записаны в output.2 даже если output.1 не существует. Такая схема может показаться неудобной, что собственно так и есть. Мы работаем над этим по мере мотивации, а пока cat и man bash в руки."
 
 -- | Exceptions are handled inside 'post'
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
@@ -244,7 +238,7 @@ checkProxy proxy = do
         -- HACK Lock log / fast-logger
         putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
 
-        setTimeout $ Just $ timeout * 1000000
+        setTimeout $ Just $ millions timeout
         setMaxRetryCount 0 -- why retry?
 
         -- HACK Lock log / fast-logger
@@ -269,11 +263,12 @@ checkProxy proxy = do
                     (unsafeMakeYandexCaptchaAnswer captchaid "421463")
                     (ssachLastRecordedFields board)
                     ssachLengthLimit
+                    id
                 return outcome
         return outcome'
 
 kludgeAntigateCheckProxy :: BlastProxy -> Env -> ApiKey -> Blast Outcome
-kludgeAntigateCheckProxy proxy Env{..} key = do
+kludgeAntigateCheckProxy proxy e@Env{..} key = do
     (cAnswer, repBad) <- do
         nc <- getNewCaptcha board (Just thread) ""
         case nc of
@@ -317,6 +312,7 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
             cAnswer
             otherfields
             ssachLengthLimit
+            id
 
     (!outcome, ~_) <- post (req, Success)
 
@@ -326,10 +322,13 @@ kludgeAntigateCheckProxy proxy Env{..} key = do
       o | o==NeedCaptcha || o==WrongCaptcha -> do
         putStrLn $ show proxy ++ ": Reporting bad captcha"
         liftIO $ repBad
+        if disableRetryCaptcha
+          then return outcome
+          else do
+            putStrLn $ show proxy ++ ": Retrying captcha"
+            kludgeAntigateCheckProxy proxy e key
       _ ->
-        return ()
-
-    return outcome
+        return outcome
 
 outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text) -> ReaderT Env IO (ProxyCat, Text)
 outcomeMessage proxy outcome recurse = do
@@ -340,6 +339,13 @@ outcomeMessage proxy outcome recurse = do
           Just (StatusCodeException Status{statusCode=404} _ _) ->
             ape Ban404 $ show proxy
           _ -> ape Dead $ show proxy ++ "| failed, exception was: " ++ show e
+      PostRejected ->
+        if disableRetryRejected
+          then do
+            ape Dead $ show proxy ++ "| PostRejected"
+          else do
+            putStrLn $ "{" ++ show proxy ++ "} PostRejected"
+            recurse
       CloudflareBan -> do
         ape CloudBan $ show proxy
       CloudflareCaptcha -> do
@@ -354,6 +360,9 @@ outcomeMessage proxy outcome recurse = do
         ape Dead $ show proxy ++ "| Возможно эта прокси не рабочая, и лишь отдает пустые ответы"
       Five'o'ThreeError -> do
         ape Ban503 $ show proxy ++ "| 503. FIXME прокся наткнулась на лимит мочаки, почему-то это ещё не починено. Наверное я просто забыл об этом."
+      ThreadDoesNotExist -> do
+        putStrLn $ show proxy ++ "| НЕТ ТАКОГО ТРЕДА, АВАРИЙНАЯ ОСТАНОВКА. FIXME должен просто находить новый тред"
+        liftIO $ System.Exit.exitWith (System.Exit.ExitFailure 404)
       x -> do
         if isJust antigateKey
           then
@@ -378,14 +387,6 @@ outcomeMessage proxy outcome recurse = do
     ape :: ProxyCat -> Text -> ReaderT Env IO (ProxyCat, Text)
     ape !cat !string = return $! (cat, string)
 
-proxyReader :: MonadIO m => Bool -> Text -> m (Maybe BlastProxy)
-proxyReader socks ip = do
-    case readBlastProxy socks (takeWhile (\c -> c /= '|' && c /= '#') $ T.unpack ip) of
-      Nothing -> do
-        putStrLn $ "Couldn't parse as a proxy " ++ show ip
-        return Nothing
-      p -> return p
-
 writerThread :: M.Map ProxyCat FilePath -> TQueue (ProxyCat, Text) -> IO ()
 writerThread catFiles tq = forever $ do
     (cat, text) <- atomically $ readTQueue tq
@@ -400,8 +401,7 @@ writerThread catFiles tq = forever $ do
             "Записываем " ++ show cat ++
             " в файл \"" ++ fromString f ++ "\": " ++ text
         withBinaryFile f AppendMode $ \h -> do
-            B.hPut h $ encodeUtf8 text
-            B.hPut h "\n"
+            B8.hPutStrLn h $ encodeUtf8 text
 
 mainloop :: [BlastProxy] -> ReaderT Env IO ()
 mainloop [] = do
@@ -517,35 +517,39 @@ main = withSocketsDo $ do
         forM_ (M.toAscList catFiles) $ \(cat, fpath) -> do
             putStrLn $ show cat ++ " -> " ++ fromString fpath
 
-        let
-          readProxyStrings file = do
-             Set.fromList
-           . filter (not . T.null)
-           . T.lines
-           . decodeUtf8
-            <$> B.readFile file
+        let isSocks = _socks || filenameIsSocks _input
 
-        _proxyStrings <- readProxyStrings _input
-        excludeStrings <- foldl' Set.union Set.empty <$> mapM readProxyStrings _exclude
-        let proxyStrings =
-                Set.toList $
-                    _proxyStrings `Set.difference` excludeStrings
+        let readProxyStrings file = do
+              b <- doesFileExist file
+              if b
+                then do
+                  xs <- readProxyFile isSocks file
+                  forMaybeM xs $ either
+                    ((Nothing <$) . putStrLn . ("Couln't read as a proxy: " ++))
+                    (return . Just)
+                else do
+                  putStrLn $ "Can't read proxy from file \""
+                      ++ T.pack file ++ "\": File does not exist"
+                  return []
 
-        let isSocks = _socks || "socks" `isInfixOf` map toLower _input
-        proxies <- mapMaybeM (proxyReader isSocks) proxyStrings
+        proxySet1 <- Set.fromList <$> readProxyStrings _input
+        excludeProxies <- foldl' Set.union Set.empty
+                        <$> mapM (fmap Set.fromList . readProxyStrings) _exclude
+
+        let proxies = Set.toList $ proxySet1 `Set.difference` excludeProxies
 
         putStrLn $ show conf
 
         bracket (newManager def{managerConnCount=1000000}) closeManager $
             \manager -> runReaderT (mainloop proxies)
-                Env {manager            = manager
-                    ,board              = board
-                    ,antigateKey        =
-                        case _antigateKey of
-                          Nothing -> Nothing
-                          Just k -> Just def{api_key=k, api_host=_antigateHost}
-                    ,workerCount        = _workerCount
-                    ,timeout            = _timeout
-                    ,thread             = _thread
-                    ,catFiles           = catFiles
+                Env {manager              = manager
+                    ,board                = board
+                    ,antigateKey          = _antigateKey <&> \k ->
+                                          def{api_key=k, api_host=_antigateHost}
+                    ,workerCount          = _workerCount
+                    ,timeout              = _timeout
+                    ,thread               = _thread
+                    ,catFiles             = catFiles
+                    ,disableRetryCaptcha  = _disableRetryCaptcha
+                    ,disableRetryRejected = _disableRetryRejected
                     }

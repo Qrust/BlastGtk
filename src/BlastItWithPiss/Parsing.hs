@@ -188,16 +188,18 @@ parseThreads = first reverse . go []
 parseSpeed :: [Tag Text] -> Maybe Int
 parseSpeed t = getSpeed =<< parseSpeed' t
   where
+    parseSpeed' =
+            dropUntil (== tgOpen "p" [("class", "footer")])
+        >>> innerText
+        >>> T.unpack
+        >>> stripSpeedPrefix
+
     stripSpeedPrefix a =
         let unspace_a = dropWhile isSpace a in
-        stripPrefix "[Скорость борды: " unspace_a
+            stripPrefix "[Скорость борды: " unspace_a
         <|> stripPrefix "[Posting speed: " unspace_a
 
     getSpeed = readMay . takeUntil isSpace
-
-    parseSpeed' =
-        stripSpeedPrefix . T.unpack . innerText
-            . dropUntil (== tgOpen "p" [("class", "footer")])
 
 parsePages :: [Tag Text] -> ((Int, Int), [Tag Text])
 parsePages tags
@@ -268,6 +270,7 @@ data Outcome
     | Wordfilter
     | Banned
         {errMessage :: ErrorMessage}
+    | ThreadDoesNotExist
     | SameMessage
     | SameImage
     | TooFastPost
@@ -317,6 +320,10 @@ wordfiltered =
         [TagOpen "html" [], TagOpen "body" [], TagOpen "h1" []
         ,TagText "Spam detected."]
 
+invalidThread :: [Tag Text] -> Bool
+invalidThread = isInfixOf
+    [TagOpen "center" [], TagOpen "h5" [], TagText "404 - Ничего не найдено"]
+
 haveAnError :: [Tag Text] -> Maybe Text
 haveAnError tags =
     fromTagText . last <$> getInfixOfP
@@ -345,13 +352,18 @@ detectCloudflare tags
 detectOutcome :: [Tag Text] -> Outcome
 detectOutcome tags
     | wordfiltered tags = Wordfilter
+    | invalidThread tags = ThreadDoesNotExist
     | Just err <- haveAnError tags =
         case () of
           _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
              -> Banned (Err $ T.unpack reason)
 
             | T.isInfixOf "String refused" err
+             || T.isInfixOf "спам" err
              -> Wordfilter
+
+            | T.isInfixOf "треда не существует" err
+             -> ThreadDoesNotExist
 
             | T.isInfixOf "Флудить нельзя" err
              -> SameMessage

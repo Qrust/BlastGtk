@@ -14,8 +14,6 @@ module BlastItWithPiss.ImageGen
     ) where
 import Import
 
--- import BlastItWithPiss.Captcha
--- import BlastItWithPiss.Blast
 import BlastItWithPiss.Image
 import BlastItWithPiss.MonadChoice
 

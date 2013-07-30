@@ -14,18 +14,22 @@ tmp
 shizik
 volnov
 test
+novae
+nariman
 
 output*
 cloudflare-ban*
 cloudflare-captcha*
 404*
 403*
+503*
 bad*
 banned*
 dead*
 test*
 
 Setup
+*.txt
 *.zip
 *.bak
 .windows-serial

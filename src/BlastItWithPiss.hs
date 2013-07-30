@@ -59,8 +59,7 @@ import Data.Time.Clock.POSIX
 import qualified Text.Show as Show
 import Text.HTML.TagSoup (Tag)
 
-import System.IO (putStrLn, putStr)
-
+import System.IO (putStr)
 
 
 
@@ -74,9 +73,12 @@ import System.IO (putStrLn, putStr)
 
 -- if no key in IntMap?
 
--- periodically purge redownload pages, use max one agent (how?)
+-- periodically redownload pages, use max one agent (how?)
+--  Simply lock the cache, send one proxy to renew it, make others use old version
 
--- use proxies with best response time
+-- use proxies with best response time and history of error abscence
+
+-- Agents should not override expiration-thread's modifications. (TMVar IntMap?)
 
 -- board threads? [!?]
 {-
@@ -742,7 +744,7 @@ blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
         Just (captcha, reportbad) -> do
 
             p <- blast $ prepare board thread postdata captcha
-                            otherfields ssachLengthLimit
+                            otherfields ssachLengthLimit id
 
             posttimeout <- blastPostTimeout
             blastLog $ "Post timeout: " ++ show posttimeout
@@ -809,7 +811,9 @@ blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
                     blastLog $ "TooFastThread, retrying in " ++ show (m/60) ++ " minutes"
                     setLastThreadTime $ beforePost - m
                 PostRejected -> do
-                    blastLog "PostRejected, retrying later..."
+                    blastLog "PostRejected, retrying immediately..."
+                ThreadDoesNotExist -> do
+                    blastLog "Thread does not exist, searching for another..."
                 o | o==NeedCaptcha || o==WrongCaptcha -> do
                     blastLog $ show o ++ ", requerying"
                     liftIO . reportbad =<< genOriginStamp
@@ -870,7 +874,8 @@ blastLoop =
         "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
         "speed: " ++ show (speed p0) ++ "\n" ++
         "threads: " ++ show (length $ threads p0) ++ "\n" ++
-        "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0)
+        "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0) ++ "\n" ++
+        "canmakethread: " ++ show canmakethread
 
     mode <- readTVarIO mmode >>=
         maybe
