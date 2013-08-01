@@ -48,6 +48,9 @@ import GHC.Conc
 
 -- URGENT MAKE_PRINCIPLED change/parse field names (captcha_value_id_06) at runtime
 -- URGENT stop posting pasta after it's labeled as spam.
+-- URGENT Interactively edit pasta after it's labeled as spam in smyvalka and zasiralka.
+--      Requires smyvalka-GUI/merger.
+-- URGENT check wordfilter separately before starting wipe
 
 -- URGENT решать капчу отдельно, сохранять для использования в аппликациях
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
