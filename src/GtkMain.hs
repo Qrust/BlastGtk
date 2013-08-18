@@ -46,11 +46,19 @@ import GHC.Conc
       - EnvPart             # the gui stops responding
 -}
 
+-- MOST REQUESTED — zasiralka performance (cache), smyvalka/checker gui captcha
+
+-- URGENT Ошибка: в вашем сообщении много ссылок на чужие посты
+-- URGENT Отвалилось цитирование, оно >в одну строчку
+
 -- URGENT MAKE_PRINCIPLED change/parse field names (captcha_value_id_06) at runtime
 -- URGENT stop posting pasta after it's labeled as spam.
 -- URGENT Interactively edit pasta after it's labeled as spam in smyvalka and zasiralka.
 --      Requires smyvalka-GUI/merger.
 -- URGENT check wordfilter separately before starting wipe
+
+-- > Можешь топилку отдельных тредов запилить?
+-- > То есть, чтобы она бампала все треды, кроме отмеченных, и потом создавала несколько тредов.
 
 -- URGENT решать капчу отдельно, сохранять для использования в аппликациях
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
