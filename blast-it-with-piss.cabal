@@ -85,7 +85,7 @@ library
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,deepseq
@@ -237,7 +237,7 @@ executable gtkblast
 
         ,certificate >= 1.3.1
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
 
         ,fast-tagsoup-utf8-only >= 1.0.4
         ,tagsoup
@@ -328,7 +328,7 @@ executable proxychecker
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
@@ -423,7 +423,7 @@ executable smyvalka
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
@@ -535,7 +535,7 @@ executable BlastItWithPiss
         ,http-conduit
         ,zip-archive
         ,aeson
-        ,cryptohash
+        ,cryptohash-cryptoapi
         ,crypto-api
         ,cereal
         ,executable-path
