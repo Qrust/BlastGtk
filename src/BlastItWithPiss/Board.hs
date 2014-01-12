@@ -16,12 +16,6 @@ module BlastItWithPiss.Board
     ,ssachThreadTimeout
     ,ssachPostTimeout
     ,ssachBumpLimit
-
-    -- * Hoptoparasha
-    ,hoptoparasha
-    ,hoptoparashaBoard
-    ,hoptoparashaThread
-    ,hoptoparashaPage
     ) where
 import Import
 import Network.HTTP.Conduit.MultipartFormData
@@ -31,7 +25,6 @@ data Board
     = SsachA
     | SsachAA
     | SsachABU
-    | SsachAPP -- temp/hid
     | SsachASYLUM -- temp/hid
     | SsachAU
     | SsachB
@@ -87,6 +80,7 @@ data Board
     | SsachMMO
     | SsachMO
     | SsachMOBA
+    | SsachMOBI
     | SsachMOV -- temp/hid
     | SsachMU
     | SsachMUS
@@ -134,105 +128,104 @@ allSsachBoards :: [Board]
 allSsachBoards = [minBound..maxBound]
 
 -- | See "BlastItWithPiss.sortSsachBoardsByPopularity".
--- TODO Last update: Tue, 02 Jul 2013 23:38:45 +0300
--- TODO update silently in app background
+-- Last update: Mon, 30 Sep 2013 19:47:52 +0300
 ssachBoardsSortedByPostRate :: [(Board, Int)]
 ssachBoardsSortedByPostRate =
-    [(SsachB,2576)
-    ,(SsachVG,364)
-    ,(SsachMLP,173)
-    ,(SsachMOBA,150)
-    ,(SsachSEX,110)
-    ,(SsachMMO,100)
-    ,(SsachA,94)
-    ,(SsachSOC,87)
-    ,(SsachWM,60)
-    ,(SsachRF,52)
-    ,(SsachUN,48)
-    ,(SsachFAG,47)
-    ,(SsachS,39)
-    ,(SsachCG,36)
-    ,(SsachAU,36)
-    ,(SsachT,35)
-    ,(SsachWH,31)
-    ,(SsachTES,29)
-    ,(SsachSPC,28)
-    ,(SsachDEV,28)
-    ,(SsachMOV,27)
-    ,(SsachAPP,25)
-    ,(SsachGA,23)
-    ,(SsachFA,23)
-    ,(SsachHW,22)
-    ,(SsachMU,21)
-    ,(SsachD,21)
-    ,(SsachBI,19)
-    ,(SsachFIZ,18)
-    ,(SsachBIZ,17)
-    ,(SsachPR,15)
-    ,(SsachHO,15)
-    ,(SsachVN,14)
-    ,(SsachG,14)
-    ,(SsachTV,13)
-    ,(SsachSF,13)
-    ,(SsachME,13)
-    ,(SsachMC,13)
-    ,(SsachMUS,12)
-    ,(SsachP,11)
-    ,(SsachPO,10)
-    ,(SsachDIY,10)
-    ,(SsachHI,9)
-    ,(SsachHC,9)
-    ,(SsachWR,8)
-    ,(SsachMO,8)
-    ,(SsachFL,8)
-    ,(SsachSP,7)
-    ,(SsachRM,7)
-    ,(SsachRE,7)
-    ,(SsachPSY,7)
-    ,(SsachPA,7)
-    ,(SsachFG,7)
-    ,(SsachE,7)
-    ,(SsachMA,6)
-    ,(SsachFTB,6)
-    ,(SsachEM,5)
-    ,(SsachBO,5)
-    ,(SsachHH,4)
-    ,(SsachH,4)
-    ,(SsachSN,3)
-    ,(SsachSCI,3)
-    ,(SsachPVC,3)
-    ,(SsachI,3)
-    ,(SsachFUR,3)
-    ,(SsachFD,3)
-    ,(SsachFET,3)
-    ,(SsachW,2)
-    ,(SsachTD,2)
-    ,(SsachNE,2)
-    ,(SsachMG,2)
-    ,(SsachIZD,2)
-    ,(SsachGB,2)
-    ,(SsachFS,2)
-    ,(SsachEW,2)
-    ,(SsachDE,2)
-    ,(SsachC,2)
-    ,(SsachASYLUM,2)
-    ,(SsachAA,2)
-    ,(SsachWP,1)
-    ,(SsachWEB,1)
-    ,(SsachTRV,1)
-    ,(SsachRA,1)
-    ,(SsachR,1)
-    ,(SsachGIF,1)
-    ,(SsachGD,1)
-    ,(SsachDOM,1)
-    ,(SsachTO,0)
-    ,(SsachO,0)
-    ,(SsachJA,0)
-    ,(SsachINT,0)
-    ,(SsachF,0)
-    ,(SsachDI,0)
-    ,(SsachBG,0)
-    ,(SsachABU,0)]
+    [(SsachB     , 3351)
+    ,(SsachVG    , 421 )
+    ,(SsachMMO   , 285 )
+    ,(SsachPO    , 242 )
+    ,(SsachAU    , 227 )
+    ,(SsachMLP   , 196 )
+    ,(SsachMOBA  , 191 )
+    ,(SsachA     , 124 )
+    ,(SsachFTB   , 112 )
+    ,(SsachTV    , 104 )
+    ,(SsachSEX   , 95  )
+    ,(SsachSOC   , 67  )
+    ,(SsachG     , 65  )
+    ,(SsachS     , 63  )
+    ,(SsachWM    , 52  )
+    ,(SsachWH    , 34  )
+    ,(SsachHW    , 33  )
+    ,(SsachASYLUM, 31  )
+    ,(SsachMOBI  , 31  )
+    ,(SsachBO    , 29  )
+    ,(SsachFD    , 29  )
+    ,(SsachCG    , 28  )
+    ,(SsachDEV   , 28  )
+    ,(SsachTES   , 27  )
+    ,(SsachBIZ   , 26  )
+    ,(SsachD     , 26  )
+    ,(SsachGA    , 25  )
+    ,(SsachMOV   , 24  )
+    ,(SsachAA    , 22  )
+    ,(SsachFA    , 19  )
+    ,(SsachFAG   , 19  )
+    ,(SsachGD    , 19  )
+    ,(SsachFIZ   , 18  )
+    ,(SsachPSY   , 17  )
+    ,(SsachRF    , 16  )
+    ,(SsachPR    , 15  )
+    ,(SsachUN    , 15  )
+    ,(SsachP     , 14  )
+    ,(SsachME    , 13  )
+    ,(SsachMU    , 13  )
+    ,(SsachPVC   , 12  )
+    ,(SsachBG    , 11  )
+    ,(SsachT     , 11  )
+    ,(SsachDIY   , 10  )
+    ,(SsachE     , 10  )
+    ,(SsachEW    , 10  )
+    ,(SsachHI    , 10  )
+    ,(SsachMA    , 10  )
+    ,(SsachMUS   , 10  )
+    ,(SsachC     , 9   )
+    ,(SsachDE    , 9   )
+    ,(SsachMG    , 8   )
+    ,(SsachMO    , 8   )
+    ,(SsachPA    , 8   )
+    ,(SsachSN    , 8   )
+    ,(SsachW     , 8   )
+    ,(SsachFUR   , 7   )
+    ,(SsachVN    , 7   )
+    ,(SsachFG    , 6   )
+    ,(SsachRA    , 6   )
+    ,(SsachRE    , 6   )
+    ,(SsachFET   , 5   )
+    ,(SsachRM    , 5   )
+    ,(SsachSPC   , 5   )
+    ,(SsachBI    , 4   )
+    ,(SsachFL    , 4   )
+    ,(SsachWR    , 4   )
+    ,(SsachDI    , 3   )
+    ,(SsachEM    , 3   )
+    ,(SsachFS    , 3   )
+    ,(SsachHC    , 3   )
+    ,(SsachMC    , 3   )
+    ,(SsachNE    , 3   )
+    ,(SsachSCI   , 3   )
+    ,(SsachSF    , 3   )
+    ,(SsachWP    , 3   )
+    ,(SsachH     , 2   )
+    ,(SsachHH    , 2   )
+    ,(SsachHO    , 2   )
+    ,(SsachI     , 2   )
+    ,(SsachINT   , 2   )
+    ,(SsachJA    , 2   )
+    ,(SsachR     , 2   )
+    ,(SsachWEB   , 2   )
+    ,(SsachABU   , 1   )
+    ,(SsachDOM   , 1   )
+    ,(SsachF     , 1   )
+    ,(SsachGB    , 1   )
+    ,(SsachGIF   , 1   )
+    ,(SsachIZD   , 1   )
+    ,(SsachO     , 1   )
+    ,(SsachSP    , 1   )
+    ,(SsachTD    , 1   )
+    ,(SsachTO    , 1   )
+    ,(SsachTRV   , 1   )]
 
 readBoard :: String -> Maybe Board
 readBoard ('/':x@(_:_))
@@ -240,8 +233,12 @@ readBoard ('/':x@(_:_))
     | otherwise = Nothing
 readBoard _ = Nothing
 
+{-# INLINE renderBoard #-}
 renderBoard :: (Monoid a, IsString a) => Board -> a
-renderBoard b = "/" <> fromString (map toLower $ fromJust $ stripPrefix "Ssach" $ show b) <> "/"
+renderBoard b =
+    "/" <>
+        fromString (map toLower $ fromJust $ stripPrefix "Ssach" $ show b)
+        <> "/"
 
 ssach :: IsString a => a
 ssach = "http://2ch.hk"
@@ -261,11 +258,12 @@ ssachPostUrl :: (Monoid a, IsString a) => Board -> Maybe Int -> a
 ssachPostUrl b _ = ssachBoard b <> "wakaba.pl"
 
 ssachLengthLimit :: Num a => a
-ssachLengthLimit = 7168 -- max number of cyrillic characters, stupid sosach counts
-                        -- bytes instead of unicode chars.
+ssachLengthLimit = 7168 -- max cyrillic characters, stupid ssach counts bytes
+                        -- instead of unicode code points.
 
 ssachThreadTimeout :: Num a => Board -> a
 ssachThreadTimeout _ = 30 * 60
+
 ssachPostTimeout :: Num a => Board -> a
 ssachPostTimeout _ = 10
 
@@ -283,19 +281,3 @@ ssachLastRecordedFields board =
     ,partBS "submit" "\208\158\209\130\208\191\209\128\208\176\208\178\208\184\209\130\209\140"
     ] ++
     [partBS "anon_icon" "-1" | board == SsachPO]
-
-hoptoparasha :: IsString a => a
-hoptoparasha = "http://hoptach.uni.me"
-
-hoptoparashaBoard :: (Monoid a, IsString a) => Board -> a
-hoptoparashaBoard b = hoptoparasha <> renderBoard b
-
-hoptoparashaThread :: (Monoid a, IsString a) => Board -> Maybe Int -> a
-hoptoparashaThread b Nothing = hoptoparashaBoard b
-hoptoparashaThread b (Just t) = hoptoparashaBoard b <> "res/" <> show t <> ".html"
-
-hoptoparashaPage :: (Monoid a, IsString a) => Board -> Int -> a
-hoptoparashaPage b 0 = hoptoparashaBoard b
-hoptoparashaPage b i = hoptoparashaBoard b <> show i <> ".html"
-
--- TODO add 2chnu

@@ -5,7 +5,7 @@ sh compile-script.sh VersionIncrementerMain
 sh compile-script.sh DownloadsUploader
 delete=False
 case "$@" in
-    *bump*)
+    *yesbump*)
         echo "Bumping package version..."
         ./VersionIncrementerMain;;
     *)
@@ -14,7 +14,7 @@ esac
 case "$@" in
     *llvm*)
         echo "LLVM Enabled"
-        llvm=llvm;;
+        llvm="llvm";;
     *)
         llvm="";;
 esac
@@ -44,8 +44,13 @@ if [ -r $linuxzip ] && [ -r $windowszip ]
     then
         echo "Updating manifest and uploading archives..."
         ./DownloadsUploader $currentversion $linuxzip $windowszip "True" $delete
-        echo "Bumping package version..."
-        ./VersionIncrementerMain
+        case "$@" in
+            *nobump*)
+                echo "Nobump";;
+            *)
+            echo "Bumping package version..."
+            ./VersionIncrementerMain;;
+        esac
     else
         echo "Something bad happened. Scroll up for error messages."
 fi

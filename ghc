@@ -1,31 +1,4 @@
 #!/bin/sh
-
-ghc -package-confdist/package.conf.inplace \
--idist/build/autogen \
--isrc \
--optP-include -optPdist/build/autogen/cabal_macros.h \
--XNoImplicitPrelude \
--XPackageImports \
--XCPP \
--XOverloadedStrings \
--XRecordWildCards \
--XNamedFieldPuns \
--XScopedTypeVariables \
--XFlexibleContexts \
--XDeriveDataTypeable \
--XBangPatterns \
--XNoMonomorphismRestriction \
--XTypeSynonymInstances \
--XFlexibleInstances \
--XFlexibleContexts \
--XKindSignatures \
--XGADTs \
--XTypeFamilies \
--XMultiParamTypeClasses \
--XFunctionalDependencies \
--XBangPatterns \
--XMagicHash \
--XConstraintKinds \
--Wall \
--outputdir=/tmp/_ghctmp \
-$@
+NO_G_OPTION="true"
+source "./hdevtools-options.sh"
+ghc $HDEVTOOLSOPTS "$@"

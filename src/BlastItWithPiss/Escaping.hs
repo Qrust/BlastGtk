@@ -1,22 +1,11 @@
 module BlastItWithPiss.Escaping
     (
-    -- * High level
-    escape
+     escape
 
-    -- * Constants
     ,ssachWordfilter
-    ,invisibleSymbols
-    ,toCyr
-    ,fromCyr
-    ,findAlternative
 
-    -- * Functions
     ,escapeWordfilter
     ,escapeExceptWordfilter
-    ,escapeOneWord
-    ,randomizeOneCharLang
-    ,randomizeLang
-    ,randomizeInvisible
     ) where
 import Import
 import BlastItWithPiss.MonadChoice

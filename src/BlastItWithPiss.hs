@@ -1,19 +1,26 @@
--- | Kludge: the main module
+-- | Hack on a hack whips a hack with a hack. Gross.
 module BlastItWithPiss
     (ShSettings(..)
     ,MuSettings(..)
     ,ProxySettings
 
-    ,LogDetail(..)
     ,SageMode(..)
+    ,allModes
 
     ,CaptchaType(..)
     ,CaptchaAnswer(..)
+    ,CaptchaOrigin(..)
+    ,renderCaptchaOrigin
 
-    ,OriginStamp(..)
+    ,OriginStamp(oProxy
+                ,oBoard
+                ,oMode
+                ,oThread)
+
     ,renderCompactStamp
+    ,renderFullStamp
 
-    ,SupplyCaptcha(..)
+    ,CaptchaRequest(..)
 
     ,Message(..)
     ,OutMessage(..)
@@ -26,13 +33,26 @@ module BlastItWithPiss
     ,defMuS
     ,defPrS
     ,entryPoint
-    ,sortSsachBoardsByPopularity
+
+    -- added in 1.2
+    ,CaptchaServer(..)
+    ,PresolverState(..)
+    ,module BlastItWithPiss.CaptchaServer
+
+    -- FIXME
+    ,Board(..)
+    ,BlastProxy
+    ,Blast
+    ,Manager
+    ,renderBoard
 
     -- FIXME
     ,TempBlastPastaChannel(..)
+    ,sortSsachBoardsByPopularity
     ) where
 import Import
 
+import BlastItWithPiss.CaptchaServer
 import BlastItWithPiss.Blast
 import BlastItWithPiss.Image
 import BlastItWithPiss.Board
@@ -40,13 +60,16 @@ import BlastItWithPiss.Parsing
 import BlastItWithPiss.Choice
 import BlastItWithPiss.MonadChoice
 import BlastItWithPiss.Post
+import BlastItWithPiss.Types
 
-import Text.Recognition.Antigate
+import Control.Concurrent.STM.FinalizerTVar
 
-import qualified Data.Text as T
+-- import qualified Data.Text as T
+import qualified Data.Set as S
+import qualified Data.Map as M
 
 import Control.Concurrent.Lifted
-import Control.Concurrent.STM (TVar, newTVarIO)
+import Control.Concurrent.STM (TVar)
 import qualified Control.Concurrent.STM as STM
 
 import Control.Monad.Trans.Class
@@ -56,12 +79,7 @@ import Control.Monad.Trans.Resource
 
 import Data.Time.Clock.POSIX
 
-import qualified Text.Show as Show
-import Text.HTML.TagSoup (Tag)
-
-import System.IO (putStr)
-
-
+import Text.HTML.TagSoup (Tag, renderTags)
 
 -- TVar (IntMap (TMVar Page)) ? TVar (IntMap (TMVar (TMVar Page)))
 
@@ -79,240 +97,65 @@ import System.IO (putStr)
 -- use proxies with best response time and history of error abscence
 
 -- Agents should not override expiration-thread's modifications. (TMVar IntMap?)
+--  Wait, we're already atomic
 
 -- board threads? [!?]
+
+-- You should be able to return captcha to captcha fund if agent failed to use it
+
 {-
 
-import qualified Data.IntMap as I
+import           Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
 
-mockup :: TVar (I.IntMap (TMVar Page)) -> Int -> IO ()
-mockup tpageCache pid = do
-    ttimeup <- registerDelay (5&millions)
-    atomically $ do
+mockupGet :: TVar (IntMap (TMVar (UTCTime, Page))) -> Int -> IO Page
+mockupGet tpageCache pid = do
+    ttimeup <- registerDelay (5 `millions`)
+    r1 <- atomically $ do
         pageCache <- readTVar tpageCache
-        case I.lookup pid pageCache of
-            Just waitPage -> do
-                x <- Just <$> readTMVar waitPage
-                  <|> Nothing <$ check <$> readTVar ttimeup
-                case x of
-                  Just page -> return ()
-                  Nothing   -> error "ahadhadjsfj"
-            Nothing -> error "lakjhoiadghoiasjgha"
+        case IntMap.lookup pid pageCache of
+          Just waitPage ->
+            orElse
+              (Right . snd <$> readTMVar waitPage)
+              (Left waitPage <$ check <$> readTVar ttimeup)
+          Nothing -> do
+            tmv <- newEmptyTMVar
+            writeTVar tpageCache (IntMap.insert pid tmv pageCache)
+            return $ Left tmv
+    case r1 of
+      Right a ->
+        return a
+      Left tmv ->
+        withAsync (forever getPage) $ \as ->
+          atomically $ do
+            readTMVar tmv
+              <|> do
+                utcpg <- waitSTM as
+                putTMVar tmv utcpg
+                return $ snd utcpg
+
+mockupExpire :: TVar (IntMap (TMVar (UTCTime, Page))) -> IO ()
+mockupExpire tpageCache = do
+    undefined
 
 -}
+
+-- HACK abortWithOutcome
+data AbortOutcome = AbortOutcome !Outcome
+    deriving (Show, Typeable)
+
+instance Exception AbortOutcome
+
+abortWithOutcome :: Outcome -> BlastLog a
+abortWithOutcome o = do
+    blastLog $ "Aborting with outcome: " ++ show o
+    blastOut $ OutcomeMessage o
+    throwIO  $ AbortOutcome   o
+-- /HACK
 
 {-# INLINE readTVarIO #-}
 readTVarIO :: MonadIO m => TVar a -> m a
 readTVarIO = liftIO . STM.readTVarIO
-{- we only read tvars.
-
-{-# INLINE atomically #-}
-atomically :: MonadIO m => STM a -> m a
-atomically = liftIO . STM.atomically
--}
--- | Global
-data ShSettings = ShSettings
-    -- NOTE HACK FIXME all browser state accumulated in *gens is lost.
-    -- NOTE HACK FIXME *gens do not bypass cloudflare
-    {tpastagen         :: !(TVar (TempGenType TempBlastPastaChannel))
-    ,timagegen         :: !(TVar (TempGenType Image))
-    ,tvideogen         :: !(TVar (TempGenType Text))
-
-    ,tuseimages        :: !(TVar Bool)
-    ,tappendjunkimages :: !(TVar Bool)
-    ,tmakewatermark    :: !(TVar Bool)
-
-    ,tcreatethreads    :: !(TVar Bool)
-    ,tsagemode         :: !(TVar SageMode)
-
-    ,tposttimeout      :: !(TVar (Maybe Double))
-    ,tthreadtimeout    :: !(TVar (Maybe Double))
-    ,tfluctuation      :: !(TVar (Maybe Double))
-    }
-
--- | PerBoard
-data MuSettings = MuSettings
-    {mthread        :: !(TVar (Maybe Int))
-    ,mmode          :: !(TVar (Maybe Mode))
-    ,mposttimeout   :: !(TVar (Maybe Double))
-    ,mthreadtimeout :: !(TVar (Maybe Double))
-    }
-
--- | PerProxy
-data ProxySettings = ProxyS
-    {pSharedCookies :: !(MVar (MVar (Maybe CookieJar)))
-    ,pUserAgent     :: !UserAgent
-    }
-
-defMuS :: IO MuSettings
-defMuS = do
-    mthread <- newTVarIO Nothing
-    mmode <- newTVarIO Nothing
-    mposttimeout <- newTVarIO Nothing
-    mthreadtimeout <- newTVarIO Nothing
-    return MuSettings{..}
-
-defPrS :: IO ProxySettings
-defPrS = do
-    pSharedCookies <- newEmptyMVar
-    pUserAgent <- newUserAgent
-    return ProxyS{..}
-
-data CaptchaType
-    = CaptchaPosting
-    | CaptchaCloudflare
-
-data CaptchaAnswer
-    = Answer !String !(OriginStamp -> IO ())
-    | ReloadCaptcha
-    | AbortCaptcha
-
-data Perhaps a
-    = Certainly a
-    | Undecided
-
-instance Show a => Show (Perhaps a) where
-    show Undecided = "Undecided"
-    show (Certainly a) = show a
-
-data OriginStamp = OriginStamp
-    {oTime   :: !ZonedTime
-    ,oProxy  :: !BlastProxy
-    ,oBoard  :: !Board
-    ,oMode   :: !(Perhaps Mode)
-    ,oThread :: !(Maybe Int)
-    }
-
-data SupplyCaptcha = SupplyCaptcha
-    {captchaType     :: !CaptchaType
-    ,captchaBytes    :: !LByteString
-    ,captchaSend     :: !(CaptchaAnswer -> IO ())
-    ,captchaConf     :: !CaptchaConf
-    ,captchaFilename :: !String
-    }
-
-data Message
-    = OutcomeMessage !Outcome
-    | LogMessage !Text
-    | SolveCaptcha !SupplyCaptcha
-    | NoPastas
-    | NoImages
-
-data OutMessage = OutMessage !OriginStamp !Message
-
-data LogDetail
-    = Log
-    | Don'tLog
-  deriving (Eq, Show, Ord, Enum, Bounded)
-
-data BlastLogData = BlastLogData
-    {bProxy       :: !BlastProxy
-    ,bBoard       :: !Board
-    ,bLogD        :: !LogDetail
-    ,bShS         :: !ShSettings
-    ,bMuS         :: !MuSettings
-    ,bPrS         :: !ProxySettings
-    ,bOut         :: !(OutMessage -> IO ())
-    ,bOtherFields :: ![Part Blast (ResourceT IO)] -- ^ Kludge
-    }
-
-data OriginInfo = OriginInfo
-    {gmode   :: !(Perhaps Mode)
-    ,gthread :: !(Maybe Int)
-    }
-
-data BlastLogState = BlastLogState
-    {bsOriginInfo              :: !OriginInfo
-    ,bsAdaptivityIn            :: !Bool
-    ,bsOptimisticLastPostTime  :: !POSIXTime
-    ,bsPessimisticLastPostTime :: !POSIXTime
-    ,bsLastThreadTime          :: !POSIXTime -- ^ Always pessimistic
-    }
-
-instance Default BlastLogState where
-    def = BlastLogState def False 0 0 0
-
-type BlastLog = ReaderT BlastLogData (StateT BlastLogState Blast)
-
-instance Show CaptchaAnswer where
-    show (Answer a _) = "Answer " ++ show a ++ " <repBad>"
-    show ReloadCaptcha = "ReloadCaptcha"
-    show AbortCaptcha = "AbortCaptcha"
-
-renderCompactStamp :: OriginStamp -> Text
-renderCompactStamp (OriginStamp _ proxy board _ _) =
-    renderBoard board ++ " {" ++ show proxy ++ "}"
-
-instance Show OriginStamp where
-    show (OriginStamp time proxy board mode thread) =
-        "(" ++ show time ++ ") " ++ "{" ++ show proxy ++ "} "
-        ++ renderBoard board ++ " " ++ show mode ++ " [| " ++
-        ssachThread board thread ++ " |]"
-
-instance Show Message where
-    show (OutcomeMessage o) = show o
-    show (LogMessage o) = T.unpack o
-    show SolveCaptcha{} = "SolveCaptcha"
-    show NoPastas = "NoPastas"
-    show NoImages = "NoImages"
-
-instance Show OutMessage where
-    show (OutMessage s m) = show s ++ ": " ++ show m
-
-instance Default OriginInfo where
-    def = OriginInfo Undecided Nothing
-
-instance NFData CaptchaType
-
-instance NFData CaptchaAnswer where
-    rnf (Answer s r) = r `seq` rnf s
-    rnf _ = ()
-
-instance NFData a => NFData (Perhaps a) where
-    rnf (Certainly a) = rnf a
-    rnf Undecided = ()
-
-instance NFData OriginStamp where
-    rnf (OriginStamp t p b m th) = rnf (t,p,b,m,th)
-
-instance NFData SupplyCaptcha where
-    rnf (SupplyCaptcha a b c d e) = rnf(a,b,c,d,e)
-
-instance NFData Message where
-    rnf (OutcomeMessage o) = rnf o
-    rnf (LogMessage s) = rnf s
-    rnf (SolveCaptcha s) = rnf s
-    rnf _ = ()
-
-instance NFData OutMessage where
-    rnf (OutMessage os m) = os `deepseq` m `deepseq` ()
-
-data SageMode
-    = SageDisabled
-    | SageEnabled
-    | SageAccordingToMode
-  deriving (Eq, Show)
-
-newtype TempGenType a =
-    TempGenType ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO a)
-
-mkFullGen :: ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> IO a) -> TempGenType a
-mkFullGen = TempGenType
-
-mkIgnoreGen :: IO a -> TempGenType a
-mkIgnoreGen = TempGenType . const . const . const
-
-mkConstGen :: a -> TempGenType a
-mkConstGen = mkIgnoreGen . return
-
-evalGen :: TempGenType a -> (Int -> IO Thread) -> Maybe Page -> Maybe Int -> BlastLog a
-evalGen (TempGenType gen) ioGetThread mpage thread = do
-    liftIO $ gen ioGetThread mpage thread
-
-fromSageMode :: SageMode -> Mode -> Bool
-fromSageMode SageDisabled _ = False
-fromSageMode SageEnabled _ = True
-fromSageMode SageAccordingToMode m = obligatorySageMode m
 
 blastPostTimeout :: BlastLog POSIXTime
 blastPostTimeout = do
@@ -344,95 +187,340 @@ blastThreadTimeout = do
             return $ ssachThreadTimeout board)
         )
 
-runBlastLog :: BlastLogData -> BlastLog a -> Blast a
-runBlastLog d m = evalStateT (runReaderT m d) def
+-- FIXME Code duplication with "post" (checking cloudflare)
+-- FIXME Code duplication with "primitiveCaptchaServer" (fetching captcha)
+blastCloudflare
+    :: Request (ResourceT IO)
+    -> BlastLog (Response [Tag Text])
+blastCloudflare req' = do
 
-runBlastLogSt :: BlastLogData -> BlastLogState -> BlastLog a -> Blast a
-runBlastLogSt d o m = evalStateT (runReaderT m d) o
+    blastLog "Fetching page for cloudflare inspection"
 
-blast :: Blast a -> BlastLog a
-blast = lift . lift
+    let
+      let_SCC_blastCloudflare = blast $
+        httpReqStrTags
+          req'
+          {checkStatus =
+            \a@Status{statusCode} b c
+                -> if statusCode == 403 || statusCode == 404 -- 404 for 404ban
+                then Nothing
+                else (checkStatus def) a b c
+          }
 
-askBoard :: BlastLog Board
-askBoard = asks bBoard
+    pg <- let_SCC_blastCloudflare
 
-setAdaptive :: Bool -> BlastLog ()
-setAdaptive n = lift $ modify $ \s -> s{bsAdaptivityIn=n}
+    blastLog "Inspecting"
+    blastCloudflare' pg
 
-recMode :: Mode -> BlastLog ()
-recMode m = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gmode=Certainly m}}
+  where
 
-recThread :: (Maybe Int) -> BlastLog ()
-recThread t = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gthread=t}}
+    blastCloudflare' rsp
+      | statusCode == 404 && (maybe False (== "NWS_QPLUS_HY") $
+                                lookup hServer $ responseHeaders rsp) = do
+        abortWithOutcome Four'o'FourBan -- HACK HACK HACK
+      | statusCode == 403 || statusCode == 404 = do
+        if cloudflareBan (responseBody rsp)
+          then
+            abortWithOutcome CloudflareBan -- HACK HACK HACK
+          else if cloudflareCaptcha (responseBody rsp)
+              then do
+                blastLog "Encountered cloudflare challenge"
+                cloudflareChallenge rsp
+              else throwIO $ StatusCodeException
+                    (responseStatus rsp)
+                    (responseHeaders rsp)
+                    (responseCookieJar rsp)
+      | otherwise = do
+        blastLog "blastCloudflare: No cloudflare spotted..."
+        return rsp
+      where
+        Status{statusCode} = responseStatus rsp
 
-recResetMode :: BlastLog ()
-recResetMode = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gmode=Undecided}}
+    cloudflareChallenge rsp = do
+        pSharedCookies <- asks $ pSharedCookies . bPrS
 
-recResetThread :: BlastLog ()
-recResetThread = lift $ modify $ \s@BlastLogState{..} -> s{bsOriginInfo=bsOriginInfo{gthread=Nothing}}
+        blastLog "Waiting for cloudflare cookies"
+        join (modifyMVar pSharedCookies $ \mcookies ->
+            case mcookies of
+              Nothing -> do
+                mres <- solveCloudflareCaptcha rsp
 
-setLastThreadTime :: POSIXTime -> BlastLog ()
-setLastThreadTime t = lift $ modify $ \s -> s{bsLastThreadTime=t}
+                case mres of
+                  Just cj ->
+                    return (Just cj, blastCloudflare req')
+                  Nothing ->
+                    return (Nothing, cloudflareChallenge rsp)
+              Just cookies -> do
+                blastLog "Got cloudflare cookies"
 
-setOptimisticLastPostTime :: POSIXTime -> BlastLog ()
-setOptimisticLastPostTime t = lift $ modify $ \s -> s{bsOptimisticLastPostTime=t}
+                old <- blast httpGetCookieJar
+                if cookies == old
+                  then do
+                    blastLog "Same cookies don't work"
+                    mres <- solveCloudflareCaptcha rsp
 
-setPessimisticLastPostTime :: POSIXTime -> BlastLog ()
-setPessimisticLastPostTime t = lift $ modify $ \s -> s{bsPessimisticLastPostTime=t}
+                    case mres of
+                      Just cj ->
+                        return (Just cj, blastCloudflare req')
+                      Nothing ->
+                        return (Nothing, cloudflareChallenge rsp)
+                  else do
+                    blast $ httpSetCookieJar cookies
 
-genOriginStamp :: BlastLog OriginStamp
-genOriginStamp = do
-    BlastLogData {
-      bBoard
-    , bProxy
+                    return (Just cookies, blastCloudflare req'))
+
+    solveCloudflareCaptcha rsp =
+        (do mcookies <- reallySolveCloudflareCaptcha rsp
+            case mcookies of
+              Just cookies -> do
+                let !cookieCount = length (destroyCookieJar cookies)
+                blastLog $ "Cloudflare cookie count: " ++ show cookieCount
+                return (Just cookies)
+              Nothing -> do
+                return Nothing
+        ) `catches`
+            [Handler $ \(e::AsyncException) -> do
+                blastLog "Async exception aborted cloudflare challenge solving"
+                throwIO e
+            ,Handler $ \(e::SomeException) -> do
+                blastLog $
+                    "Exception aborted cloudflare challenge solving"
+                 ++ ", exception was: " ++ show e
+                throwIO e
+            ]
+
+    reallySolveCloudflareCaptcha rsp = do
+        blastLog "locked cloudflare captcha"
+
+        let !parsedId =
+                fromJustNote
+                    ("No id field in cloudflare captcha, fill issue at "
+                    ++ "https://github.com/exbb2/BlastItWithPiss/issues")
+                $ cloudflareIdCaptcha $ responseBody rsp
+
+        chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
+
+        (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
+        fname <- mkImageFileName ct
+
+        cconf <- blast $ getCaptchaConf $ Recaptcha chKey
+
+        captchaMVar <- newEmptyMVar
+        blastCaptcha $
+            CaptchaRequest
+                {captchaType = CaptchaCloudflare
+                ,captchaBytes = bytes
+                ,captchaSend = (putMVar captchaMVar $!)
+                ,captchaConf = cconf
+                ,captchaFilename = fname
+                }
+        answer <- takeMVar captchaMVar
+
+        case answer of
+          Answer s reportBad -> do
+            let
+              rq = (unsafeParseUrl "http://2ch.hk/cdn-cgi/l/chk_captcha")
+                {queryString = renderSimpleQuery True
+                    [("recaptcha_challenge_field", fromString chKey)
+                    ,("recaptcha_response_field", fromString s)
+                    ,("message", "")
+                    ,("id", encodeUtf8 parsedId)
+                    ]
+                ,checkStatus =
+                    \a@Status{statusCode} b c
+                        -> if statusCode == 403
+                          then Nothing
+                          else (checkStatus def) a b c
+                }
+
+            blastLog "blastCloudflare: finished working on captcha"
+            res <- blast $ httpReqStrTags rq
+
+            if statusCode (responseStatus res) == 403
+                && cloudflareCaptcha (responseBody res)
+              then do
+                blastLog "Cloudflare captcha failed, retrying"
+                liftIO . reportBad =<< genOriginStamp
+                reallySolveCloudflareCaptcha res
+              else do
+                blastLog "Got through cloudflare captcha."
+                cj <- blast httpGetCookieJar
+                return $ Just cj
+          ReloadCaptcha ->
+            reallySolveCloudflareCaptcha rsp
+          AbortCaptcha ->
+            return Nothing
+
+blastPost
+    :: [Part Blast (ResourceT IO)]
+    -> Mode
+    -> Maybe Int
+    -> PostData
+    -> BlastLog ()
+blastPost otherfields mode thread postdata = do
+
+    BlastLogData
+     { bBoard = board
+     , bShS = ShSettings
+        { tcaptchaserver
+        , tfluctuation
+        , tstartsignal
+        }
     } <- ask
 
-    BlastLogState{
-     bsOriginInfo = OriginInfo
-        { gmode
-        , gthread
-        }
-    } <- lift get
+    BlastLogState
+     { bsAdaptivityIn
+     , bsOptimisticLastPostTime
+     , bsPessimisticLastPostTime
+     } <- lift get
 
-    now <- liftIO getZonedTime
+    mcap <- if not bsAdaptivityIn || mode == CreateNew
+      then do
+        blastLog "querying captcha"
+        captchaServer <- liftIO $ readFinalizerTVarIO tcaptchaserver
+        getCaptchaAnswer captchaServer thread
+      else do
+        blastLog "skipping captcha"
+        return $ Just $ CAWR def (const $ return ())
+    case mcap of
+        Nothing ->
+            blastLog "Refused to solve captcha, aborting post"
+        Just (CAWR captcha reportbad) ->
+          (\x -> fix x 0) $ \retryPost !(retries :: Int) -> do
 
-    return $ OriginStamp now bProxy bBoard gmode gthread
+            p <- blast $ prepare board thread postdata captcha
+                            otherfields ssachLengthLimit id
 
-blastOut :: Message -> BlastLog ()
-blastOut msg = do
-    BlastLogData{..} <- ask
+            posttimeout   <- blastPostTimeout
+            threadtimeout <- blastThreadTimeout
+            blastLog $ "Post timeout: " ++ show posttimeout
+            blastLog $ "Thread timeout: " ++ show threadtimeout
 
-    stamp <- genOriginStamp
+            mfluctuation <- readTVarIO tfluctuation
+            blastLog $ "Post time fluctuation: " ++ show mfluctuation
 
-    liftIO $ bOut $!! OutMessage stamp msg
+            canDefinitelyPost <-
+                flip fmap (liftIO getPOSIXTime) $ \now ->
+                    now - bsPessimisticLastPostTime >= posttimeout
 
-blastLog :: Text -> BlastLog ()
-blastLog msg = do
-    BlastLogData{..} <- ask
+            -- implying that we get CreateNew only when we definitely can post
+            unless (mode == CreateNew || canDefinitelyPost) $ do
+                !fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
+                    lowerHalf <- chooseFromList [True, True, True, False]
+                    r <- realToFrac <$> getRandomR
+                        ( if lowerHalf then 0 else f/2
+                        , if lowerHalf then f/2 else f )
+                    blastLog $ "Sleep added by fluctuation: " ++ show r
+                    return r
 
-    case bLogD of
-      Log -> blastOut $ LogMessage msg
-      _ -> return ()
+                let !orientedLastPostTime =
+                        if bsAdaptivityIn
+                         || (bsPessimisticLastPostTime - bsOptimisticLastPostTime
+                            > 2) -- slow proxy
+                          then bsOptimisticLastPostTime
+                          else bsPessimisticLastPostTime
 
--- HACK abortWithOutcome
-data AbortOutcome = AbortOutcome !Outcome
-    deriving (Show, Typeable)
+                now <- liftIO getPOSIXTime
+                let slptime =
+                        (orientedLastPostTime + posttimeout)
+                        - now + fluctuation
 
-instance Exception AbortOutcome
+                blastLog $ "sleeping " ++ show slptime ++
+                    " seconds before post. FIXME using threadDelay for sleeping"
+                    ++ ", instead of a more precise timer"
+                threadDelay $ toMicroseconds slptime
 
-abortWithOutcome :: Outcome -> BlastLog a
-abortWithOutcome o = do
-    blastLog $ "Aborting with outcome: " ++ show o
-    blastOut $ OutcomeMessage o
-    throwIO  $ AbortOutcome   o
--- /HACK
+            whenM (not <$> readTVarIO tstartsignal) $ do
+                blastLog $
+                    "Right before first post, got my captcha, still waiting for"
+                 ++ " start wipe signal..."
+                liftIO $ STM.atomically $ STM.check =<< STM.readTVar tstartsignal
+                blastLog "Got signal, ENGAGING..."
 
-data TempBlastPastaChannel
-    = TBPC
-        {escinv :: !Bool
-        ,escwrd :: !Bool
-        ,pasta  :: !String
-        }
+            blastLog "posting"
+
+            beforePost <- liftIO getPOSIXTime -- optimistic
+            (out, _) <- blast $ post p
+            afterPost <- liftIO getPOSIXTime -- pessimistic
+
+            blastOut (OutcomeMessage out)
+
+            when (successOutcome out) $ do
+                if cAdaptive captcha
+                  then setAdaptive True
+                  else setAdaptive False
+                if mode == CreateNew
+                  then do
+                    setLastThreadTime afterPost
+                  else do
+                    setPessimisticLastPostTime afterPost
+                    setOptimisticLastPostTime beforePost
+                blastLog "post succeded"
+
+            case out of
+                Success ->
+                    return ()
+                SuccessLongPost rest ->
+                    when (mode /= CreateNew) $ do
+                        blastPost otherfields mode
+                            thread postdata{text=rest, image=Nothing}
+                Banned bnd -> do
+                    blastLog $ "Banned, reason given: " ++ show bnd
+                    return ()
+                TooFastThread -> do
+                    let m = threadtimeout / 4
+                    blastLog $ "TooFastThread, retrying in "
+                        ++ show (m/60) ++ " minutes"
+                    setLastThreadTime $ beforePost - (threadtimeout - m)
+                    return ()
+                TooFastPost -> do
+                    if retries >= 5
+                      then do
+                        blastLog "TooFastPost, retried five times, aborting."
+                        return ()
+                      else do
+                        blastLog "TooFastPost, retrying in 0.5 seconds"
+                        setOptimisticLastPostTime $
+                            beforePost - (posttimeout - 0.5)
+                        setPessimisticLastPostTime $
+                            beforePost - (posttimeout - 0.5)
+                        retryPost $ retries + 1
+                PostRejected -> do
+                    if retries >= 3
+                      then do
+                        blastLog
+                            "PostRejected, retried thrice already, aborting."
+                        return ()
+                      else do
+                        blastLog "PostRejected, retrying immediately..."
+                        retryPost $ retries + 1
+                o | o == NeedCaptcha || o == WrongCaptcha -> do
+                    blastLog $ show o ++ ", requerying"
+
+                    blast . reportbad =<< genOriginStamp
+
+                    blastPost otherfields mode thread postdata
+                  |   o == Wordfilter
+                   || o == ThreadDoesNotExist
+                   || o == SameImage || o == CorruptedImage
+                   || o == SameMessage || o == LongPost || o == EmptyPost
+                   -> do
+                    blastLog $ "post failed with " ++ show o
+                    return ()
+                -- Internal error, 503, etc
+                  | otherwise -> do
+                    if retries >= 3
+                      then do
+                        blastLog $
+                            show o ++ ", retried thrice already, aborting."
+                        return ()
+                      else do
+                        blastLog "post failed, retrying in 0.2 seconds"
+                        setOptimisticLastPostTime $
+                            beforePost - (posttimeout - 0.2)
+                        setPessimisticLastPostTime $
+                            beforePost - (posttimeout - 0.2)
+                        retryPost $ retries + 1
 
 blastPostData :: Mode -> Maybe Page -> Maybe Int -> BlastLog PostData
 blastPostData mode mpastapage thread = do
@@ -453,21 +541,17 @@ blastPostData mode mpastapage thread = do
 
     blastLog "Choosing pasta..."
 
-    _readerState <- ask
-    _stateState <- lift get
-    _blastState <- blast getBlastState
-    _manager <- blast getManager
-
-    let _getThread =
-            runBlast _manager _blastState
-              . runBlastLogSt _readerState _stateState
-                . getThread
+    _getThread <- blastLogControl $ \runInIO -> return $ runInIO . getThread
 
     let {-# INLINE runGen #-}
         runGen :: TempGenType a -> BlastLog a
         runGen g = evalGen g _getThread mpastapage thread
 
-    TBPC{..} <- do
+    TBPC
+     { escinv
+     , escwrd
+     , pasta
+     } <- do
         pastagen <- readTVarIO tpastagen
         runGen pastagen
     blastLog $
@@ -477,8 +561,7 @@ blastPostData mode mpastapage thread = do
 
     sagemode <- readTVarIO tsagemode
     let sage = fromSageMode sagemode mode
-    blastLog $ "Sage mode: " ++ show sagemode
-            ++ ", Sage: " ++ show sage
+    blastLog $ "Sage mode: " ++ show sagemode ++ ", Sage: " ++ show sage
 
     blastLog "Choosing image"
     cleanImage <- do
@@ -527,305 +610,33 @@ blastPostData mode mpastapage thread = do
                 ,escapeWrd = escwrd}
     final `deepseq` return final
 
-blastCaptcha :: Maybe Int -> BlastLog (Bool, Maybe (CAnswer Blast (ResourceT IO), (OriginStamp -> IO ())))
-blastCaptcha thread = do
-    board <- askBoard
+newtype Couldn'tParseBoardPage = Couldn'tParseBoardPage ErrorMessage
+  deriving (Typeable, Show)
 
-    blastLog "Fetching challenge"
+instance Exception Couldn'tParseBoardPage
 
-    mbbytes <- blast $ getNewCaptcha board thread ""
-    case mbbytes of
-      Left f -> do
-        blastLog $ "Got presolved captcha " ++ show f
-        return (False, Just (f, const $ return ()))
-      Right (chKey :: CurrentSsachCaptchaType) -> do
-        blastLog "Downloading captcha"
+getPage :: Int -> BlastLog Page
+getPage p = do
+    board <- asks bBoard
 
-        (bytes, ct) <- blast $ getCaptchaImage chKey
-        cconf <- blast $ getCaptchaConf chKey
-        fname <- mkImageFileName ct
+    blastLog $ "getPage: going to page " ++ show p
 
-        blastLog "Got captcha image, sending captcha mvar"
+    tags <- responseBody <$> blastCloudflare (unsafeParseUrl (ssachPage board p))
+    let !pg = parsePage board tags
+    if null (threads pg)
+      then throwIO (Couldn'tParseBoardPage $ Err $ renderTags tags)
+      else return pg
 
-        m <- newEmptyMVar
-        blastOut $ SolveCaptcha $
-            SupplyCaptcha CaptchaPosting bytes (putMVar m $!!) cconf fname
-        blastLog "blocking on captcha mvar"
-        a <- takeMVar m
+getThread :: Int -> BlastLog Thread
+getThread i = do
+    board <- asks bBoard
 
-        blastLog $ "got captcha mvar, answer is... " ++ show a
-        case a of
-          Answer s r -> do
-            f <- blast $ applyCaptcha chKey s
-            return (True, Just (f, r))
-          ReloadCaptcha -> blastCaptcha thread
-          AbortCaptcha -> return (True, Nothing)
+    blastLog $ "getThread: Going into " ++ ssachThread board (Just i)
+        ++ " thread for pasta"
 
--- FIXME Code duplication with "post" (checking cloudflare)
--- FIXME Code duplication with "blastCaptcha" (fetching captcha)
--- FIXME what about strict checkStatus in request?
-blastCloudflare
-    :: (Response [Tag Text] -> BlastLog b)
-        -- ^ after we're done, feed the decloudflared page to this
-    -> (BlastLog (Response [Tag Text]), String)
-        -- ^ fst: getter for a page possibly protected with cloudflare.
-        --   snd: Url of that page, so we can post captcha answer to it
-    -> BlastLog b
-blastCloudflare continueWith (getCloudyPage, url) = do
-
-    blastLog "Fetching page for cloudflare inspection"
-    pg <- getCloudyPage
-
-    blastLog "Inspecting"
-    blastCloudflare' pg
-
-  where
-
-    blastCloudflare' rsp
-        | responseStatus rsp == status404 && (maybe False (== "NWS_QPLUS_HY") $
-            lookup hServer $ responseHeaders rsp) = do
-            abortWithOutcome Four'o'FourBan -- HACK HACK HACK oyoyoyoy
-        | responseStatus rsp == status403 && cloudflareBan (responseBody rsp) = do
-            abortWithOutcome CloudflareBan -- HACK HACK HACK oyoyoyoy
-        | responseStatus rsp == status403 && cloudflareCaptcha (responseBody rsp) = do
-            blastLog "Encountered cloudflare challenge"
-            cloudflareChallenge
-        | otherwise = do
-            blastLog "blastCloudflare: No cloudflare spotted..."
-            continueWith rsp
-
-    cloudflareChallenge = do
-        eitherJobCookies <- takeCloudflareLock
-
-        case eitherJobCookies of
-          Left maybeCookiesMVar -> do
-            solveCloudflareCaptcha maybeCookiesMVar
-
-            cloudflareChallenge
-          Right cookies -> do
-            blastLog "Got cloudflare cookies"
-
-            blast $ setCookieJar cookies
-
-            continueWith =<< getCloudyPage
-
-    takeCloudflareLock = do
-        pSharedCookies <- asks $ pSharedCookies . bPrS
-
-        maybeMaybeCookiesMVar <- tryTakeMVar pSharedCookies
-        case maybeMaybeCookiesMVar of
-          Nothing -> do
-            maybeCookiesMVar <- newEmptyMVar
-            myJob <- tryPutMVar pSharedCookies maybeCookiesMVar
-
-            if myJob
-              then
-                return $ Left maybeCookiesMVar
-              else do
-                blastLog "Someone is already solving challenge, retrying."
-                takeCloudflareLock
-          Just oldMaybeCookiesMVar -> do
-            blastLog "Waiting for cloudflare cookies..."
-
-            _maybeCookies <- readMVar oldMaybeCookiesMVar
-            case _maybeCookies of
-              _v@(Just cookies) -> do
-                putMVar pSharedCookies oldMaybeCookiesMVar
-
-                return $ Right cookies
-              Nothing -> do
-                newMaybeCookiesMVar <- newEmptyMVar
-                putMVar pSharedCookies newMaybeCookiesMVar
-
-                blastLog "Previous agent failed to solve cloudflare"
-                return $ Left newMaybeCookiesMVar
-
-    solveCloudflareCaptcha maybeCookiesMVar =
-        (do mcookies <- reallySolveCloudflareCaptcha
-            case mcookies of
-              Just cookies -> do
-                putMVar maybeCookiesMVar (Just cookies)
-                let !cookieCount = length (destroyCookieJar cookies)
-                blastLog $ "Cloudflare cookie count: " ++ show cookieCount
-              Nothing -> do
-                putMVar maybeCookiesMVar Nothing
-        ) `catches`
-            [Handler $ \(e::AsyncException) -> do
-                putMVar maybeCookiesMVar Nothing
-                blastLog "Async exception aborted cloudflare challenge solving"
-                throwIO e
-            ,Handler $ \(e::SomeException) -> do
-                putMVar maybeCookiesMVar Nothing
-                blastLog $
-                    "Exception aborted cloudflare challenge solving"
-                    ++ ", exception was: " ++ show e
-            ]
-
-    reallySolveCloudflareCaptcha = do
-        blastLog "locked cloudflare captcha"
-
-        chKey <- blast $ recaptchaChallengeKey cloudflareRecaptchaKey
-
-        (bytes, ct) <- blast $ getCaptchaImage $ Recaptcha chKey
-        fname <- mkImageFileName ct
-
-        cconf <- blast $ getCaptchaConf $ Recaptcha chKey
-
-        captchaMVar <- newEmptyMVar
-        blastOut $ SolveCaptcha $ SupplyCaptcha
-                {captchaType = CaptchaCloudflare
-                ,captchaBytes = bytes
-                ,captchaSend = \a -> a `deepseq` putMVar captchaMVar a
-                ,captchaConf = cconf
-                ,captchaFilename = fname
-                }
-        answer <- takeMVar captchaMVar
-
-        case answer of
-          Answer s _ -> do
-            let
-              _rq = (fromJust $ parseUrl url)
-                {checkStatus = \_ _ _ -> Nothing
-                ,redirectCount = 0}
-              rq =
-                [("recaptcha_challenge_key", fromString chKey)
-                ,("recaptcha_response_key", fromString s)
-                ,("message", "")
-                ,("act", "captcha")
-                ] `urlEncodedBody` _rq
-
-            _ <- blast $ httpReq rq
-
-            ck <- blast getCookieJar
-
-            if null (destroyCookieJar ck)
-              then do
-                blastLog "CLOUDFLARE ERROR: Empty cookie jar, invalid captcha?"
-                return Nothing
-              else do
-                blastLog "finished working on captcha"
-                return (Just ck)
-          ReloadCaptcha ->
-            return Nothing
-          AbortCaptcha ->
-            return Nothing
-
-blastPost
-    :: POSIXTime
-    -> Bool
-    -> [Part Blast (ResourceT IO)]
-    -> Mode
-    -> Maybe Int
-    -> PostData
-    -> BlastLog ()
-blastPost threadtimeout captchaNeeded otherfields mode thread postdata = do
-
-    BlastLogData {
-      bBoard = board
-    , bShS = ShSettings{..}
-    , bMuS = MuSettings{..}
-    } <- ask
-
-    BlastLogState {
-      bsAdaptivityIn = adaptive
-    , ..
-    } <- lift get
-
-    (neededcaptcha, mcap) <-
-        if captchaNeeded || mode == CreateNew || not adaptive
-          then do
-            blastLog "querying captcha"
-            blastCaptcha thread
-          else do
-            blastLog "skipping captcha"
-            return (False, Just (def, const $ return ()))
-    case mcap of
-        Nothing -> blastLog "Refused to solve captcha, aborting post"
-        Just (captcha, reportbad) -> do
-
-            p <- blast $ prepare board thread postdata captcha
-                            otherfields ssachLengthLimit id
-
-            posttimeout <- blastPostTimeout
-            blastLog $ "Post timeout: " ++ show posttimeout
-            blastLog $ "Thread timeout: " ++ show threadtimeout
-
-            mfluctuation <- readTVarIO tfluctuation
-            blastLog $ "Post time fluctuation: " ++ show mfluctuation
-
-            canDefinitelyPost <-
-                flip fmap (liftIO getPOSIXTime) $ \now ->
-                    now - bsPessimisticLastPostTime >= posttimeout
-
-            -- implying that we get CreateNew only when we definitely can post
-            unless (mode == CreateNew || canDefinitelyPost) $ do
-                !fluctuation <- flip (maybe $ return 0) mfluctuation $ \f -> do
-                    lowerHalf <- chooseFromList [True, True, True, False]
-                    r <- realToFrac <$> getRandomR
-                        (if lowerHalf then 0 else f/2, if lowerHalf then f/2 else f)
-                    blastLog $ "Sleep added by fluctuation: " ++ show r
-                    return r
-
-                let !orientedLastPostTime =
-                        if adaptive
-                          then bsOptimisticLastPostTime
-                          else bsPessimisticLastPostTime
-
-                now <- liftIO getPOSIXTime
-                let slptime =
-                        (orientedLastPostTime + posttimeout)
-                        - now + fluctuation
-
-                blastLog $ "sleeping " ++ show slptime ++
-                    " seconds before post. FIXME using threadDelay for sleeping"
-                    ++ ", instead of a more precise timer"
-                threadDelay $ toMicroseconds slptime
-
-            blastLog "posting"
-
-            beforePost <- liftIO getPOSIXTime -- optimistic
-            (out, _) <- blast $ post p
-            afterPost <- liftIO getPOSIXTime -- pessimistic
-
-            blastOut (OutcomeMessage out)
-
-            when (successOutcome out) $ do
-                when (neededcaptcha && adaptive) $ setAdaptive False
-                unless (neededcaptcha || adaptive) $ setAdaptive True
-                if mode == CreateNew
-                  then do
-                    setLastThreadTime afterPost
-                  else do
-                    setPessimisticLastPostTime afterPost
-                    setOptimisticLastPostTime beforePost
-                blastLog "post succeded"
-
-            case out of
-                Success -> return ()
-                SuccessLongPost rest ->
-                    when (mode /= CreateNew) $ do
-                        blastPost threadtimeout captchaNeeded otherfields mode thread $
-                            postdata{text = rest, image = Nothing}
-                TooFastThread -> do
-                    let m = threadtimeout / 3
-                    blastLog $ "TooFastThread, retrying in " ++ show (m/60) ++ " minutes"
-                    setLastThreadTime $ beforePost - m
-                PostRejected -> do
-                    blastLog "PostRejected, retrying immediately..."
-                ThreadDoesNotExist -> do
-                    blastLog "Thread does not exist, searching for another..."
-                o | o==NeedCaptcha || o==WrongCaptcha -> do
-                    blastLog $ show o ++ ", requerying"
-                    liftIO . reportbad =<< genOriginStamp
-                    blastPost threadtimeout True otherfields mode thread postdata
-                  | otherwise -> do
-                    if o==TooFastPost
-                      then
-                        blastLog "TooFastPost, retrying in 0.5 seconds"
-                      else
-                        blastLog "post failed, retrying in 0.5 seconds"
-                    setOptimisticLastPostTime $ beforePost - (posttimeout - 0.5)
-                    setPessimisticLastPostTime $ beforePost - (posttimeout - 0.5)
+    headNote "PastaHead fail, no posts parsed" . fst . parseThreads
+        . responseBody <$>
+        blastCloudflare (unsafeParseUrl $ ssachThread board (Just i))
 
 blastLoop :: BlastLog ()
 blastLoop =
@@ -838,12 +649,10 @@ blastLoop =
       bBoard = board
     , bOtherFields
     , bShS = ShSettings
-        { tcreatethreads
-        }
+        { tallowedmodes }
     , bMuS = MuSettings
         { mmode
-        , mthread
-        }
+        , mthread }
     } <- ask
 
     BlastLogState
@@ -852,10 +661,7 @@ blastLoop =
 
     now <- liftIO getPOSIXTime
     threadtimeout <- blastThreadTimeout
-    canmakethread <-
-        ifM (readTVarIO tcreatethreads)
-          (return $ now - bsLastThreadTime >= threadtimeout)
-          (return False)
+    let canmakethread = now - bsLastThreadTime >= threadtimeout
 
     mp0 <- do
         threadIsSet <- isJust <$> readTVarIO mthread
@@ -867,25 +673,44 @@ blastLoop =
             getPage 0
 
     case mp0 of
-      Nothing -> blastLog "Thread chosen, ommitting page parsing"
-      Just p0 -> blastLog $
-        "page params:\n" ++
-        "page id: " ++ show (pageId p0) ++ "\n" ++
-        "lastpage id: " ++ show (lastpage p0) ++ "\n" ++
-        "speed: " ++ show (speed p0) ++ "\n" ++
-        "threads: " ++ show (length $ threads p0) ++ "\n" ++
-        "max replies: " ++ maybe "COULDN'T PARSE THREADS, EXPECT CRASH IN 1,2,3..." show (maximumMay $ map postcount $ threads p0) ++ "\n" ++
-        "canmakethread: " ++ show canmakethread
+      Nothing ->
+        blastLog "Thread chosen, ommitting page parsing"
+      Just p0 ->
+        blastLog $
+            "page params:\n"
+         ++ "page id: " ++ show (pageId p0) ++ "\n"
+         ++ "lastpage id: " ++ show (lastpage p0) ++ "\n"
+         ++ "speed: " ++ show (speed p0) ++ "\n"
+         ++ "threads: " ++ show (length $ threads p0) ++ "\n"
+         ++ "max replies: " ++ show (maximum $ map postcount $ threads p0)
 
-    mode <- readTVarIO mmode >>=
+    allowedModes <- readTVarIO tallowedmodes
+    let !lstModes = S.toAscList allowedModes
+    !mode <- readTVarIO mmode >>=
         maybe
-        (do case mp0 of
-              Nothing -> do
-                blastLog "No page, throwing a dice for mode..."
-                chooseFromList [minBound .. maxBound]
-              Just p0 -> do
-                blastLog "Choosing mode..."
-                chooseMode board canmakethread p0)
+        ((case mp0 of
+          Nothing -> do
+            blastLog $ "No page, throwing a dice for mode..."
+                ++ ", allowed modes: " ++ show lstModes
+            chooseFromListMaybe lstModes
+          Just p0 -> do
+            blastLog $ "Choosing mode..."
+                ++ " canmakethread: " ++ show canmakethread
+                ++ ", allowed modes: " ++ show lstModes
+            chooseMode board canmakethread p0 allowedModes
+         ) <&> fromMaybe (error $
+                "Неприменимо ни одно поведение из " ++ show lstModes
+             ++ "!!" ++ case lstModes of
+                -- wait
+                [CreateNew] ->
+                    "\nРазрешено только создавать треды, но не прошло 30 минут "
+                 ++ "с прошлого создания треда."
+                [ShitupSticky] ->
+                    "\nРазрешено только засирать прикрепленный тред, но ни "
+                 ++ "один тред не прикреплен или все прикрепленные треды "
+                 ++ "закрыты!"
+                _ -> "")
+        )
         (\m -> do
             blastLog $ "Got mmode " ++ show m
             return m)
@@ -900,99 +725,112 @@ blastLoop =
                         board
                         mode
                         getPage
-                        (fromMaybe (error "Page is Nothing while thread not specified") mp0))
+                        (fromMaybe
+                            (error "Page is Nothing while thread not specified")
+                            mp0)
+            )
             (\t -> do
                 blastLog $ "Got mthread " ++ show t
                 return (Just t, Nothing))
     recThread thread
     blastLog $ "chose thread " ++ show thread
 
-    postdata <- blastPostData mode mpastapage thread
+    !postdata <- blastPostData mode mpastapage thread
 
-    blastPost threadtimeout False bOtherFields mode thread postdata
+    blastPost bOtherFields mode thread postdata
 
-getPage :: Int -> BlastLog Page
-getPage p = do
-    board <- askBoard
-
-    let url = ssachPage board p
-        !req = (fromJust $ parseUrl url)
-            {checkStatus = \_ _ _ -> Nothing}
-
-    blastLog $ "getPage: going to page " ++ show p
-
-    blastCloudflare
-        (return . parsePage board . responseBody)
-        (blast $ httpReqStrTags req, url)
-
-getThread :: Int -> BlastLog Thread
-getThread i = do
-    board <- askBoard
-
-    blastLog $ "Going into " ++ show i ++ " thread for pasta"
-    blast $ headNote "PastaHead fail" . fst . parseThreads <$>
-            httpGetStrTags (ssachThread board (Just i))
-
--- | Entry point should always be forked.
---
--- > thread <- forkIO (entryPoint print sh to Board ms)
---
--- You might want to resurrect thread if it dies.
---
--- > st <- threadStatus thread
--- > if st==ThreadDied || st==ThreadFinished
--- >    then resurrect
--- >    else continue
+-- | Start wipe with parameters.
 entryPoint
     :: Manager
     -> BlastProxy
     -> Board
-    -> LogDetail
     -> ShSettings
     -> MuSettings
     -> ProxySettings
     -> (OutMessage -> IO ())
+    -> (CaptchaOrigin -> CaptchaRequest -> IO ())
     -> IO ()
-entryPoint manager proxy board lgDetail shS muS prS output =
+entryPoint manager proxy board shS muS prS output coutput =
+    bracket_
+      (STM.atomically $ STM.modifyTVar (_mMutAgentCount muS) (\x -> x + 1))
+      (STM.atomically $ STM.modifyTVar (_mMutAgentCount muS) (\x -> x - 1))
+      $
     runBlastNew manager proxy (pUserAgent prS) $
-    runBlastLog BlastLogData {
-          bProxy = proxy
+    runBlastLog BlastLogData
+        { bProxy = proxy
         , bBoard = board
-        , bLogD = lgDetail
-        , bShS = shS
-        , bMuS = muS
-        , bPrS = prS
-        , bOut = output
+        , bShS   = shS
+        , bMuS   = muS
+        , bPrS   = prS
+        , bOut   = output
+        , bCaptchaOut = coutput
         , bOtherFields = ssachLastRecordedFields board
         }
       $ do
         blastLog "Entry point"
-        let hands =
-              [Handler $ \(a::AsyncException) -> do
+
+        mask_ $ do
+            cj' <- tryTakeMVar (pSharedCookies prS)
+            case cj' of
+              Just mcj -> do
+                putMVar (pSharedCookies prS) mcj
+                whenJust mcj $ blast . httpSetCookieJar
+              _ -> return ()
+
+        start
+  where
+    start = flip catches hands $ blastLoop
+    hands = [Handler $ \(a::AsyncException) -> do
                 blastLog $ "Got async " ++ show a
                 throwIO a
-              ,Handler $ \(_::AbortOutcome) -> do
+            ,Handler $ \(_::AbortOutcome) -> do
                 blastLog "HACK abortOutcome"
                 -- wait what? {- start -} --HACK abortOutcome
-              {-,Handler $ \(a::HttpException) -> do
-                blastLog $ "Got http exception, restarting. Exception was: " ++ show a
+            {-,Handler $ \(a::HttpException) -> do
+                blastLog $ "Got http exception, restarting. Exception was: "
+                        ++ show a
                 start -- Dunno what to do except restart.-}
-              ,Handler $ \(a::SomeException) -> do
+            ,Handler $ \(a::SomeException) -> do
                 blastLog $ "Terminated by exception " ++ show a
                 blastOut $ OutcomeMessage $ InternalError $ ErrorException a
-              ]
-            start = flip catches hands $ blastLoop
-        start
+            ]
 
-sortSsachBoardsByPopularity :: [Board] -> IO ([(Board, Int)], [Board])
-sortSsachBoardsByPopularity boards = do
+sortSsachBoardsByPopularity
+    :: (Text -> IO ())
+    -> Maybe (Either (Board, Text) (Board, Int) -> IO ())
+    -> [Board]
+    -> IO (M.Map Board Int, [Board])
+sortSsachBoardsByPopularity logIO mcallback boards = do
     ua <- newUserAgent
-    bracket (newManager def) closeManager $ \m -> runBlastNew m NoProxy ua $ do
+    res <- bracket (newManager def) closeManager $ \m ->
+      runBlastNew m NoProxy ua $ do
         maybeb <- forM boards $ \b -> do
-            liftIO $ putStr $ "Processing " ++ renderBoard b ++ ". Speed: "
-            spd <- parseSpeed <$> httpGetStrTags (ssachPage b 0)
-            liftIO $ putStrLn $ show spd
-            return (b, spd)
+            liftIO $ logIO $ "Processing " ++ renderBoard b
+
+            rsp :: Either HttpException Html <-
+                try $ httpGetStrTags (ssachPage b 0)
+
+            let spd = case rsp of
+                    Left x -> Left (show x)
+                    Right a ->
+                        maybe (Left "Не удалось распарсить скорость") Right $
+                            parseSpeed a
+
+            liftIO $ spd & either (\_ -> return ()) (\(s::Int) ->
+                logIO $ renderBoard b ++ ": Speed: " ++ show s)
+
+            whenJust mcallback $ \callbackIO ->
+                liftIO $ callbackIO (case spd of
+                  Left e -> Left (b, e)
+                  Right s -> Right (b, s))
+
+            return (b, either (const Nothing) Just spd)
+
         let (got, failed) = partition (isJust . snd) maybeb
             sorted = reverse $ sortBy (compare `on` fromJust . snd) got
-        return (map (second fromJust) sorted, fst $ unzip $ failed)
+
+        return
+            ( M.fromList $ map (second fromJust) sorted
+            , fst $ unzip $ failed)
+    liftIO $ logIO "sortSsachBoardsByPopularity: Finished."
+    return res

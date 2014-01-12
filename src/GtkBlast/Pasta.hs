@@ -35,7 +35,8 @@ shuffleWords = fmap unwords . shuffleM . words
 
 -- | Depending on the environment, generate a function appending a random quote
 -- or return text intact
-makeRQuoter :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
+makeRQuoter
+    :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
 makeRQuoter = do
     toQuote <- get =<< asks wcheckrandomquote
     if toQuote
@@ -52,7 +53,8 @@ makeShuffler = do
       else return return
 
 -- | > 'makeShuffler' '.' 'makeRquoter'
-makePostProc :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
+makePostProc
+    :: E ((Int -> IO Thread) -> Maybe Page -> Maybe Int -> String -> IO String)
 makePostProc = do
     rquoter <- makeRQuoter
     shuffler <- makeShuffler
@@ -113,20 +115,31 @@ generatePastaGen FromWidget = do
 
 regeneratePastaGen :: IORef (Maybe CloseWatcher) -> E ()
 regeneratePastaGen mcw = do
+    e@E{..} <- ask
+
+    newfname <- get wentrypastafile
+    ps <- get pastaSet
+
     maybe (return ()) closeWatcher =<< get mcw
     set mcw Nothing
-    e@E{..} <- ask
-    ps <- get pastaSet
-    newfname <- get wentrypastafile
-    writeLog $ "Pasta changed \"" ++ show ps ++ ":" ++ fromString newfname ++ "\""
+
+    writeLog $
+        "Pasta changed " ++
+            (if ps==PastaFile
+              then show ps ++ ":\"" ++ fromString newfname ++ "\""
+              else show ps)
+
     when (ps==PastaFile) $ do
       exists <- io $ doesFileExist newfname
       if exists
         then do
-          cw <- postAsyncWhenPathModified newfname $ runE e $ regeneratePastaGen mcw
+          cw <- postAsyncWhenPathModified newfname $
+            runE e $ regeneratePastaGen mcw
           set mcw $ Just cw
         else do
-          tempError 5 $ "Файл с пастой не существует \"" ++ fromString newfname ++ "\""
+          tempError 5 $
+            "Файл с пастой не существует \"" ++ fromString newfname ++ "\""
+
     io . atomically . writeTVar (tpastagen shS) =<< generatePastaGen ps
 
 pastaEnvPart :: Builder -> EnvPart
@@ -135,10 +148,14 @@ pastaEnvPart b = EP
         pastaSet <- newIORef $ coPastaSet c
         pastaText <- newIORef $ coPastaText c
 
-        wcheckescapeinv <- setir (coEscapeInv c) =<< builderGetObject b castToCheckButton "checkescapeinv"
-        wcheckescapewrd <- setir (coEscapeWrd c) =<< builderGetObject b castToCheckButton "checkescapewrd"
-        wcheckshuffle <- setir (coShuffleReposts c) =<< builderGetObject b castToCheckButton "checkshuffle"
-        wcheckrandomquote <- setir (coRandomQuote c) =<< builderGetObject b castToCheckButton "checkrandomquote"
+        wcheckescapeinv <- setir (coEscapeInv c)
+                    =<< builderGetObject b castToCheckButton "checkescapeinv"
+        wcheckescapewrd <- setir (coEscapeWrd c)
+                    =<< builderGetObject b castToCheckButton "checkescapewrd"
+        wcheckshuffle <- setir (coShuffleReposts c)
+                    =<< builderGetObject b castToCheckButton "checkshuffle"
+        wcheckrandomquote <- setir (coRandomQuote c)
+                    =<< builderGetObject b castToCheckButton "checkrandomquote"
 {-
         let bolall w1 w2 = do
                 (x1,x2) <- (,) <$> getIO w1 <*> getIO w2
@@ -162,20 +179,32 @@ pastaEnvPart b = EP
                     toggleButtonSetInconsistent wcheckescapeall True
 -}
 
-        wradiofromthread <- builderGetObject b castToRadioButton "radio-fromthread"
-        wradiosym <- builderGetObject b castToRadioButton "radio-symbol"
-        wradiopastafile <- builderGetObject b castToRadioButton "radio-pastafile"
-        wradionopasta <- builderGetObject b castToRadioButton "radio-nopasta"
-        wradiowidget <- builderGetObject b castToRadioButton "radio-widget"
+        wradiofromthread <-
+            builderGetObject b castToRadioButton "radio-fromthread"
+        wradiosym        <-
+            builderGetObject b castToRadioButton "radio-symbol"
+        wradiopastafile  <-
+            builderGetObject b castToRadioButton "radio-pastafile"
+        wradionopasta    <-
+            builderGetObject b castToRadioButton "radio-nopasta"
+        wradiowidget     <-
+            builderGetObject b castToRadioButton "radio-widget"
 
         mclose <- newIORef Nothing
 
-        wwindow <- builderGetObject b castToWindow "window-edit-pasta"
-        wbuttonspawn <- builderGetObject b castToButton "button-edit-pasta"
-        wbuttonapply <- builderGetObject b castToButton "button-edit-pasta-apply"
-        wbuttoncancel <- builderGetObject b castToButton "button-edit-pasta-cancel"
-        wbuttonok <- builderGetObject b castToButton "button-edit-pasta-ok"
-        wtextview <- builderGetObject b castToTextView "textview-edit-pasta"
+        wwindow       <-
+                    builderGetObject b castToWindow "window-edit-pasta"
+        wbuttonspawn  <-
+                    builderGetObject b castToButton "button-edit-pasta"
+        wbuttonapply  <-
+                    builderGetObject b castToButton "button-edit-pasta-apply"
+        wbuttoncancel <-
+                    builderGetObject b castToButton "button-edit-pasta-cancel"
+        wbuttonok     <-
+                    builderGetObject b castToButton "button-edit-pasta-ok"
+        wtextview     <-
+                    builderGetObject b castToTextView "textview-edit-pasta"
+
         editorWidget
             (get pastaText)
             (\t -> runE e $ do
@@ -211,24 +240,26 @@ pastaEnvPart b = EP
              wcheckescapeinv
             ,wcheckescapewrd]
 
-        let setSensitive t assoc senswidgets = do
-                if t
-                    then
-                        mapM_ (\(w,p) -> toggleButtonSetActive w =<< get p) assoc
-                    else do
-                        forM_ assoc $ \(w,p) -> do
-                            whenM (G.get w widgetSensitive) $
-                                set p =<< get w
-                            toggleButtonSetActive w False
-                mapM_ (`widgetSetSensitive` t) senswidgets
+        let
+          setSensitive t assoc senswidgets = do
+            if t
+              then
+                forM_ assoc $ \(w, p) ->
+                    toggleButtonSetActive w =<< get p
+              else do
+                forM_ assoc $ \(w, p) -> do
+                    whenM (G.get w widgetSensitive) $
+                        set p =<< get w
+                    toggleButtonSetActive w False
+            mapM_ (`widgetSetSensitive` t) senswidgets
 
         void $ flip anyM pastaradio $ \(p, w) ->
             if (p == coPastaSet c)
-                then True <$ do
-                    toggleButtonSetActive w True
-                    setSensitive (p==PastaFile || p==FromWidget)
-                        pastafileassoc pastafilewidgets
-                else return False
+              then True <$ do
+                toggleButtonSetActive w True
+                setSensitive (p==PastaFile || p==FromWidget)
+                    pastafileassoc pastafilewidgets
+              else return False
 {-
         let updAll = unlessM (get ignore) $ do
                 set ignore True
@@ -247,7 +278,8 @@ pastaEnvPart b = EP
                     setSensitive (p==PastaFile || p==FromWidget)
                         pastafileassoc pastafilewidgets
 
-        wentrypastafile <- setir (coPastaFile c) =<< builderGetObject b castToEntry "entrypastafile"
+        wentrypastafile <- setir (coPastaFile c)
+                            =<< builderGetObject b castToEntry "entrypastafile"
         wbuttonpastafile <- builderGetObject b castToButton "buttonpastafile"
 
         onFileChooserEntryButton False wbuttonpastafile wentrypastafile

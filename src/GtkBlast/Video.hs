@@ -34,7 +34,10 @@ regenerateVideoGen mcw = do
     e@E{..} <- ask
     vs <- get videoSet
     newfname <- get wentryvideofile
-    writeLog $ "Video changed \"" ++ show vs ++ ":" ++ fromString newfname ++ "\""
+    writeLog $ "Video changed " ++
+        (if vs==VideoFromFile
+          then show vs ++ ":\"" ++ fromString newfname ++ "\""
+          else show vs)
     when (vs == VideoFromFile) $ do
       exists <- io $ doesFileExist newfname
       if exists

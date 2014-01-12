@@ -21,15 +21,17 @@ type MonadChoice a = (MonadRandom a, MonadIO a, MonadBaseControl IO a, Applicati
 
 {-# INLINABLE chooseFromList #-}
 chooseFromList :: MonadChoice m => [a] -> m a
-chooseFromList [] = error "chooseFromList supplied with empty list."
-chooseFromList l = (l!!) <$> getRandomR (0, length l - 1)
+chooseFromList []  = error "chooseFromList supplied with empty list."
+chooseFromList [x] = return x
+chooseFromList l   = (l!!) <$> getRandomR (0, length l - 1)
 
-{-# INLINE chooseFromListMaybe #-}
+{-# INLINABLE chooseFromListMaybe #-}
 chooseFromListMaybe :: MonadChoice m => [a] -> m (Maybe a)
-chooseFromListMaybe [] = return Nothing
-chooseFromListMaybe l = Just . (l!!) <$> getRandomR (0, length l - 1)
+chooseFromListMaybe []  = return Nothing
+chooseFromListMaybe [x] = return (Just x)
+chooseFromListMaybe l   = Just . (l!!) <$> getRandomR (0, length l - 1)
 
-{-# INLINE generateRandomString #-}
+{-# INLINABLE generateRandomString #-}
 generateRandomString :: MonadChoice m => (Int, Int) -> (Char, Char) -> m String
 generateRandomString lengthBounds charBounds = do
     len <- getRandomR lengthBounds
@@ -48,13 +50,21 @@ generateSymbolString maxlength = do
     shuffleM (num++beng++seng++brus++srus++spc)
 
 instance MonadRandom m => MonadRandom (ResourceT m) where
+    {-# INLINE getRandom #-}
     getRandom   = lift getRandom
+    {-# INLINE getRandoms #-}
     getRandoms  = lift getRandoms
+    {-# INLINE getRandomR #-}
     getRandomR  = lift . getRandomR
+    {-# INLINE getRandomRs #-}
     getRandomRs = lift . getRandomRs
 
 instance MonadRandom m => MonadRandom (StateT s m) where
+    {-# INLINE getRandom #-}
     getRandom   = lift getRandom
+    {-# INLINE getRandoms #-}
     getRandoms  = lift getRandoms
+    {-# INLINE getRandomR #-}
     getRandomR  = lift . getRandomR
+    {-# INLINE getRandomRs #-}
     getRandomRs = lift . getRandomRs

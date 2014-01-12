@@ -1,4 +1,10 @@
-module Main where
+module
+#ifdef COMBINED_CHECK
+    CheckProxyMain
+#else
+    Main
+#endif
+    (main) where
 import Import
 
 import Paths_blast_it_with_piss
@@ -17,9 +23,8 @@ import qualified Data.Text as T
 import qualified Data.Map.Strict as M
 
 import Control.Concurrent
-import Control.Concurrent.Lifted (fork)
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TBMQueue
+import Control.Concurrent.STM.TMQueue
 
 import Control.Monad.Trans.Resource
 
@@ -41,7 +46,7 @@ import System.Console.CmdArgs.Implicit hiding (def)
 
 import Control.Monad.Trans.Reader
 
-
+-- cmdargs won't let me use strict fields
 data Config = Config
     {_socks                :: Bool
     ,_workerCount          :: Int
@@ -81,11 +86,9 @@ data ProxyCat
 data Env = Env
     {manager              :: !Manager
     ,board                :: !Board
-    ,antigateKey          :: !(Maybe ApiKey)
-    ,workerCount          :: !Int
-    ,timeout              :: !Int
     ,thread               :: !Int
-    ,catFiles             :: !(M.Map ProxyCat FilePath)
+    ,antigateKey          :: !(Maybe ApiKey)
+    ,timeout              :: !Int
     ,disableRetryCaptcha  :: !Bool
     ,disableRetryRejected :: !Bool
     }
@@ -232,43 +235,63 @@ impureAnnotatedCmdargsConfig = Config
 -- | Exceptions are handled inside 'post'
 checkProxy :: BlastProxy -> ReaderT Env IO Outcome
 checkProxy proxy = do
-    e@Env{..} <- ask
+    e@Env
+     { manager
+     , antigateKey
+     , timeout
+     , board
+     , thread
+     } <- ask
+
     ua <- newUserAgent
+
     liftIO $ runBlastNew manager proxy ua $ do
-        -- HACK Lock log / fast-logger
         putStrLn $ "Запущен тред для {" ++ show proxy ++ "}"
 
-        setTimeout $ Just $ millions timeout
-        setMaxRetryCount 0 -- why retry?
+        httpSetTimeout $ Just (timeout & millions)
+        httpSetMaxRetryCount 0 -- no reason to retry [?]
 
-        -- HACK Lock log / fast-logger
-        outcome' <- do
-            case antigateKey of
-              Just k -> do
-                putStrLn $ show proxy ++ ": Поcтим с проверкой капчи"
-                kludgeAntigateCheckProxy proxy e k
-              Nothing -> do
-                putStrLn $ show proxy ++ ": Поcтим без капчи"
-                captchaid <- generateRandomString (32,32) ('A', 'Z')
-                (outcome, ~_) <- post =<< prepare board (Just thread)
-                    PostData
-                        {subject = "САЖА"
-                        ,text = ">>" ++ show thread ++ "\nОП-хуй, сажаскрыл."
-                        ,image = Nothing
-                        ,video = ""
-                        ,sage = True
-                        ,makewatermark = False
-                        ,escapeInv = False
-                        ,escapeWrd = False}
-                    (unsafeMakeYandexCaptchaAnswer captchaid "421463")
-                    (ssachLastRecordedFields board)
-                    ssachLengthLimit
-                    id
-                return outcome
-        return outcome'
+        case antigateKey of
+          Just key -> do
+            putStrLn $ show proxy ++ ": Поcтим с проверкой капчи"
 
-kludgeAntigateCheckProxy :: BlastProxy -> Env -> ApiKey -> Blast Outcome
-kludgeAntigateCheckProxy proxy e@Env{..} key = do
+            antigateCheckProxy proxy e key
+          Nothing -> do
+            putStrLn $ show proxy ++ ": Поcтим без капчи"
+
+            captchaid <- generateRandomString (32,32) ('A', 'Z')
+            captchaanswer <- generateRandomString (6,6) ('0', '9')
+
+            (outcome, ~_) <- post =<<
+              prepare
+                board
+                (Just thread)
+                PostData
+                  {subject       = "САЖА"
+                  ,text          = ">>" ++ show thread ++ "\nОП-хуй, сажаскрыл."
+                  ,image         = Nothing
+                  ,video         = ""
+                  ,sage          = True
+                  ,makewatermark = False
+                  ,escapeInv     = False
+                  ,escapeWrd     = False}
+                (unsafeMakeYandexCaptchaAnswer captchaid captchaanswer)
+                (ssachLastRecordedFields board)
+                ssachLengthLimit
+                id
+
+            return outcome
+
+antigateCheckProxy :: BlastProxy -> Env -> ApiKey -> Blast Outcome
+antigateCheckProxy
+    proxy
+    e@Env
+     { board
+     , thread
+     , manager
+     , disableRetryCaptcha }
+    key = do
+
     (cAnswer, repBad) <- do
         nc <- getNewCaptcha board (Just thread) ""
         case nc of
@@ -294,7 +317,8 @@ kludgeAntigateCheckProxy proxy e@Env{..} key = do
 
     image <- do
         fname <- mkImageFileName "image/gif"
-        return $ Image fname "image/gif" "ХУЙ ВЫГРЫЗИ УЁБИЩЕ, выпроваживает он нас."
+        return $
+            Image fname "image/gif" "ХУЙ ВЫГРЫЗИ УЁБИЩЕ, выпроваживает он нас."
 
     let otherfields = ssachLastRecordedFields board
 
@@ -319,20 +343,27 @@ kludgeAntigateCheckProxy proxy e@Env{..} key = do
     putStrLn $ "Finished {" ++ show proxy ++ "}, outcome: " ++ show outcome
 
     case outcome of
-      o | o==NeedCaptcha || o==WrongCaptcha -> do
+      o | o == NeedCaptcha || o == WrongCaptcha -> do
         putStrLn $ show proxy ++ ": Reporting bad captcha"
         liftIO $ repBad
         if disableRetryCaptcha
           then return outcome
           else do
             putStrLn $ show proxy ++ ": Retrying captcha"
-            kludgeAntigateCheckProxy proxy e key
+            antigateCheckProxy proxy e key
       _ ->
         return outcome
 
-outcomeMessage :: BlastProxy -> Outcome -> ReaderT Env IO (ProxyCat, Text) -> ReaderT Env IO (ProxyCat, Text)
-outcomeMessage proxy outcome recurse = do
-    Env{..} <- ask
+outcomeMessage
+    :: BlastProxy
+    -> Outcome
+    -> ReaderT Env IO (ProxyCat, Text)
+    -> ReaderT Env IO (ProxyCat, Text)
+outcomeMessage proxy outcome retryCheck = do
+    Env
+     { disableRetryRejected
+     , antigateKey } <- ask
+
     case outcome of
       InternalError e ->
         case fromException $ unErrorException e of
@@ -345,7 +376,7 @@ outcomeMessage proxy outcome recurse = do
             ape Dead $ show proxy ++ "| PostRejected"
           else do
             putStrLn $ "{" ++ show proxy ++ "} PostRejected"
-            recurse
+            retryCheck
       CloudflareBan -> do
         ape CloudBan $ show proxy
       CloudflareCaptcha -> do
@@ -356,12 +387,17 @@ outcomeMessage proxy outcome recurse = do
         ape Ban403 $ show proxy
       Banned reason -> do
         ape Ban $ show proxy ++ "| Ban, reason was: " ++ show reason
-      UnknownError -> do
-        ape Dead $ show proxy ++ "| Возможно эта прокси не рабочая, и лишь отдает пустые ответы"
+      UnknownError i -> do
+        ape Dead $ show proxy
+            ++ "| Неизвестная ошибка, http status code: " ++ show i
+            ++ ". Возможно эта прокси не рабочая, и лишь отдает пустые ответы"
       Five'o'ThreeError -> do
-        ape Ban503 $ show proxy ++ "| 503. FIXME прокся наткнулась на лимит мочаки, почему-то это ещё не починено. Наверное я просто забыл об этом."
+        ape Ban503 $ show proxy
+         ++   "| 503. FIXME прокся наткнулась на лимит мочаки, почему-то это "
+         ++ " ещё не починено. Наверное я просто забыл об этом."
       ThreadDoesNotExist -> do
-        putStrLn $ show proxy ++ "| НЕТ ТАКОГО ТРЕДА, АВАРИЙНАЯ ОСТАНОВКА. FIXME должен просто находить новый тред"
+        putStrLn $ show proxy ++ "| НЕТ ТАКОГО ТРЕДА, РАСХОДИМСЯ. "
+            ++ " FIXME чекер должен сам находить тред"
         liftIO $ System.Exit.exitWith (System.Exit.ExitFailure 404)
       x -> do
         if isJust antigateKey
@@ -374,8 +410,20 @@ outcomeMessage proxy outcome recurse = do
                   then do
                     putStrLn $
                         show proxy ++ ": INCORRECT Captcha, retrying."
-                    recurse
+                    retryCheck
                   else do
+                    -- One of:
+                    --  RecaptchaBan
+                    --  Success
+                    --  SuccessLongPost{}
+                    --  TooFastPost
+                    --  TooFastThread
+                    --  Wordfilter
+                    --  SameMessage
+                    --  SameImage
+                    --  LongPost
+                    --  EmptyPost
+                    --  OtherError{}
                     putStrLn $
                         "Configured to check with captcha, but got " ++ show x
                         ++ ". Throwing to Other"
@@ -403,66 +451,68 @@ writerThread catFiles tq = forever $ do
         withBinaryFile f AppendMode $ \h -> do
             B8.hPutStrLn h $ encodeUtf8 text
 
-mainloop :: [BlastProxy] -> ReaderT Env IO ()
-mainloop [] = do
+mainloop :: [BlastProxy] -> Int -> (M.Map ProxyCat FilePath) -> Env -> IO ()
+mainloop [] _ _ _ = do
     putStrLn "Пустой список проксей."
-mainloop proxies = do
-    Env{..} <- ask
+mainloop proxies workerCount catFiles env = do
 
-    let !maxCount = length proxies
+    let !lengthProxies = length proxies
 
-    checkedMap <- liftIO $ newTVarIO M.empty
+    writeQueue <- newTQueueIO
+    _ <- forkIO $ writerThread catFiles writeQueue
 
-    proxyQueue <- liftIO $ newTBMQueueIO workerCount
+    proxyQueue <- newTMQueueIO
+    _ <- forkIO $
+        atomically $ mapM_ (writeTMQueue proxyQueue) proxies
 
-    writeQueue <- liftIO $ newTQueueIO
+    checkedMap <- newTVarIO (M.empty :: M.Map ProxyCat Int)
 
-    _ <- liftIO $ forkIO $
-        CL.sourceList proxies C.$$ sinkTBMQueue proxyQueue
+    _ <- replicateM_ workerCount $ forkIO $ (`runReaderT` env) $ do
+        sourceTMQueue proxyQueue C.$$ CL.mapM_
+          (\proxy -> do
+            res@(!cat, !_) <-
+                (fix $ \recurse -> do
+                    outcome <- checkProxy proxy
+                    outcomeMessage proxy outcome recurse
+                ) `catch` \(e::SomeException) -> do
+                    putStrLn $ "While checking {" ++ show proxy ++ "}, "
+                        ++ "worker got exception: " ++ show e
+                        ++ "; Writing as dead, IGNOREEM."
+                    return
+                      ( Dead
+                      , show proxy ++ "| failed, exception was: " ++ show e)
 
-    _ <- liftIO $ forkIO $
-        writerThread catFiles writeQueue
-
-    replicateM_ workerCount $ fork $ do
-        sourceTBMQueue proxyQueue
-            C.$$ CL.mapM_ (\proxy -> do
-                res@(cat, _) <-
-                    fix (\recurse -> do
-                        outcome <- checkProxy proxy
-                        outcomeMessage proxy outcome recurse
-                    ) `catch` (\(e::SomeException) -> do
-                        putStrLn $ "While checking {" ++ show proxy ++ "}, "
-                            ++ "worker got exception: " ++ show e
-                            ++ "; Writing as dead, IGNOREEM."
-                        return (Dead, show proxy ++ "| failed, exception was: " ++ show e)
-                        )
-                liftIO $ atomically $
-                    writeTQueue writeQueue res
-                liftIO $ atomically $
-                    modifyTVar' checkedMap $
-                        M.insertWith (+) cat 1
-                )
+            -- write to the file
+            liftIO $ atomically $
+                writeTQueue writeQueue res
+            -- and to the stats
+            liftIO $ atomically $
+                modifyTVar' checkedMap $ M.insertWith (+) cat 1
+          )
 
     putStrLn "Started checking."
 
-    0 & fix (\recurse current -> do
+    (\f -> fix f 0) $ \recurse current -> do
+
+        -- wait until
         (checked, _map) <- liftIO $ atomically $ do
             _map <- readTVar checkedMap
             let len = M.foldl' (+) 0 _map
             if len > current
               then return (len, _map)
               else retry
-        if checked < maxCount
+
+        if checked < lengthProxies
           then do
             let
               str = M.foldrWithKey'
                 (\cat count -> (show cat ++ ": " ++ show count ++ ", " ++))
-                ("Осталось: " ++ show (maxCount - checked))
+                ("Осталось: " ++ show (lengthProxies - checked))
                 _map
             putStrLn str
             recurse checked
           else
-            putStrLn "Ну вот и всё, ребята.")
+            putStrLn "Ну вот и всё, ребята."
 
 applySuccNum :: [String] -> Int -> [String]
 applySuccNum fpaths 0 = fpaths
@@ -540,16 +590,14 @@ main = withSocketsDo $ do
 
         putStrLn $ show conf
 
-        bracket (newManager def{managerConnCount=1000000}) closeManager $
-            \manager -> runReaderT (mainloop proxies)
+        bracket (newManager def{managerConnCount = 1 & millions}) closeManager $
+            \manager -> mainloop proxies _workerCount catFiles
                 Env {manager              = manager
                     ,board                = board
-                    ,antigateKey          = _antigateKey <&> \k ->
-                                          def{api_key=k, api_host=_antigateHost}
-                    ,workerCount          = _workerCount
-                    ,timeout              = _timeout
                     ,thread               = _thread
-                    ,catFiles             = catFiles
+                    ,antigateKey          = _antigateKey <&>
+                        \k -> def{api_key=k, api_host=_antigateHost}
+                    ,timeout              = _timeout
                     ,disableRetryCaptcha  = _disableRetryCaptcha
                     ,disableRetryRejected = _disableRetryRejected
                     }

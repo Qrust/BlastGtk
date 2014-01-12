@@ -32,9 +32,9 @@ getProxyMap
     -> E [BlastProxy]
 getProxyMap isSocks wcheckproxy wentryproxyfile proxymod proxylast = do
     enabled <- get wcheckproxy
-    if enabled
+    pf <- get wentryproxyfile
+    if enabled && not (null pf)
       then do
-        pf <- get wentryproxyfile
         d <- get proxymod
         nd <- appFile nullTime getModificationTime pf
         if (nd > d)

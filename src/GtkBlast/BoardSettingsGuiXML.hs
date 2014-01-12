@@ -1,6 +1,8 @@
 module GtkBlast.BoardSettingsGuiXML where
 import Import
-import BlastItWithPiss.Board
+
+import BlastItWithPiss
+
 import GtkBlast.Directory
 
 boardSettingsGuiXML :: Board -> String

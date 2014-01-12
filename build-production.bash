@@ -1,17 +1,11 @@
 #!/bin/bash
 set -e
+
 if [ -d "cabal-dev" ]
     then
         _cabal="cabal-dev"
     else
         _cabal="cabal"
-fi
-if [ -d ".cabal-sandbox" ]
-    then
-#        _configure="sandbox-configure"
-        _configure="configure"
-    else
-        _configure="configure"
 fi
 case `uname` in
     MINGW*)
@@ -32,7 +26,7 @@ case `uname` in
                 lbdir="linux"
                 foldr="linux-dist"
                 cbl="$_cabal"
-                cfgr="$_configure"
+                cfgr="configure"
                 cr=`pwd`;;
         esac;;
 esac
@@ -40,9 +34,9 @@ case "$@" in
     *fast*)
         optimi="--ghc-options=-O0 --disable-optimization";;
     *llvm*)
-        optimi="--ghc-options=-O2 --ghc-options=-fllvm --enable-optimization=2";;
+        optimi="--ghc-options=-O2 --ghc-options=-fllvm --ghc-options=-funbox-strict-fields --enable-optimization=2";;
     *)
-        optimi="--ghc-options=-O2 --enable-optimization=2";;
+        optimi="--ghc-options=-O2  --ghc-options=-funbox-strict-fields --enable-optimization=2";;
 esac
 echo $lbdir
 echo $foldr
@@ -73,6 +67,8 @@ $cbl $cfgr --builddir=builddir/$foldr -f bindist --verbose\
   cp -rv libs/$lbdir/. $foldr/BlastItWithPiss
   echo "source dist"
   $cbl sdist --builddir=builddir/$foldr --output-directory=$foldr/BlastItWithPiss/source-code
+  echo "copying self ($0) to sourcedist"
+  cp -v $0 $foldr/BlastItWithPiss/source-code
   echo "Finished building"
  else
   echo "Build failed"

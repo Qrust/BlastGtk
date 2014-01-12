@@ -15,7 +15,7 @@ import Data.Version
 import GHC.Generics
 import Data.Aeson
 import qualified Data.Text as T
-import Crypto.Hash.MD5 (MD5)
+import Crypto.Hash.CryptoAPI (MD5)
 import qualified Data.Serialize as S
 import qualified Data.ByteString as B
 import Numeric

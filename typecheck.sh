@@ -1,2 +1,2 @@
 #!/bin/sh
-./hdevtools-check.sh $@
+./hdevtools-check.sh "$@"

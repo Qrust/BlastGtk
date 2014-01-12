@@ -34,10 +34,10 @@ ssachRecaptchaKey = "6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx"
 
 cloudflareRecaptchaKey :: String
 cloudflareRecaptchaKey = "6LeT6gcAAAAAAAZ_yDmTMqPH57dJQZdQcu6VFqog"
-{-
-ssachSolveMediaKey :: String
-ssachSolveMediaKey = "oIzJ06xKCH-H6PKr8OLVMa26G06kK3qh"
--}
+
+-- ssachSolveMediaKey :: String
+-- ssachSolveMediaKey = "oIzJ06xKCH-H6PKr8OLVMa26G06kK3qh"
+
 type UserCode = String
 
 data CAnswer m m' = CAnswer
@@ -52,7 +52,10 @@ instance Default (CAnswer m m') where
 class Captcha a where
     -- | Check if any captcha is needed and return either premade fields or key
     -- needed to solve challenge.
-    getNewCaptcha :: (MonadChoice m, MonadResource m') => Board -> Maybe Int -> UserCode -> Blast (Either (CAnswer m m') a)
+    getNewCaptcha
+        :: (MonadChoice m, MonadResource m')
+        => Board -> Maybe Int -> UserCode
+        -> Blast (Either (CAnswer m m') a)
 
     -- | If they use systems like recaptcha or solveMedia, then we know their
     -- public key beforehand, so we don't have to query makaba to get our challenge.
@@ -61,16 +64,20 @@ class Captcha a where
 
     getCaptchaImage :: a -> Blast (LByteString, MimeType)
 
-    applyCaptcha :: (MonadChoice m, MonadResource m') => a -> String -> Blast (CAnswer m m')
+    applyCaptcha
+        :: (MonadChoice m, MonadResource m')
+        => a -> String
+        -> Blast (CAnswer m m')
 
     getCaptchaConf :: a -> Blast CaptchaConf
 
 newtype Recaptcha = Recaptcha {recaptchaKey :: String}
+  deriving (Eq, Show)
 
 instance Captcha Recaptcha where
-    getNewCaptcha board thread usercode = do
-        res <- makabaCaptcha board thread usercode
-        if T.isInfixOf "OK" res || T.isInfixOf "VIP" res
+    getNewCaptcha _ _ usercode = do
+        res <- makabaCaptcha usercode
+        if T.isPrefixOf "OK" res || T.isPrefixOf "VIP" res
           then return $ Left $ CAnswer True []
           else Right . Recaptcha <$> recaptchaChallengeKey ssachRecaptchaKey
 
@@ -86,17 +93,19 @@ instance Captcha Recaptcha where
         [partBS "recaptcha_challenge_field" (fromString chKey)
         ,partBS "recaptcha_response_field" (T.encodeUtf8 $ T.pack answer)]
 
-    getCaptchaConf _ = return $ def {phrase = True}
+    getCaptchaConf _ = return $ def
+        {phrase = True}
 
 newtype Yandex = Yandex {yandexKey :: String}
+  deriving (Eq, Show)
 
 instance Captcha Yandex where
-    getNewCaptcha board thread usercode = do
-        res <- makabaCaptcha board thread usercode
-        if T.isInfixOf "OK" res || T.isInfixOf "VIP" res
+    getNewCaptcha _ _ usercode = do
+        res <- makabaCaptcha usercode
+        if T.isPrefixOf "OK" res || T.isPrefixOf "VIP" res
           then return $ Left $ CAnswer True []
           else
-            let !str = T.unpack res
+            let str = T.unpack res
             in return $ Right $ Yandex $ lastNote (yandexerr str) $ lines str
       where
       yandexerr a =
@@ -111,9 +120,11 @@ instance Captcha Yandex where
     applyCaptcha (Yandex chKey) answer =
         return $ unsafeMakeYandexCaptchaAnswer chKey answer
 
-    getCaptchaConf _ = return $ def {numeric=Just True}
+    getCaptchaConf _ = return $ def
+        {numeric = Just True}
 
-unsafeMakeYandexCaptchaAnswer :: (Monad m, Monad m') => String -> String -> CAnswer m m'
+unsafeMakeYandexCaptchaAnswer
+    :: (Monad m, Monad m') => String -> String -> CAnswer m m'
 unsafeMakeYandexCaptchaAnswer chKey answer =
     CAnswer False
         [partBS "captcha" (fromString chKey)
@@ -121,11 +132,11 @@ unsafeMakeYandexCaptchaAnswer chKey answer =
         ]
 
 -- | Query adaptive captcha state
-makabaCaptcha :: Board -> Maybe Int -> String -> Blast Text
-makabaCaptcha _board _thread usercode = do
+makabaCaptcha :: String -> Blast Text
+makabaCaptcha usercode = do
     let code = if not $ null usercode then "?usercode=" ++ usercode else []
     responseBody <$> httpReqStr
-        (fromJust $ parseUrl $ ssach ++ "/makaba/captcha.fcgi" ++ code)
+        (unsafeParseUrl $ ssach ++ "/makaba/captcha.fcgi" ++ code)
             {requestHeaders = [(hAccept, "text/html, */*; q=0.01")
                               ,("X-Requested-With", "XMLHttpRequest")
                             -- ,(hReferer, ssachThread board thread)

@@ -1,9 +1,16 @@
-module Main (main) where
+module
+#ifdef COMBINED_CHECK
+    UpdaterMain
+#else
+    Main
+#endif
+    (main)
+  where
 import Import hiding (on)
 
 import Updater.Manifest
 import Updater.UnpackZip
-import Updater.Repair
+import qualified Updater.Repair as Repair
 import Updater.DownloadWithMD5
 import Updater.GuiXML
 
@@ -53,11 +60,11 @@ helpMessage =
 mainNoBindist :: IO ()
 mainNoBindist = do
     (path, _) <- splitExecutablePath
-    let gtkblast = path </> gtkblastBinary
+    let gtkblast = path </> Repair.gtkblastBinary
     void $ ifM
         (doesFileExist gtkblast)
         (createProcess $ proc gtkblast [])
-        (createProcess $ proc gtkblastBinary [])
+        (createProcess $ proc Repair.gtkblastBinary [])
 
 data BadEnd = ChecksumMismatch String MD5Sum
             | NoBuildAvailable
@@ -99,7 +106,7 @@ needUpdate um = version um > Paths.version
 
 downloadManifest :: IO UpdateManifest
 downloadManifest = do
-    let req = fromJust $ parseUrl manifestUrl
+    req <- parseUrl manifestUrl
     m <- withManager $ httpLbs req{responseTimeout = Just $ 5000000} -- 5 seconds
     maybe (throwIO UnparseableManifest) return $ decode' $ responseBody m
 
@@ -118,23 +125,30 @@ uniqueDirectoryName str = do
                 (return fn)
 
 updateWorker :: MVar Message -> UpdateManifest -> IO String
-updateWorker mv UpdateManifest{..} = do
-    void $ tryPutMVar mv $ ChangeMessage $ "Ищем версию для " ++ show currentPlatform ++ "..."
+updateWorker mv UpdateManifest{ binaryAndResourcesZipArchives, changelog } = do
+    _ <- tryPutMVar mv $ ChangeMessage $ "Ищем версию для " ++ show currentPlatform ++ "..."
+
     (url, md5) <- maybe (throwIO NoBuildAvailable) return $
         lookup currentPlatform binaryAndResourcesZipArchives
+
     putMVar mv $ ChangeMessage $ "Скачиваем архив... " ++ show (url, md5)
+
     lbs <- maybe (throwIO $ ChecksumMismatch url md5) return =<< downloadWithMD5 url md5
+
     putMVar mv $ ChangeMessage $ "Распаковываем..."
+
     -- FIXME dangerous, we can get mixed versions if we restore from backup when unpacking fails and we updated before.
     backupdir <- return $ ".BlastItWithPiss-update-backup"
     e <- try $ unpackBlastItWithPissUpdateZipFromLBS backupdir lbs
     case e of
         Left (x::SomeException) -> do
-            void $ tryPutMVar mv $ ChangeMessage $ "Случился пиздец, восстанавливаем"
+            void $ tryPutMVar mv $ ChangeMessage "Случился пиздец, восстанавливаем старое"
             restoreFromBackup backupdir "." -- ? implying that . is the executable path
             throwIO x
-        Right _ -> do
-            return $ fromMaybe "Обновление успешно" $ justIf (not . null) $ renderChangelog changelog
+        Right _ -> return $
+            case renderChangelog changelog of
+              [] -> "Обновление успешно"
+              ch -> ch
 
 mainWorker :: MVar Message -> IO ()
 mainWorker mv = finalizeWork $ do
@@ -150,7 +164,7 @@ mainWorker mv = finalizeWork $ do
             repair <-
                 if elem "--repair" args
                     then return True
-                    else needRepair
+                    else Repair.needRepair
             if repair
                 then Just <$> updateWorker mv manifest
                 else return Nothing
@@ -168,7 +182,7 @@ setExecutable file = do
 
 postInstall :: FilePath -> IO ()
 postInstall executablePath = do
-    let updater = executablePath </> blastItWithPissBinary
+    let updater = executablePath </> Repair.blastItWithPissBinary
     setExecutable updater
     void $ createProcess $ proc updater ["--postinstall", showVersion Paths.version]
     mainQuit
@@ -179,7 +193,7 @@ postInstall executablePath = do
 -- handling to zip-archive, but I'm too lazy for that.
 setExecutableBitForOurBinaries :: FilePath -> FilePath -> IO ()
 setExecutableBitForOurBinaries executablePath filepath = do
-    when (takeFileName filepath `elem` binaries) $ do
+    when (takeFileName filepath `elem` Repair.binaries) $ do
         setExecutable $ executablePath </> filepath
 -- /HORRIBLE HACK
 
@@ -190,9 +204,9 @@ postInstallHooks executablePath _ = do
 
 launchGtkblast :: FilePath -> IO ()
 launchGtkblast executablePath = do
-    let gtkblast = executablePath </> gtkblastBinary
+    let gtkblast = executablePath </> Repair.gtkblastBinary
     setExecutable gtkblast
-    void $ createProcess $ proc gtkblast []
+    _ <- createProcess $ proc gtkblast []
     mainQuit
 
 main :: IO ()
@@ -206,13 +220,12 @@ main = withSocketsDo $ do
         putStrLn $ fromString $ showVersion Paths.version
         exitSuccess
     case args of
-        ["--postinstall", rawv] -> do
-            let moldv = fst <$> lastMay (readP_to_S parseVersion rawv)
-            case moldv of
-                Nothing -> return ()
+        ["--postinstall", rawv] ->
+            ((case fst <$> lastMay (readP_to_S parseVersion rawv) of
                 Just oldv -> postInstallHooks executablePath oldv
-            launchGtkblast executablePath
-            exitSuccess
+                Nothing -> return ()
+             ) `finally` launchGtkblast executablePath
+            ) `finally` exitSuccess
         _ -> return ()
 #ifndef BINDIST
     mainNoBindist

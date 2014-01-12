@@ -1,27 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkActionGroup" id="actiongroup1"/>
-  <object class="GtkAdjustment" id="adjustment1">
-    <property name="upper">999999999</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment2">
-    <property name="upper">1000000000000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment3">
-    <property name="upper">1000000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment4">
-    <property name="upper">1000000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
+  <requires lib="gtk+" version="2.24"/>
+  <!-- interface-naming-policy project-wide -->
   <object class="GtkAdjustment" id="adjustment5">
     <property name="upper">10000</property>
     <property name="step_increment">10</property>
@@ -31,6 +11,13 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="pixbuf">2ch.so.png</property>
+  </object>
+  <object class="GtkImage" id="image14">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="xpad">5</property>
+    <property name="stock">gtk-media-play</property>
+    <property name="icon-size">5</property>
   </object>
   <object class="GtkImage" id="image2">
     <property name="visible">True</property>
@@ -94,6 +81,8 @@
         <property name="caps_lock_warning">False</property>
         <property name="primary_icon_activatable">False</property>
         <property name="secondary_icon_activatable">False</property>
+        <property name="primary_icon_sensitive">True</property>
+        <property name="secondary_icon_sensitive">True</property>
       </object>
       <packing>
         <property name="expand">False</property>
@@ -149,7 +138,7 @@
     <property name="title" translatable="yes">Виджет пасты</property>
     <property name="role">window-edit-pasta</property>
     <child>
-      <object class="GtkVBox" id="vbox1">
+      <object class="GtkVBox" id="vbox2">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -375,7 +364,7 @@
         <property name="left_padding">3</property>
         <property name="right_padding">3</property>
         <child>
-          <object class="GtkVBox" id="vbox2">
+          <object class="GtkVBox" id="vbox1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">4</property>
@@ -443,7 +432,30 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkAlignment" id="alignment2">
+                  <object class="GtkAlignment" id="skippresolvingalignment">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xscale">0.05000000074505806</property>
+                    <child>
+                      <object class="GtkButton" id="buttonskippresolving">
+                        <property name="label" translatable="yes">_Пропустить сбор капчи,
+немедленно начать вайп.</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image14</property>
+                        <property name="use_underline">True</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkAlignment" id="wipebuttonalignment">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xscale">0.05000000074505806</property>
@@ -467,7 +479,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
               </object>
@@ -530,23 +542,77 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkHBox" id="hbox20">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <child>
+                                                  <object class="GtkEventBox" id="eventboxsort">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <child>
+                                                      <object class="GtkSpinner" id="spinnersort">
+                                                        <property name="width_request">16</property>
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="tooltip_text" translatable="yes">Подождите...
+кликните чтобы прервать</property>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">False</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="buttonupdatespeed">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">Обновить скорости борд
+(без прокси)</property>
+                                                    <property name="relief">none</property>
+                                                    <property name="focus_on_click">False</property>
+                                                    <child>
+                                                      <object class="GtkImage" id="imageupdatespeed~">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="stock">gtk-refresh</property>
+                                                        <property name="icon-size">1</property>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">False</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">False</property>
+                                                <property name="position">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="checksort">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="has_tooltip">True</property>
-                                                <property name="tooltip_markup">Сортировать по алфавиту</property>
-                                                <property name="tooltip_text" translatable="yes">Сортировать по алфавиту</property>
+                                                <property name="tooltip_markup">Сортировать по алфавиту или по скорости постинга</property>
+                                                <property name="tooltip_text" translatable="yes">Сортировать по алфавиту или по скорости постинга</property>
                                                 <property name="image">image9</property>
                                                 <property name="xalign">0</property>
-                                                <property name="always_show_image">True</property>
                                                 <property name="active">True</property>
                                                 <property name="draw_indicator">False</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
-                                                <property name="position">1</property>
+                                                <property name="position">2</property>
                                               </packing>
                                             </child>
                                           </object>
@@ -761,8 +827,8 @@
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="has_tooltip">True</property>
-                                                <property name="tooltip_markup">ТОЛЬКО ЮНИТИ! ТОЛЬКО ХАРДКОР! БЕСКОНЕЧНОЕ СЛИЯНИЕ — ЮНИТИ-МЫТЫЩИ!</property>
-                                                <property name="tooltip_text" translatable="yes">ТОЛЬКО ЮНИТИ! ТОЛЬКО ХАРДКОР! БЕСКОНЕЧНОЕ СЛИЯНИЕ — ЮНИТИ-МЫТЫЩИ!</property>
+                                                <property name="tooltip_markup">ТОЛЬКО ЮНИТИ! ТОЛЬКО ХАРДКОР! БЕСКОНЕЧНОЕ СЛИЯНИЕ — ЮНИТИ-МЫТИЩИ!</property>
+                                                <property name="tooltip_text" translatable="yes">ТОЛЬКО ЮНИТИ! ТОЛЬКО ХАРДКОР! БЕСКОНЕЧНОЕ СЛИЯНИЕ — ЮНИТИ-МЫТИЩИ!</property>
                                                 <property name="image">image3</property>
                                               </object>
                                               <packing>
@@ -1067,6 +1133,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1298,6 +1366,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1586,6 +1656,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -1684,15 +1756,52 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <child>
-                                                  <object class="GtkLabel" id="label9">
+                                                  <object class="GtkVBox" id="vbox41">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="xalign">0</property>
-                                                    <property name="yalign">0</property>
-                                                    <property name="label" translatable="yes">Прокси</property>
-                                                    <attributes>
-                                                      <attribute name="weight" value="bold"/>
-                                                    </attributes>
+                                                    <child>
+                                                      <object class="GtkLabel" id="label9">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="xalign">0</property>
+                                                        <property name="yalign">0</property>
+                                                        <property name="label" translatable="yes">Прокси</property>
+                                                        <attributes>
+                                                          <attribute name="weight" value="bold"/>
+                                                        </attributes>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="expand">True</property>
+                                                        <property name="fill">True</property>
+                                                        <property name="position">0</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkAlignment" id="alignment2">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">False</property>
+                                                        <property name="top_padding">1</property>
+                                                        <property name="bottom_padding">3</property>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label27">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="yalign">0</property>
+                                                            <property name="label" translatable="yes">Чекайте прокси с помощью
+proxychecker[.exe]</property>
+                                                            <property name="justify">center</property>
+                                                            <attributes>
+                                                            <attribute name="size" value="8000"/>
+                                                            </attributes>
+                                                          </object>
+                                                        </child>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="fill">False</property>
+                                                        <property name="position">1</property>
+                                                      </packing>
+                                                    </child>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -1804,6 +1913,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -1944,6 +2055,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">True</property>
@@ -2085,6 +2198,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
@@ -2150,6 +2265,8 @@
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
@@ -2164,6 +2281,47 @@
                                                     <property name="expand">False</property>
                                                     <property name="fill">False</property>
                                                     <property name="position">4</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkHSeparator" id="hseparator3">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">5</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkVBox" id="vbox5">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <child>
+                                                      <object class="GtkCheckButton" id="checkpresolvecaptcha">
+                                                        <property name="label" translatable="yes">Включить сбор капчи
+для МАКСИМУМ
+скорости постинга.
+(Для смывания доски
+лучше использйте
+smyvalka[.exe])</property>
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">True</property>
+                                                        <property name="receives_default">False</property>
+                                                        <property name="draw_indicator">True</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="fill">False</property>
+                                                        <property name="position">0</property>
+                                                      </packing>
+                                                    </child>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">True</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">6</property>
                                                   </packing>
                                                 </child>
                                               </object>
@@ -2214,7 +2372,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
-                                          <object class="GtkVBox" id="vbox5">
+                                          <object class="GtkVBox" id="vbox6">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <child>
@@ -2234,7 +2392,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkVBox" id="vbox6">
+                                              <object class="GtkVBox" id="vbox25">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <child>
@@ -2309,8 +2467,7 @@ _ручной вайп</property>
                                                         <property name="tooltip_text" translatable="yes">Максимальная добавка к обычному таймауту в вайпе в режиме маскировки под ручной вайп.
 Например значение 20 означает что к обычному перерыву между постами при адаптивной капче (10 секунд) может быть случайно добавлено до 20 секунд выжидания, вплоть до 30 секунд в общем.</property>
                                                         <property name="xalign">0</property>
-                                                        <property name="label" translatable="yes">Макс. маскировочный
-перерыв:</property>
+                                                        <property name="label" translatable="yes">Макс. маскировочный перерыв:</property>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -2339,7 +2496,8 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="adjustment">adjustment4</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
                                                             <property name="numeric">True</property>
@@ -2399,7 +2557,8 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="adjustment">adjustment1</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
                                                             <property name="numeric">True</property>
@@ -2455,7 +2614,8 @@ _ручной вайп</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
-                                                            <property name="adjustment">adjustment3</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="climb_rate">1</property>
                                                             <property name="digits">2</property>
                                                             <property name="numeric">True</property>
@@ -2515,7 +2675,7 @@ _ручной вайп</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
-                                          <object class="GtkVBox" id="vbox25">
+                                          <object class="GtkVBox" id="vbox40">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <child>
@@ -2723,6 +2883,8 @@ _ручной вайп</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
+                                    <property name="primary_icon_sensitive">True</property>
+                                    <property name="secondary_icon_sensitive">True</property>
                                     <property name="adjustment">adjustment5</property>
                                     <property name="snap_to_ticks">True</property>
                                     <property name="numeric">True</property>

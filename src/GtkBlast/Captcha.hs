@@ -6,6 +6,7 @@ module GtkBlast.Captcha
     ,maintainCaptcha
     ) where
 import Import hiding (on, mod)
+
 import GtkBlast.MuVar
 import GtkBlast.Environment
 import GtkBlast.Log
@@ -14,9 +15,9 @@ import GtkBlast.EnvPart
 import GtkBlast.GuiCaptcha
 import GtkBlast.AntigateCaptcha
 import GtkBlast.Types
+
 import BlastItWithPiss
-import BlastItWithPiss.Board
-import BlastItWithPiss.Blast
+
 import Graphics.UI.Gtk hiding (get, set)
 
 cmToBool :: CaptchaMode -> Bool
@@ -27,7 +28,7 @@ cmFromBool :: Bool -> CaptchaMode
 cmFromBool False = Gui
 cmFromBool True = Antigate
 
-addCaptcha :: (OriginStamp, SupplyCaptcha) -> E ()
+addCaptcha :: (CaptchaOrigin, CaptchaRequest) -> E ()
 addCaptcha sp = do
     cm <- get =<< asks captchaMode
     case cm of
@@ -42,13 +43,9 @@ killAllCaptcha = do
         Gui -> killGuiCaptcha
         Antigate -> killAntigateCaptcha
 
-deactivateCaptcha :: CaptchaMode -> E [(OriginStamp, SupplyCaptcha)]
+deactivateCaptcha :: CaptchaMode -> E [(CaptchaOrigin, CaptchaRequest)]
 deactivateCaptcha Gui = deactivateGuiCaptcha
 deactivateCaptcha Antigate = deactivateAntigateCaptcha
-
-addCaptchas :: CaptchaMode -> [(OriginStamp, SupplyCaptcha)] -> E ()
-addCaptchas Gui = addGuiCaptchas
-addCaptchas Antigate = addAntigateCaptchas
 
 migrateCaptcha :: CaptchaMode -> CaptchaMode -> E ()
 migrateCaptcha ocm ncm = do
@@ -56,11 +53,15 @@ migrateCaptcha ocm ncm = do
     captchas <- deactivateCaptcha ocm
     writeLog $ "Got " ++ show (length captchas) ++ " for migration"
     addCaptchas ncm captchas
+  where
+    addCaptchas Gui = addGuiCaptchas
+    addCaptchas Antigate = addAntigateCaptchas
 
 captchaModeEnvPart :: Builder -> EnvPart
 captchaModeEnvPart b = EP
     (\e c -> do
-        wcheckantigate <- setir ((cmToBool . coCaptchaMode) c) =<< builderGetObject b castToCheckButton "checkantigate"
+        wcheckantigate <- setir ((cmToBool . coCaptchaMode) c)
+            =<< builderGetObject b castToCheckButton "checkantigate"
 
         captchaMode <- newIORef (coCaptchaMode c)
 

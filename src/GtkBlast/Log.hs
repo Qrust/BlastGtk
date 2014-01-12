@@ -1,18 +1,20 @@
 module GtkBlast.Log
-    (-- * 'IO'
-     putInvisibleLog
+    (
+    -- * 'IO'
+      putInvisibleLog
+
     -- * 'E'
-    ,writeLog
+    , writeLog
 
-    ,showMessage
-    ,tempError
-    ,banMessage
-    ,updMessage
-    ,uncMessage
-    ,redMessage
-    ,uncAnnoyMessage
+    , showMessage
+    , clearMessage
+    , tempError
+    , banMessage
+    , uncMessage
+    , redMessage
 
-    ,appFile -- FIXME appFile shouldn't be here
+    -- * this shouldn't be here
+    , appFile
     ) where
 import Import
 
@@ -87,25 +89,40 @@ putInvisibleLog msg = do
 
 writeLog :: Text -> E ()
 writeLog s = do
-    E{..} <- ask
+    E{ wspinmaxlines
+     , wbuf } <- ask
     maxLines <- round <$> get wspinmaxlines
     io $ writeLogIO wbuf maxLines s
 
 showMessage :: (Env -> CheckButton) -> Text -> Maybe Int -> Bool -> Text -> E ()
 showMessage getCheck msgname mUnlockT mkRed msg = do
-    E{wlabelmessage=wlabel, ..} <- ask
+    E{ wlabelmessage
+     , messageLocks
+     , window
+     } <- ask
     wcheck <- asks getCheck
-    io $ modifyIORef messageLocks (+1)
+    io $ modifyIORef messageLocks $
+        \x -> if x < 0
+            then 0 + 1
+            else x + 1
     n <- io getZonedTime
     writeLog $ "gtkblast, " ++ show n ++ ": " ++ msgname ++ ": " ++ msg
     if mkRed
-        then labelSetMarkup wlabel $ red msg
-        else labelSetText wlabel msg
+        then labelSetMarkup wlabelmessage (red msg)
+        else labelSetText wlabelmessage msg
     io $ whenM (toggleButtonGetActive wcheck) $ windowPopup window
     case mUnlockT of
-        Just t ->
-            void $ io $ timeoutAdd (modifyIORef messageLocks (subtract 1) >> return False) (t * 1000)
+        Just t -> void $ io $ timeoutAdd
+                (False <$ modifyIORef messageLocks (subtract 1))
+                (t * 1000)
         Nothing -> return ()
+
+clearMessage :: E ()
+clearMessage = do
+    E{..} <- ask
+    locks <- io $ readIORef messageLocks
+    when (locks == 0) $
+        labelSetText wlabelmessage ""
 
 tempError :: Int -> Text -> E ()
 tempError t s = do
@@ -114,37 +131,17 @@ tempError t s = do
 banMessage :: Int -> Text -> E ()
 banMessage t s = showMessage wcheckannoy "Ban message" (Just t) True s
 
-updMessage :: Text -> E ()
-updMessage s = do
-    E{..} <- ask
-    locks <- io $ readIORef messageLocks
-    if locks==0
-      then
-        labelSetText wlabelmessage s
-      else
-        when (locks < 0) $ do
-          io $ writeIORef messageLocks 0
-          tempError 5 "Ёбаный насрать, случилось невозможное, messageLocks < 0, срочно доложите об этом автору"
-
 uncMessage :: Text -> E ()
 uncMessage s = do
-    E{..} <- ask
+    E{ wlabelmessage } <- ask
     writeLog $ "gtkblast, Unconditinal message: " ++ s
     labelSetText wlabelmessage s
 
 redMessage :: Text -> E ()
 redMessage s = do
-    E{..} <- ask
+    E{ wlabelmessage } <- ask
     writeLog $ "gtkblast, Red message: " ++ s
     labelSetMarkup wlabelmessage $ red s
-
-uncAnnoyMessage :: Text -> E ()
-uncAnnoyMessage s = do
-    E{..} <- ask
-    writeLog $ "gtkblast, Unconditional annoying message: " ++ s
-    labelSetMarkup wlabelmessage $ red s
-    io $ whenM ((||) <$> toggleButtonGetActive wcheckannoy <*> toggleButtonGetActive wcheckannoyerrors) $
-        windowPopup window
 
 -- | Specialized 'fromIOException' showing 'tempError' message on exceptions
 appFile :: a -> (FilePath -> IO a) -> FilePath -> E a

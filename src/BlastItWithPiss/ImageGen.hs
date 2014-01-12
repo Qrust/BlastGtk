@@ -41,19 +41,7 @@ folderImageGen imagefolder = do
 fileImageGen :: MonadChoice m => FilePath -> m (Maybe Image)
 fileImageGen fpath =
     fromIOException (return Nothing) $ Just <$> readImageWithoutJunk fpath
-{-
-cloudflareRecaptchaImageGen :: Blast (Maybe Image)
-cloudflareRecaptchaImageGen = do
-    x <- try $ do
-        (bytes, ct) <- do
-            chKey <- recaptchaChallengeKey cloudflareRecaptchaKey
-            getCaptchaImage $ Recaptcha chKey
-        fname <- mkImageFileName ct
-        return $ Image fname ct bytes
-    case x of
-      Left (_::HttpException) -> return Nothing
-      Right i -> return $ Just i
--}
+
 builtinImageGen :: MonadChoice m => m Image
 builtinImageGen = chooseFromList
     [nyanImage

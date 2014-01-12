@@ -1,4 +1,8 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE
+    MultiParamTypeClasses
+  , FunctionalDependencies
+  , FlexibleInstances
+  , TypeSynonymInstances #-}
 module GtkBlast.MuVar
     (MuVar(..)
     ,get
@@ -13,7 +17,7 @@ module GtkBlast.MuVar
     ) where
 import Import hiding (mod)
 import Graphics.UI.Gtk hiding (get, set)
---import Control.Concurrent.STM -- don't make instances for stm
+-- import Control.Concurrent.STM -- never make instances for stm
 
 class MuVar v a | v -> a where
     getIO :: v -> IO a
@@ -58,15 +62,15 @@ set :: (MonadIO m, MuVar v a) => v -> a -> m ()
 set v a = liftIO (setIO v a)
 
 {-# INLINE setr #-}
-setr :: (MonadIO m, MuVar v a) => v -> a -> m v
-setr v a = set v a >> return v
+setr :: (Functor m, MonadIO m, MuVar v a) => v -> a -> m v
+setr v a = v <$ set v a
 
 {-# INLINE seti #-}
 seti :: (MonadIO m, MuVar v a) => a -> v -> m ()
 seti = flip set
 
 {-# INLINE setir #-}
-setir :: (MonadIO m, MuVar v a) => a -> v -> m v
+setir :: (Functor m, MonadIO m, MuVar v a) => a -> v -> m v
 setir = flip setr
 
 {-# INLINE mod #-}

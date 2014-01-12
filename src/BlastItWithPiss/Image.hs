@@ -23,20 +23,19 @@ import System.FilePath (takeFileName, takeExtension)
 import Network.Mime
 
 newtype JunkImage = JunkImage {fromJunkImage :: Image}
-  deriving Show
+  deriving (Show, Eq)
 
 instance NFData JunkImage where
     rnf = rnf . fromJunkImage
 
-data Image
-    = Image
-        {filename :: !String
-        ,contentType :: !ByteString
-        ,bytes :: !LByteString}
-  deriving Show
+data Image = Image
+    {filename    :: !String
+    ,contentType :: !ByteString
+    ,bytes       :: !LByteString}
+  deriving (Show, Eq)
 
 instance NFData Image where
-    rnf Image{..} = rnf (filename, contentType, bytes)
+    rnf (Image a b c) = rnf (a, b, c)
 
 appendJunkB :: MonadChoice m => LByteString -> m LByteString
 appendJunkB img = do

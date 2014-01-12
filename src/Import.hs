@@ -77,14 +77,6 @@ toLBS x = LB.fromChunks [x]
 decodeUtf8 :: ByteString -> Text
 decodeUtf8 = TE.decodeUtf8With TE.lenientDecode
 
-{-# INLINE decodeASCII #-}
-decodeASCII :: ByteString -> Text
-#if MIN_VERSION_text(0,11,3)
-decodeASCII = TE.decodeLatin1
-#else
-decodeASCII = decodeUtf8
-#endif
-
 {-# INLINE show #-}
 show :: (Show a, IsString b) => a -> b
 show = fromString . S.show
@@ -156,10 +148,6 @@ fromLeft = either id (error "fromLeft failed")
 {-# INLINE fromRight #-}
 fromRight :: Either a b -> b
 fromRight = either (error "fromRight failed") id
-
-{-# INLINE justIf #-}
-justIf :: (a -> Bool) -> a -> Maybe a
-justIf p a = if p a then Just a else Nothing
 
 untilJust :: Monad m => m (Maybe a) -> m a
 untilJust m = maybe (untilJust m) return =<< m

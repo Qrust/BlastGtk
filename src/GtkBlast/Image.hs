@@ -22,9 +22,9 @@ import Control.Concurrent.STM
 
 import Graphics.UI.Gtk hiding (get, set, Image)
 
-changeFolder :: E ()
-changeFolder = do
-    E{..} <- ask
+changeFolder :: Entry -> E ()
+changeFolder wentryimagefolder = do
+    E{ shS } <- ask
     ni <- get wentryimagefolder
     exists <- io $ doesDirectoryExist ni
     if exists
@@ -50,13 +50,12 @@ imageEnvPart b = EP
 
         onFileChooserEntryButton True wbuttonimagefolder wentryimagefolder
             (runE e . tempError 3)
-            (runE e changeFolder)
+            (runE e $ changeFolder wentryimagefolder)
 
-        postGUIAsync $ runE e changeFolder
+        postGUIAsync $ runE e $ changeFolder wentryimagefolder
 
         return wentryimagefolder)
     (\weif c -> do
         cif <- get weif
         return $ c {coImageFolder=cif})
-    (\weif e ->
-        e{wentryimagefolder=weif})
+    (const id)

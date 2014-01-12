@@ -1,23 +1,11 @@
--- >kokoko
+-- | kokoko
 module BlastItWithPiss.Choice
     (
      Mode(..)
-    ,Strategy
+    ,allModes
+
     ,obligatorySageMode
     ,obligatoryImageMode
-    ,obligatoryNoImageMode
-    ,unlockedSticky
-    ,newThread
-    ,veryPopularThread
-    ,tooFast
-
-    ,strategies
-    ,defaultStrategy
-
-    ,adjustStrategy
-    ,chooseStrategy
-    ,chooseModeStrategy
-    ,chooseThread'
 
     ,chooseMode
     ,chooseThread
@@ -31,15 +19,20 @@ import qualified BlastItWithPiss.MonadChoice as Choose
 
 import Data.Ratio
 
+import qualified Data.Set as S
 import qualified Data.Map as M
 
 data Mode
     = SagePopular
     | BumpUnpopular
     | ShitupSticky
-    | BumpOld       -- ^ Try to turn board upside down
-    | CreateNew     -- ^ Try to erase threads by creating new threads
+    | BumpOld       -- ^ Flip board upside down
+    | CreateNew     -- ^ Erase threads by creating new threads
   deriving (Eq, Show, Ord, Enum, Bounded)
+
+{-# NOINLINE allModes #-}
+allModes :: [Mode]
+allModes = [minBound .. maxBound]
 
 type Strategy = [(Mode, Rational)]
 
@@ -52,10 +45,6 @@ obligatorySageMode _ = False
 obligatoryImageMode :: Mode -> Bool
 obligatoryImageMode CreateNew = True
 obligatoryImageMode _ = False
-
-obligatoryNoImageMode :: Mode -> Bool
-obligatoryNoImageMode SagePopular = True
-obligatoryNoImageMode _ = False
 
 infixr 0 /
 (/) :: a -> b -> (a, b)
@@ -73,13 +62,13 @@ strategies =
         ,BumpUnpopular  / 10
         ,ShitupSticky   / 50
         ,BumpOld        / 20
-        ,CreateNew      / 70]
+        ,CreateNew      / always]
     ,SsachB /
         [SagePopular    / 70
         ,BumpUnpopular  / 20
         ,ShitupSticky   / 50
         ,BumpOld        / 10
-        ,CreateNew      / 200]
+        ,CreateNew      / always]
     ,SsachCG /
         [SagePopular    / 40
         ,BumpUnpopular  / 20
@@ -131,10 +120,10 @@ strategies =
         ,BumpOld        / 10
         ,CreateNew      / always]
     ,SsachPO /
-        [SagePopular    / 20
-        ,BumpUnpopular  / 10
+        [SagePopular    / 35
+        ,BumpUnpopular  / 5
         ,ShitupSticky   / 40
-        ,BumpOld        / 30
+        ,BumpOld        / 20
         ,CreateNew      / always]
     ,SsachSOC /
         [SagePopular    / 33
@@ -174,9 +163,9 @@ strategies =
         ,CreateNew      / always]
     ,SsachABU /
         [SagePopular    / 100
-        ,BumpUnpopular  / 0
+        ,BumpUnpopular  / 25
         ,ShitupSticky   / 100
-        ,BumpOld        / 100
+        ,BumpOld        / 50
         ,CreateNew      / 0]
     ]
 
@@ -184,91 +173,103 @@ strategies =
 defaultStrategy :: Strategy
 defaultStrategy =
     [SagePopular    / 10
-    ,BumpUnpopular  / 30
-    ,ShitupSticky   / 50
-    ,BumpOld        / 35
+    ,BumpUnpopular  / 15
+    ,ShitupSticky   / 20
+    ,BumpOld        / 25
     ,CreateNew      / always]
 
 unlocked :: Thread -> Bool
 unlocked = not . locked
 
-unpinned :: Thread -> Bool
-unpinned = not . pinned
+notSticky :: Thread -> Bool
+notSticky = not . pinned
 
 bumpable :: Board -> Thread -> Bool
-bumpable board Thread{..} = postcount < ssachBumpLimit board
+bumpable board t = postcount t < ssachBumpLimit board
 
 unlockedUnpinnedBump :: Board -> Thread -> Bool
-unlockedUnpinnedBump board t = unlocked t && unpinned t && bumpable board t
+unlockedUnpinnedBump board t = unlocked t && notSticky t && bumpable board t
 
 unlockedSticky :: Thread -> Bool
-unlockedSticky Thread{..} = not locked && pinned
+unlockedSticky t = not (locked t) && pinned t
 
 newThread :: Thread -> Bool
 newThread t = postcount t <= 5
 
-veryPopularThread :: Thread -> Bool
-veryPopularThread t = postcount t >= 100
+popularThread :: Thread -> Bool
+popularThread t = postcount t >= 100
 
 tooFast :: Int -> Bool
 tooFast s = s >= 200
 
--- | We take a look at the front page, and adjust our strategy depending on what we see.
+-- | We take a look at the front page
+-- and adjust our strategy depending on what we see.
+-- (whether there are more empty threads or official threads.
 adjustStrategy :: Strategy -> Bool -> Page -> Strategy
-adjustStrategy strategy canmakethread Page{..}
+adjustStrategy strategy canmakethread Page{ threads, speed }
     -- >kokoko
-    | let !len = fromIntegral $ length threads
-    , len /= 0
-    , let
-        !new = fromIntegral (length $ filter newThread threads) % len
-        !vpop = fromIntegral (length $ filter veryPopularThread threads) % len
+    | not (null threads)
+    = let
+        len :: Integer
+        !len  = fromIntegral (length threads)
+
+        new, vpop :: Rational
+        !new  = fromIntegral (length $ filter newThread threads) % len
+        !vpop = fromIntegral (length $ filter popularThread threads) % len
+
         !nps = if tooFast speed
               then [CreateNew, BumpUnpopular]
               else [BumpOld, ShitupSticky]
         !vps = if tooFast speed
             then [SagePopular, ShitupSticky]
             else [BumpOld, CreateNew]
-        aux (x, r) |
-            let y = r * if' (x `elem` nps) new 0
+
+        aux (x, r)
+          | let y = r * if' (x `elem` nps) new 0
                 z = r * if' (x `elem` vps) vpop 0
-            = (x, r + y + z)
-     = map aux (filter goodStrategy strategy)
+          = (x, r + y + z)
+     in map aux (filter goodStrategy strategy)
 
     | otherwise
      = filter goodStrategy strategy -- abort
   where
-    goodStrategy (st, _) =
-        notElem st $
+    goodStrategy (md, _) =
+        notElem md $
             [CreateNew | not canmakethread] ++
             [ShitupSticky | not (any unlockedSticky threads)]
 
-chooseStrategy :: Board -> Bool -> Page -> Strategy
-chooseStrategy board =
-    adjustStrategy (fromMaybe defaultStrategy (M.lookup board strategies))
+chooseMode
+    :: MonadChoice m
+    => Board -> Bool -> Page -> S.Set Mode -> m (Maybe Mode)
+chooseMode board canmakethread page allowed =
+    case
+      filter ((`S.member` allowed) . fst) $
+        adjustStrategy
+          (fromMaybe defaultStrategy (M.lookup board strategies))
+          canmakethread
+          page of
+      [] -> return Nothing
+      a  -> Just <$> Choose.fromList a
 
-chooseModeStrategy :: MonadChoice m => Strategy -> m Mode
-chooseModeStrategy [] = error "chooseModeStrategy: empty list"
-chooseModeStrategy a = Choose.fromList a
-
-chooseMode :: MonadChoice m => Board -> Bool -> Page -> m Mode
-chooseMode board canmakethread page =
-    chooseModeStrategy $ chooseStrategy board canmakethread page
-
-chooseThread' :: MonadChoice m => Board -> Bool -> Mode -> Page -> m (Maybe Int)
-chooseThread' _ _ CreateNew Page{..} = error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
-chooseThread' board canfail mode Page{..}
+chooseThread'
+    :: MonadChoice m
+    => Board -> Mode -> [Thread] -> m (Maybe Int)
+chooseThread' _ CreateNew _ =
+    error "chooseThread': WTF, chooseThread with CreateNew, this should never happen"
+chooseThread' board mode threads
     | null threads = error "chooseThread': No threads to choose from"
     -- >kokoko
     | thrds' <-
-        if mode == ShitupSticky
-          then filter unlockedSticky threads -- we only get ShitupSticky when we KNOW there are unlocked stickies on the page
-          else
-            let nost = filter (unlockedUnpinnedBump board) threads -- we don't include stickies
-            in if null nost
-              then filter unlocked threads -- what can we do if there are only stickies left?
-              else nost
+        let filtered = if mode == ShitupSticky
+                then filter (unlockedSticky) threads
+                else filter (unlockedUnpinnedBump board) threads
+        in if null filtered
+          then
+            -- any thread we can post in
+            filter unlocked threads
+          else filtered
     , thrds <-
-        if mode /= ShitupSticky && canfail
+        if mode /= ShitupSticky
           -- add the possibility of failure
           -- in that case we advance to the next/previous page
           then (Thread (-1) False False 50 [] : thrds')
@@ -276,24 +277,29 @@ chooseThread' board canfail mode Page{..}
     , inv <-
         -- these modes give more weight to unpopular threads
         if mode == BumpUnpopular || mode == BumpOld
-          then ((fromIntegral $ maximumNote "Couldn't parse threads" $ map postcount thrds) -)
+          then let max' = fromIntegral $ maximum $ map postcount thrds
+            in (\w -> max' - w)
           else id
      = justIf (> (-1)) <$> Choose.fromList
             (map (threadId &&& inv . fromIntegral . postcount) thrds)
+  where
+    justIf _pred a = if _pred a then Just a else Nothing
 
-chooseThread :: MonadChoice m => Board -> Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
-chooseThread _ CreateNew _ p0 = return (Nothing, p0)
+chooseThread
+    :: MonadChoice m
+    => Board -> Mode -> (Int -> m Page) -> Page -> m (Maybe Int, Page)
+chooseThread _ CreateNew _ p0 =
+    return (Nothing, p0)
 chooseThread board mode getPage p0
     | iterpages <-
-        if mode==BumpOld
+        if mode == BumpOld
           then
             -- traverse from end
-            map getPage $ reverse [pageId p0 .. lastpage p0]
+            map getPage (reverse [pageId p0 .. lastpage p0])
           else
             -- traverse from beginning while not redownloading first page
-            (return p0 : ) $
-                map getPage $ tailSafe [pageId p0 .. lastpage p0]
-    = untilJust $ flip findMapM iterpages $ \getPage' -> do
+            return p0 : map getPage (tailSafe [pageId p0 .. lastpage p0])
+    = untilJust $ (`findMapM` cycle iterpages) $ \getPage' -> do
         page <- getPage'
         maybe Nothing (\x -> Just (Just x, page)) <$>
-            chooseThread' board True mode page
+            chooseThread' board mode (threads page)

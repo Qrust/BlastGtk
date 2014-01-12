@@ -8,7 +8,8 @@ import Crypto.Classes
 -- returns Just file if sums match.
 downloadWithMD5 :: String -> MD5Sum -> IO (Maybe LByteString)
 downloadWithMD5 url md5 = do
-    lbs <- responseBody <$> withManager (httpLbs $ fromJust $ parseUrl url)
+    u <- parseUrl url
+    lbs <- responseBody <$> withManager (httpLbs u)
     if renderMD5 (hash lbs) == md5
         then return $ Just lbs
         else return Nothing

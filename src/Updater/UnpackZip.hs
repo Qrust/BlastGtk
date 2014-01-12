@@ -8,7 +8,6 @@ module Updater.UnpackZip
     ,restoreFromBackup
     ) where
 import Import
-import Updater.Repair
 import System.Directory
 import System.FilePath
 import Codec.Archive.Zip
@@ -32,7 +31,7 @@ writeWithBackup backupdir filepath content = do
 
 blastEntry :: FilePath -> Entry -> IO ()
 blastEntry _ Entry{eRelativePath=[]} = return ()
-blastEntry backupdir e@Entry{..}
+blastEntry backupdir e@Entry{ eRelativePath }
     | last eRelativePath == '/' = do
         createDirectoryIfMissing True eRelativePath
     | otherwise = do

@@ -1,5 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Main (main) where
+module
+#ifdef COMBINED_CHECK
+    GtkMain
+#else
+    Main
+#endif
+    (main) where
 import Import hiding (on, mod)
 
 import Paths_blast_it_with_piss
@@ -32,33 +38,51 @@ import Network (withSocketsDo)
 
 import GHC.Conc
 
-{- URGENT
-    Loop / race condition stopping
-    _the GUI thread_, AND _also stopping any wipe_ introduced somewhere
-    between 1.1.22 5ee80c7cd96fb16a6becdb010d9f8a3da4874f8f (2013-03-18 00:18:31)
-    and 1.1.23 065d3a2e75db920573bbdfff24abc39729c962ef (2013-03-18 13:09:33)
-    Log: dlinynos-log-smaller_log.txt
-    Candidates:
-      - Not blastCloudflare # not in log
-      - a letrec somewhere? # consumes 100% CPU
-      - Antigate captcha    # antigate figures in log
-      - Log                 # extremely huge log
-      - EnvPart             # the gui stops responding
--}
+-- TODO new thread, with Manual in OP post
+--  (how to check proxies, how to wipe and spam, google 'private proxy' etc)
+--  captcha is saved between wipes, but not yet between sessions
+--  board settings are not saved
+--  "в запасе" means additional captcha, you need numproxys + limit to start wipe
+--  at all costs, use linux version
 
--- MOST REQUESTED — zasiralka performance (cache), smyvalka/checker gui captcha
+--    -> allowedModes, don't parse page when the only allowed mode is CreateNew
+--    -> http://developer.github.com/v3/repos/releases/
+
+-- MOST REQUESTED —
+--  presolve captcha
+--    -> save and reuse captcha between sessions and zasiralka/smyvalka/checker
+--    -> return captchas that were never used (e.g. agent killed in before startwipe signal)
+--    -> do not solve outdated captcha keys
+--  immutable agents — instead of agents re-reading mu/sh/pr-settings all the
+--      time serialize agent state and restart agents on change
+--  remove Наебнулось
+--    -> deal with cloudflare everywhere
+--    -> deal with httpExceptions/convert-to-Outcomes everywhere
+--    -> wrap all reqs in 'try', deal with all exceptions immediately.
+--    -> deal with captcha 403/503
+--  zasiralka performance (page and thread cache)
+--    -> basically, limit proxy I/O through page cache
+--  zasiralka save banned proxies
+--  smyvalka/checker gui captcha
+--  proxy authentication (basicauth)
+--  freeform board-names
+--  testing: replay logs
+--     -> the code is ridiculuously sloppy. It basically doesn't do what you'd
+--        think it does, and there are no tests to check it.
+--  detect ban on all boards, and blacklist proxies accordingly
+--  we basically need a rewrite of zasiralka. GUI is horribly entagled with logic.
+-- > Можешь топилку отдельных тредов запилить?
+-- > То есть, чтобы она бампала все треды, кроме отмеченных, и потом создавала несколько тредов.
 
 -- URGENT Ошибка: в вашем сообщении много ссылок на чужие посты
 -- URGENT Отвалилось цитирование, оно >в одну строчку
+-- 2ch.tf
 
 -- URGENT MAKE_PRINCIPLED change/parse field names (captcha_value_id_06) at runtime
 -- URGENT stop posting pasta after it's labeled as spam.
 -- URGENT Interactively edit pasta after it's labeled as spam in smyvalka and zasiralka.
 --      Requires smyvalka-GUI/merger.
 -- URGENT check wordfilter separately before starting wipe
-
--- > Можешь топилку отдельных тредов запилить?
--- > То есть, чтобы она бампала все треды, кроме отмеченных, и потом создавала несколько тредов.
 
 -- URGENT решать капчу отдельно, сохранять для использования в аппликациях
 -- FIXME Капча почему-то привязана к проксям, но ведь это общий пул.
@@ -88,6 +112,8 @@ import GHC.Conc
 -- TODO GTK keyboard completion in board list (list view / table / ad-hoc)
 
 -- GOAL merge gtkblast, smyvalka and proxychecker
+
+-- BUG Notify.closeWatcher in GtkUtils kills app under wine?
 
 -- URGENT ввод капчи руками в смывалке и чекере
 -- URGENT Лимит TVar с количеством соединений с мочаном, check (< limit): Blast.post
@@ -321,18 +347,29 @@ instance Default Conf where
         ,coFluctuation = 10
         ,coSage = True
         ,coMaxLines = 300
-        ,coPastaText = "Хуй выгрызи уёбище выпроваживает он нас\n\n\n\nГагага, шизик, да ты же смешной ПИДАР\n\n\n\n"
+        ,coPastaText =
+            "Хуй выгрызи уёбище выпроваживает он нас\n\n\n\n"
+         ++ "Гагага, шизик, да ты же смешной ПИДОР\n\n\n\n"
+         ++ "ШИЗИК, ТЫ СОВСЕМ ЕБАНУЛСЯ?\n\n\n\n"
         ,coVideoSet = VideoNothing
         ,coVideoFile = bundledFile "video/shizik"
-        ,coVideoText = "http://www.youtube.com/watch?v=NkxVk-egpxs\nhttp://www.youtube.com/watch?v=_B8bSmsPzhw\nhttp://www.youtube.com/watch?v=O6PwHyBnSnY\nhttp://www.youtube.com/watch?v=r05TYkdsKho"
+        ,coVideoText =
+            "http://www.youtube.com/watch?v=NkxVk-egpxs\n"
+         ++ "http://www.youtube.com/watch?v=_B8bSmsPzhw\n"
+         ++ "http://www.youtube.com/watch?v=O6PwHyBnSnY\n"
+         ++ "http://www.youtube.com/watch?v=r05TYkdsKho"
+        ,coPresolveCaptcha = False
+        ,coBoardSpeedData = []
         }
 
 helpMessage :: String
 helpMessage =
-    "Единственная в своем классе вайпалка сосача, с няшным гуи и автообновлением. Написано на хачкеле.\n" ++
-    "Справочный материал разбросан по тултипам, наводите мышку на интересующие вас элементы. Если вам нужна помощь обращайтесь в соответствующий тред на вашей доске, или в треды указанные на странице репозитория.\n" ++
-    "https://github.com/exbb2/BlastItWithPiss\n" ++
-    "Version: " ++ showVersion version
+    "Засиралка-вайпалка сосача, с гуи и автообновлением.\n"
+ ++ "Справочный материал разбросан по тултипам, наводите мышку на интересующие "
+ ++ "вас элементы. Если вам нужна помощь обращайтесь в соответствующий тред на "
+ ++ "вашей борде, или в треды указанные на странице репозитория.\n"
+ ++ "https://github.com/exbb2/BlastItWithPiss\n"
+ ++ "Version: " ++ showVersion version
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -365,11 +402,11 @@ main = withSocketsDo $ do
     -- start
 
     handle (\(e::SomeException) -> do
-        t <- getZonedTime
-        putInvisibleLog $
-            "Uncaught exception terminated program. Current time is "
-            ++ show t ++ "\nException was: " ++ show e
-        exitFailure) $ do
+      t <- getZonedTime
+      putInvisibleLog $
+        "Uncaught exception terminated program. Current time is "
+        ++ show t ++ "\nException was: " ++ show e
+      exitFailure) $ do
 
         -- init
 
@@ -406,4 +443,5 @@ main = withSocketsDo $ do
 
         -- say good bye
 
-        putInvisibleLog =<< ("Finished wipe session, current time is " ++) . show <$> getZonedTime
+        putInvisibleLog =<<
+          ("Finished wipe session, current time is " ++) . show <$> getZonedTime

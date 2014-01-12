@@ -36,6 +36,7 @@ data PostData
 instance NFData PostData where
     rnf (PostData s t i v sg mw ei ew) = rnf (s,t,i,v,sg,mw,ei,ew)
 
+{-# INLINABLE prepare #-}
 prepare
     :: (MonadChoice m, Failure HttpException m, MonadResource m')
     => Board
@@ -91,7 +92,8 @@ prepare
           requestHeaders =
            [(hReferer, ssachThread board thread)
            ]
-          ,responseTimeout = Just 30
+--  this does nothing, see 'post'
+--          ,responseTimeout = Just 30
           ,redirectCount = 0
           ,checkStatus = \_ _ _ -> Nothing
           }
@@ -119,14 +121,17 @@ post (req, success) = do
             ( InternalError $ ErrorException $ toException someex
             , Nothing)
 
-    (do resp <- httpReqStrTags req
+    (do resp <-
+            httpWithMaxRetryCount 0 $
+              httpWithTimeout (Just $ 30 & millions) $
+                httpReqStrTags req
         let !st = responseStatus resp
             heads = responseHeaders resp
             ~tags = responseBody resp
             cj = responseCookieJar resp
         case () of
           _ | statusCode st == 303
-            , Just loc <- decodeASCII <$> lookup "Location" heads
+            , Just loc <- decodeUtf8 <$> lookup "Location" heads
              -> if loc == "wakaba.html"
               then
                 return (PostRejected, Nothing)
@@ -137,12 +142,10 @@ post (req, success) = do
                   else
                     exc $ StatusCodeException st heads cj
 
-            |   statusCode st == 502
+            |   statusCode st == 503
+             || statusCode st == 502
              || statusCode st == 520
              || statusCode st == 522
-             -> return (PostRejected, Nothing)
-
-            | statusCode st == 503
              -> return (Five'o'ThreeError, Nothing)
 
             | statusCode st == 403
@@ -155,7 +158,7 @@ post (req, success) = do
              -> return (Four'o'FourBan, Nothing)
 
             | statusCode st >= 200 && statusCode st <= 300
-             -> return (detectOutcome tags, Just tags)
+             -> return (detectOutcome tags (statusCode st), Just tags)
 
             | otherwise
              -> exc (StatusCodeException st heads cj)

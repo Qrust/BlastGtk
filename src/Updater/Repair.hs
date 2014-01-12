@@ -3,7 +3,6 @@ module Updater.Repair
     ,gtkblastBinary
     ,blastItWithPissBinary
     ,binaries
-    ,distribFiles
     ) where
 import Import
 import System.Directory

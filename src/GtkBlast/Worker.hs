@@ -1,9 +1,9 @@
 module GtkBlast.Worker where
 import Import
 
-import BlastItWithPiss.Blast
-import BlastItWithPiss.Board
 import BlastItWithPiss
+--import BlastItWithPiss.Blast
+--import BlastItWithPiss.Board
 
 import Graphics.UI.Gtk
 
@@ -16,10 +16,10 @@ data WipeUnit = WipeUnit
   deriving Eq
 
 data BoardUnit = BoardUnit
-    {buBoard      :: !Board
-    ,buWidget     :: !CheckButton
-    ,buWipeUnits  :: !(IORef [WipeUnit])
-    ,buBanned     :: !(IORef [BlastProxy])
-    ,buDead       :: !(IORef [BlastProxy])
-    ,buMuSettings :: !MuSettings
+    {buBoard        :: !Board
+    ,buWidget       :: !CheckButton
+    ,buWipeUnits    :: !(IORef [WipeUnit])
+    ,buBanned       :: !(IORef [BlastProxy])
+    ,buDead         :: !(IORef [BlastProxy])
+    ,buMuSettings   :: !MuSettings
     }

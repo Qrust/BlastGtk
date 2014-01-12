@@ -23,10 +23,16 @@ import GtkBlast.Captcha (captchaModeEnvPart)
 import GtkBlast.Proxy
 import GtkBlast.Conf
 import GtkBlast.GtkUtils
-import GtkBlast.Mainloop (wipebuttonEnvPart, boardUnitsEnvPart)
+import GtkBlast.Mainloop
+    ( wipebuttonEnvPart
+    , boardUnitsEnvPart
+    , presolveCaptchaEnvPart
+    )
 import GtkBlast.EnvPart
 
 import BlastItWithPiss
+import BlastItWithPiss.Choice (Mode(CreateNew))
+import Control.Concurrent.STM.FinalizerTVar
 
 import Graphics.UI.Gtk hiding (get, set, after)
 
@@ -41,6 +47,7 @@ import qualified Control.Concurrent.Thread.Group as ThreadGroup
 
 import Data.Version (showVersion)
 import qualified Data.Map as M
+import qualified Data.Set as Set
 
 import Control.Monad.Fix
 
@@ -60,6 +67,9 @@ envParts b =
     ,pastaEnvPart b
     ,videoEnvPart b
     ,imageEnvPart b
+
+    ,presolveCaptchaEnvPart b
+
     ,EP
         (\_ _ -> do
             wlabelstats <- builderGetObject b castToLabel "labelstats"
@@ -164,24 +174,42 @@ envParts b =
         (const return)
         (\wbuf e -> e{wbuf=wbuf})
     ,EP
-        (\_ c -> do
-            wcheckthread <- setir (coCreateThreads c) =<< builderGetObject b castToCheckButton "check-thread"
-            wcheckimages <- setir (coAttachImages c) =<< builderGetObject b castToCheckButton "check-images"
-            wcheckwatermark <- setir (coWatermark c) =<< builderGetObject b castToCheckButton "check-watermark"
-            wcheckposttimeout <- setir (coUsePostTimeout c) =<< builderGetObject b castToCheckButton "checkposttimeout"
-            wspinposttimeout <- setir (coPostTimeout c) =<< builderGetObject b castToSpinButton "spinposttimeout"
-            wcheckthreadtimeout <- setir (coUseThreadTimeout c) =<< builderGetObject b castToCheckButton "checkthreadtimeout"
-            wspinthreadtimeout <- setir (coThreadTimeout c) =<< builderGetObject b castToSpinButton "spinthreadtimeout"
-            wcheckfluctuation <- setir (coUseFluctuation c) =<< builderGetObject b castToCheckButton "checkfluctuation"
-            wspinfluctuation <- setir (coFluctuation c) =<< builderGetObject b castToSpinButton "spinfluctuation"
-            wchecksage <- setir (coSage c) =<< builderGetObject b castToCheckButton "checksage"
+        (\e c -> do
+            wcheckthread <- setir (coCreateThreads c)
+                    =<< builderGetObject b castToCheckButton "check-thread"
+            wcheckimages <- setir (coAttachImages c)
+                    =<< builderGetObject b castToCheckButton "check-images"
+            wcheckwatermark <- setir (coWatermark c)
+                    =<< builderGetObject b castToCheckButton "check-watermark"
+            wcheckposttimeout <- setir (coUsePostTimeout c)
+                    =<< builderGetObject b castToCheckButton "checkposttimeout"
+            wspinposttimeout <- setir (coPostTimeout c)
+                    =<< builderGetObject b castToSpinButton "spinposttimeout"
+            wcheckthreadtimeout <- setir (coUseThreadTimeout c)
+                    =<< builderGetObject b castToCheckButton "checkthreadtimeout"
+            wspinthreadtimeout <- setir (coThreadTimeout c)
+                    =<< builderGetObject b castToSpinButton "spinthreadtimeout"
+            wcheckfluctuation <- setir (coUseFluctuation c)
+                    =<< builderGetObject b castToCheckButton "checkfluctuation"
+            wspinfluctuation <- setir (coFluctuation c)
+                    =<< builderGetObject b castToSpinButton "spinfluctuation"
+            wchecksage <- setir (coSage c)
+                    =<< builderGetObject b castToCheckButton "checksage"
 
-            tappendjunkimages <- atomically $ newTVar True
-            tpastagen <- atomically $ newTVar emptyPastaGen
-            timagegen <- atomically $ newTVar emptyImageGen
-            tvideogen <- atomically $ newTVar emptyVideoGen
+            tappendjunkimages <- newTVarIO True
+            tpastagen <- newTVarIO emptyPastaGen
+            timagegen <- newTVarIO emptyImageGen
+            tvideogen <- newTVarIO emptyVideoGen
             tuseimages <- tvarCheck get wcheckimages
-            tcreatethreads <- tvarCheck get wcheckthread
+
+            tallowedmodes <- tvarCheck
+                (\w -> do
+                    on' <- get w
+                    return $ if on'
+                      then Set.fromList allModes
+                      else Set.delete CreateNew (Set.fromList allModes)
+                ) wcheckthread
+
             tmakewatermark <- tvarCheck get wcheckwatermark
             tposttimeout <- tvarSpinCheck get wcheckposttimeout wspinposttimeout
             tthreadtimeout <- tvarSpinCheck get wcheckthreadtimeout wspinthreadtimeout
@@ -190,7 +218,28 @@ envParts b =
                 wchecksageToSageMode False = SageDisabled
             tsagemode <- tvarCheck (fmap wchecksageToSageMode . get) wchecksage
 
-            return (ShSettings{..}, wcheckthread, wcheckimages, wcheckwatermark, wcheckposttimeout, wspinposttimeout, wcheckthreadtimeout, wspinthreadtimeout, wcheckfluctuation, wspinfluctuation, wchecksage))
+            -- added in 1.2
+            tcaptchaserver <- newFinalizerTVarIO -- HACK dummy captcha server
+                (CaptchaServer $ \_ -> do
+                    liftIO $ runE e $ writeLog $
+                      "AAAAAAAAAAAAH, dummy captcha server invoked, report bug "
+                      ++ "https://github.com/exbb2/BlastItWithPiss/issues"
+                    return Nothing
+                )
+                (runE e $ writeLog "dummy captcha server finalized...")
+            tstartsignal <- newTVarIO False
+
+            return (ShSettings{..}
+                , wcheckthread
+                , wcheckimages
+                , wcheckwatermark
+                , wcheckposttimeout
+                , wspinposttimeout
+                , wcheckthreadtimeout
+                , wspinthreadtimeout
+                , wcheckfluctuation
+                , wspinfluctuation
+                , wchecksage))
         (\(_,wct,wci,wcw,wcpt,wspt,wctt,wstt,wcf,wsf,wcs) c -> do
             ct <- get wct
             ci <- get wci
@@ -227,10 +276,6 @@ envParts b =
         (\_ c -> setir (coAnnoyErrors c) =<< builderGetObject b castToCheckButton "check-annoyerrors")
         (\v c -> get v <&> \a -> c{coAnnoyErrors=a})
         (\v e -> e{wcheckannoyerrors=v})
-    ,EP
-        (\_ c -> setir (coTray c) =<< builderGetObject b castToCheckButton "check-tray")
-        (\v c -> get v <&> \a -> c{coTray=a})
-        (\v e -> e{wchecktray=v})
     ,EP
         (\e c -> do
             wcheckhttpproxy <- setir (coUseHttpProxy c) =<< builderGetObject b castToCheckButton "checkhttpproxy"
@@ -300,7 +345,7 @@ envParts b =
         (const return)
         (const id)
     ,EP
-        (\e _ -> do
+        (\_ c -> do
             window <- builderGetObject b castToWindow "window1"
             windowSetTitle window "Вайпалка мочана"
 
@@ -319,6 +364,9 @@ envParts b =
 
             -- tray signals
 
+            wchecktray <- setir (coTray c)
+                =<< builderGetObject b castToCheckButton "check-tray"
+
             on wtray statusIconActivate $ windowToggle window
             on wtray statusIconPopupMenu $ \(Just mb) t -> menuPopup wmenu $ Just (mb, t)
             wmenushowConnId <- on wmenushow menuItemActivate $ windowToggle window
@@ -328,7 +376,7 @@ envParts b =
 
             onDelete window $ \_ -> do
                 noTray <- not <$> statusIconIsEmbedded wtray
-                closePlease <- not <$> toggleButtonGetActive (wchecktray e)
+                closePlease <- not <$> get wchecktray
                 if noTray || closePlease
                     then return False
                     else True <$ widgetHide window
@@ -342,10 +390,10 @@ envParts b =
             onHide window $ setCheckActive False
 
             widgetShowAll window
-            return window
+            return (window, wchecktray)
         )
-        (const return)
-        (\v e -> e{window=v})
+        (\(_, wct) c -> get wct <&> \a -> c{coTray=a})
+        (\(w, _) e -> e{window=w})
     ,EP
         (\_ c -> setir ((fromIntegral . coMaxLines) c) =<< builderGetObject b castToSpinButton "wspinmaxlines")
         (\v c -> get v <&> \a -> c{coMaxLines=round a})
@@ -372,10 +420,11 @@ createWidgetsAndFillEnv :: Builder -> Conf -> IO (Env, Conf -> IO Conf)
 createWidgetsAndFillEnv builder conf = do
     messageLocks <- newIORef 0
 
-    wipeStarted <- newIORef False
+    wipeStarted <- newTVarIO False
 
     postCount <- newIORef 0
     wipeStats <- newIORef (0, 0, 0)
+    captchasSolved <- newIORef 0
 
     proxies <- newIORef M.empty
 
@@ -385,11 +434,12 @@ createWidgetsAndFillEnv builder conf = do
     socksproxyMod <- newIORef nullTime
     socksproxyLast <- newIORef []
 
-    connection <- newManager def{managerConnCount=20000}
+    connection <- newManager def{managerConnCount = 1000000}
 
     threadGroup <- ThreadGroup.new
 
-    (re, rs) <- mfix $ \ ~(lolhaskell, _) -> do
+    (re, !rs) <- mfix $ \ ~(lolhaskell, _) -> do
         (setEnv, setConf) <- runEnvParts (envParts builder) lolhaskell conf
         return (setEnv E{..}, setConf)
-    return (force re, rs)
+
+    re `deepseq` return (re, rs)

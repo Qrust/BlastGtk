@@ -100,11 +100,11 @@ onFileChooserEntryButton b wfbutton wfentry putErr fin = void $ do
             widgetHide d
 
 tvarCheck :: (CheckButton -> IO a) -> CheckButton -> IO (TVar a)
-tvarCheck getcheck check = do
-    tvar <- atomically . newTVar =<< getcheck check
+tvarCheck getval check = do
+    tvar <- atomically . newTVar =<< getval check
 
     void $ on check toggled $
-        atomically . writeTVar tvar =<< getcheck check
+        atomically . writeTVar tvar =<< getval check
 
     return tvar
 
@@ -132,31 +132,34 @@ closeWatcher :: MonadIO m => CloseWatcher -> m ()
 closeWatcher (CloseWatcher m) = liftIO m
 
 postAsyncWhenPathModified :: MonadIO m => String -> IO () -> m CloseWatcher
-postAsyncWhenPathModified _fileOrDir action = liftIO $ do
-    fromIOException (return $ CloseWatcher $ return ()) $
-        canonicalizePath _fileOrDir >>= \fileOrDir -> do
-            watchman <- Notify.startManager
+postAsyncWhenPathModified _fileOrDir action =
+  liftIO $ fromIOException (return $ CloseWatcher $ return ()) $ do
 
-            let post = const $ do
-                    Notify.stopManager watchman
-                    postGUIAsync action
+    fileOrDir <- canonicalizePath _fileOrDir
 
-            isDir <- doesDirectoryExist fileOrDir
-            if isDir
-            then do
-                let dname = F.fromText $ fromString fileOrDir
-                Notify.watchDir watchman dname (const True) post
-                return $ CloseWatcher $ Notify.stopManager watchman
-            else do
-                isFile <- doesFileExist fileOrDir
-                if isFile
-                then do
-                    let fname = F.fromText $ fromString fileOrDir
-                        dname = F.directory fname
-                    Notify.watchDir watchman dname (\e -> getEventFname e == fname) post
-                    return $ CloseWatcher $ Notify.stopManager watchman
-                else do
-                    return $ CloseWatcher $ return () -- silently fail
+    watchman <- Notify.startManager
+
+    let post = \ _ -> do
+            Notify.stopManager watchman
+            postGUIAsync action
+
+    isDir <- doesDirectoryExist fileOrDir
+    if isDir
+      then do
+        let dname = F.fromText (fromString fileOrDir)
+        Notify.watchDir watchman dname (const True) post
+
+        return $ CloseWatcher $ Notify.stopManager watchman
+      else do
+        isFile <- doesFileExist fileOrDir
+        if isFile
+          then do
+            let fname = F.fromText $ fromString fileOrDir
+                dname = F.directory fname
+            Notify.watchDir watchman dname (\e -> getEventFname e == fname) post
+            return $ CloseWatcher $ Notify.stopManager watchman
+          else do
+            return $ CloseWatcher $ return () -- silently fail
   where
     getEventFname (Notify.Added    f _) = f
     getEventFname (Notify.Modified f _) = f

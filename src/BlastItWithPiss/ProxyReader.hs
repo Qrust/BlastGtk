@@ -1,7 +1,8 @@
 module BlastItWithPiss.ProxyReader
     (filenameIsSocks
     ,parseProxyFile
-    ,readProxyFile) where
+    ,readProxyFile
+    ) where
 import Import
 
 import BlastItWithPiss.Blast
@@ -15,7 +16,8 @@ filenameIsSocks fname = "socks" `isInfixOf` map toLower fname
 parseProxyFile :: Bool -> Text -> [Either Text BlastProxy]
 parseProxyFile socks t =
     map (\ip ->
-      case readBlastProxy socks (takeWhile (\c -> c /= '|' && c /= '#') $ T.unpack ip) of
+      case readBlastProxy socks
+            (takeWhile (\c -> c /= '|' && c /= '#') $ T.unpack ip) of
         Nothing -> Left ip
         Just p  -> Right p)
     $ filter (\x -> not (T.null x) && not (T.all isSpace x))

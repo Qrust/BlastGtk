@@ -5,7 +5,6 @@ module BlastItWithPiss.Blast
 
     ,module Network.HTTP.Conduit
     ,module Network.HTTP.Conduit.MultipartFormData
-    ,module Network.HTTP.Conduit.Browser
 
     ,module Network.HTTP.Types
 
@@ -15,12 +14,13 @@ module BlastItWithPiss.Blast
     ,newUserAgent
 
     ,Blast
-    ,generateNewBrowser
     ,runBlastNew
 
     ,BlastState
     ,getBlastState
-    ,runBlast
+    ,runBlastFromState
+
+    ,unsafeParseUrl
 
     ,BlastProxy(..)
     ,readBlastProxy
@@ -29,6 +29,20 @@ module BlastItWithPiss.Blast
     ,httpGetProxy
     ,httpSetProxy
     ,httpWithProxy
+
+    ,httpGetCookieJar
+    ,httpSetCookieJar
+    ,httpWithCookieJar
+
+    ,httpGetManager
+
+    ,httpGetTimeout
+    ,httpSetTimeout
+    ,httpWithTimeout
+
+    ,httpGetMaxRetryCount
+    ,httpSetMaxRetryCount
+    ,httpWithMaxRetryCount
 
     ,httpReq
     ,httpReqLbs
@@ -102,10 +116,11 @@ renderSocksHost (SocksAddrIPV6 ip) = showHostAddress6 ip
 
 type Blast = BrowserAction
 
-data BlastProxy = HttpProxy !Proxy
-                | SocksProxy !SocksConf
-                | NoProxy
-    deriving (Eq, Ord)
+data BlastProxy
+    = HttpProxy !Proxy
+    | SocksProxy !SocksConf
+    | NoProxy
+  deriving (Eq, Ord)
 
 instance Show BlastProxy where
     show (HttpProxy (Proxy h p)) =
@@ -179,26 +194,29 @@ instance NFData (Request a) where
 readBlastProxy :: Bool -> String -> Maybe BlastProxy
 readBlastProxy isSocks s =
     case break (==':') (dropWhile isSpace s) of
-        (host@(_:_), (_:port')) ->
-            let port = takeWhile isNumber port' in
-            if isSocks
-                then SocksProxy . defaultSocksConf host . (fromIntegral :: Int -> PortNumber) <$> readMay port
-                else HttpProxy . Proxy (fromString host) <$> readMay port
-        _ -> Nothing
+      (host@(_:_), (_:port')) ->
+        let port = takeWhile isNumber port' in
+        if isSocks
+          then do
+            p :: Int <- readMay port
+            return $ SocksProxy (defaultSocksConf host $ fromIntegral p)
+          else
+            HttpProxy . Proxy (fromString host) <$> readMay port
+      _ -> Nothing
 
 maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
-generateNewBrowser :: BlastProxy -> UserAgent -> BrowserAction ()
-generateNewBrowser bproxy (UserAgent userAgent) = do
+setBrowserDefaults :: BlastProxy -> UserAgent -> BrowserAction ()
+setBrowserDefaults bproxy (UserAgent userAgent) = do
     httpSetProxy bproxy
     setMaxRedirects Nothing
-    setMaxRetryCount 1
+    setMaxRetryCount 3
     setTimeout $ Just $ 10 & millions
-    setDefaultHeader hUserAgent $ Just userAgent
-    setOverrideHeaders
-        [(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+    setDefaultHeaders
+        [(hUserAgent, userAgent)
+        ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         ,(hAcceptLanguage, "ru,en;q=0.5")
         ,(hConnection, "keep-alive")
         ]
@@ -209,7 +227,7 @@ generateNewBrowser bproxy (UserAgent userAgent) = do
 runBlastNew :: Manager -> BlastProxy -> UserAgent -> Blast a -> IO a
 runBlastNew m bproxy ua blast =
     runResourceT $ browse m $ do
-        generateNewBrowser bproxy ua
+        setBrowserDefaults bproxy ua
         blast
 
 newtype BlastState = BlastState BrowserState
@@ -217,11 +235,14 @@ newtype BlastState = BlastState BrowserState
 getBlastState :: Blast BlastState
 getBlastState = BlastState <$> getBrowserState
 
-runBlast :: Manager -> BlastState -> Blast a -> IO a
-runBlast m (BlastState st) blast =
+runBlastFromState :: Manager -> BlastState -> Blast a -> IO a
+runBlastFromState m (BlastState st) blast =
     runResourceT $ browse m $ do
         setBrowserState st
         blast
+
+unsafeParseUrl :: String -> Request m
+unsafeParseUrl = either (\(e :: HttpException) -> throw e) id . parseUrl
 
 httpSetProxys :: Maybe Proxy -> Maybe SocksConf -> Blast ()
 httpSetProxys h s = do
@@ -237,12 +258,12 @@ httpGetProxy :: Blast BlastProxy
 httpGetProxy = do
     h <- getCurrentProxy
     case h of
-        Just p -> return $ HttpProxy p
-        Nothing -> do
-            s <- getCurrentSocksProxy
-            case s of
-                Just p -> return $ SocksProxy p
-                Nothing -> return NoProxy
+      Just p -> return $ HttpProxy p
+      Nothing -> do
+        s <- getCurrentSocksProxy
+        case s of
+          Just p -> return $ SocksProxy p
+          Nothing -> return NoProxy
 
 httpWithProxy :: BlastProxy -> Blast a -> Blast a
 httpWithProxy p m = do
@@ -252,7 +273,39 @@ httpWithProxy p m = do
     httpSetProxy current
     return a
 
-httpReq :: Request (ResourceT IO) -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
+httpGetCookieJar :: Blast CookieJar
+httpGetCookieJar = getCookieJar
+
+httpSetCookieJar :: CookieJar -> Blast ()
+httpSetCookieJar = setCookieJar
+
+httpWithCookieJar :: CookieJar -> Blast a -> Blast a
+httpWithCookieJar = withCookieJar
+
+httpGetManager :: Blast Manager
+httpGetManager = getManager
+
+httpGetTimeout :: Blast (Maybe Int)
+httpGetTimeout  = getTimeout
+
+httpSetTimeout :: Maybe Int -> Blast ()
+httpSetTimeout  = setTimeout
+
+httpWithTimeout :: Maybe Int -> Blast a -> Blast a
+httpWithTimeout = withTimeout
+
+httpGetMaxRetryCount :: Blast Int
+httpGetMaxRetryCount  = getMaxRetryCount
+
+httpSetMaxRetryCount :: Int -> Blast ()
+httpSetMaxRetryCount  = setMaxRetryCount
+
+httpWithMaxRetryCount :: Int -> Blast a -> Blast a
+httpWithMaxRetryCount = withMaxRetryCount
+
+httpReq
+    :: Request (ResourceT IO)
+    -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
 httpReq = makeRequest
 
 httpReqLbs :: Request (ResourceT IO) -> Blast (Response LByteString)
@@ -261,15 +314,17 @@ httpReqLbs = makeRequestLbs
 httpReqStr :: Request (ResourceT IO) -> Blast (Response Text)
 httpReqStr u = do
     x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . T.concat <$> (responseBody x $$+- CL.map decodeUtf8 =$ consume)
+    liftIO $ runResourceT $
+        (<$ x) . T.concat <$> (responseBody x $$+- CL.map decodeUtf8 =$ consume)
 
 httpReqStrTags :: Request (ResourceT IO) -> Blast (Response [Tag Text])
 httpReqStrTags u = do
     x <- httpReq u
-    liftIO $ runResourceT $ (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
+    liftIO $ runResourceT $
+        (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
 
 httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpGet = makeRequest . fromJust . parseUrl
+httpGet = makeRequest <=< parseUrl
 
 httpGetLbs :: String -> Blast LByteString
 httpGetLbs u = do
@@ -279,18 +334,20 @@ httpGetLbs u = do
 httpGetStr :: String -> Blast Text
 httpGetStr u = do
     g <- httpGet u
-    let x = liftIO $ runResourceT $ T.concat <$> (responseBody g $$+- CL.map decodeUtf8 =$ consume)
+    let x = liftIO $ runResourceT $
+                T.concat <$> (responseBody g $$+- CL.map decodeUtf8 =$ consume)
     x
 
 httpGetStrTags :: String -> Blast [Tag Text]
 httpGetStrTags u = do
     g <- httpGet u
-    let x = liftIO $ runResourceT $ parseTagsT . S.concat <$> (responseBody g $$+- consume)
+    let x = liftIO $ runResourceT $
+                parseTagsT . S.concat <$> (responseBody g $$+- consume)
     x
 
 newtype UserAgent = UserAgent ByteString
 
-{-# INLINE newUserAgent #-}
+{-# INLINABLE newUserAgent #-}
 newUserAgent :: MonadChoice m => m UserAgent
 newUserAgent = UserAgent <$> chooseFromList userAgents
 

@@ -11,8 +11,8 @@ import GtkBlast.Conf
 data EnvPart
     = forall m. EP
         {toMutable :: Env -> Conf -> IO m
-        ,toConf :: m -> Conf -> IO Conf
-        ,toEnv :: m -> Env -> Env
+        ,toConf    :: m -> Conf -> IO Conf
+        ,toEnv     :: m -> Env -> Env
         }
 
 instance Monoid EnvPart where

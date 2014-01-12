@@ -1,2 +1,2 @@
 #!/bin/sh
-hdevtools --stop-server
+hdevtools --stop-server "$@"

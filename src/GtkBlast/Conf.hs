@@ -28,52 +28,60 @@ import Control.Monad.Trans.Class
 
 import GHC.Generics
 
--- Fields are strict so it won't compile if anything is missing in Default or FromJSON instances
+-- Fields are strict so it won't compile if anything is missing in
+-- Default or JSON instances
 data Conf = Conf
-    {coActiveBoards :: ![Board]
-    ,coPastaSet :: !PastaSet
-    ,coCreateThreads :: !Bool
-    ,coImageFolder :: !String
-    ,coAttachImages :: !Bool
-    ,coAnnoy :: !Bool
-    ,coHideOnSubmit :: !Bool
-    ,coAnnoyErrors :: !Bool
-    ,coTray :: !Bool
-    ,coWatermark :: !Bool
-    ,coFirstLaunch :: !Bool
-    ,coUseHttpProxy :: !Bool
-    ,coHttpProxyFile :: !String
-    ,coUseSocksProxy :: !Bool
-    ,coSocksProxyFile :: !String
-    ,coUseNoProxy :: !Bool
-    ,coCaptchaMode :: !CaptchaMode
-    ,coAntigateKey :: !String
-    ,coAntigateHost :: !String
-    ,coLastVersion :: !GtkBlastVersion
-    ,coPastaFile :: !String
-    ,coEscapeInv :: !Bool
-    ,coEscapeWrd :: !Bool
+    {coActiveBoards      :: ![Board]
+    ,coPastaSet          :: !PastaSet
+    ,coCreateThreads     :: !Bool
+    ,coImageFolder       :: !String
+    ,coAttachImages      :: !Bool
+    ,coAnnoy             :: !Bool
+    ,coHideOnSubmit      :: !Bool
+    ,coAnnoyErrors       :: !Bool
+    ,coTray              :: !Bool
+    ,coWatermark         :: !Bool
+    ,coFirstLaunch       :: !Bool
+    ,coUseHttpProxy      :: !Bool
+    ,coHttpProxyFile     :: !String
+    ,coUseSocksProxy     :: !Bool
+    ,coSocksProxyFile    :: !String
+    ,coUseNoProxy        :: !Bool
+    ,coCaptchaMode       :: !CaptchaMode
+    ,coAntigateKey       :: !String
+    ,coAntigateHost      :: !String
+    ,coLastVersion       :: !GtkBlastVersion
+    ,coPastaFile         :: !String
+    ,coEscapeInv         :: !Bool
+    ,coEscapeWrd         :: !Bool
     ,coSortingByAlphabet :: !Bool
-    ,coShuffleReposts :: !Bool
-    ,coRandomQuote :: !Bool
-    ,coUsePostTimeout :: !Bool
-    ,coPostTimeout :: !Double
-    ,coUseThreadTimeout :: !Bool
-    ,coThreadTimeout :: !Double
-    ,coUseFluctuation :: !Bool
-    ,coFluctuation :: !Double
-    ,coSage :: !Bool
-    ,coMaxLines :: !Int
-    ,coPastaText :: !Text
-    ,coVideoSet :: !VideoSet
-    ,coVideoFile :: !String
-    ,coVideoText :: !Text
+    ,coShuffleReposts    :: !Bool
+    ,coRandomQuote       :: !Bool
+    ,coUsePostTimeout    :: !Bool
+    ,coPostTimeout       :: !Double
+    ,coUseThreadTimeout  :: !Bool
+    ,coThreadTimeout     :: !Double
+    ,coUseFluctuation    :: !Bool
+    ,coFluctuation       :: !Double
+    ,coSage              :: !Bool
+    ,coMaxLines          :: !Int
+    ,coPastaText         :: !Text
+    ,coVideoSet          :: !VideoSet
+    ,coVideoFile         :: !String
+    ,coVideoText         :: !Text
+    -- added in 1.2
+    ,coPresolveCaptcha   :: !Bool
+    ,coBoardSpeedData    :: ![(Board, Int)] -- fucking aeson
     }
   deriving (Eq, Show, Ord, Generic)
 
 _parseWithDefault
     :: (FromJSON a, Show a)
-    => Object -> Text -> a -> WriterT String Parser a
+    => Object
+    -> Text
+    -> a -- ^ default value
+    -- | either error message or value
+    -> WriterT String Parser a
 _parseWithDefault obj name _def = do
     x <- lift $ obj .:? name
     case x of
@@ -81,7 +89,8 @@ _parseWithDefault obj name _def = do
         return v
       Nothing -> do
         tell $ "Couldn't parse field \"" ++ T.unpack name
-            ++ "\", loading default value: " ++ show _def ++ "\n"
+            ++ "\", loading default value: " ++ show _def
+            ++ "\n"
         return _def
 
 -- | 'snd' contains warnings - we don't fail if some of the fields are missing.
@@ -127,6 +136,8 @@ instance Default Conf => FromJSON (Conf, String) where
         F(coVideoSet)
         F(coVideoText)
         F(coVideoFile)
+        F(coPresolveCaptcha)
+        F(coBoardSpeedData)
 #undef F
         return Conf{..}
     parseJSON _ = mzero
@@ -172,8 +183,9 @@ writeConfig configfile conf = do
     case tw of
         Left (a::SomeException) ->
             writeLog $
-                "Couldn't write config to \"" ++ fromString configfile ++
-                "\" , got exception: " ++ show a
+                "Couldn't write config to \"" ++ fromString configfile
+             ++ "\" , got exception: " ++ show a
         Right _ ->
             writeLog $
-                "Wrote config \"" ++ fromString configfile ++ "\": " ++ show conf
+                "Wrote config \"" ++ fromString configfile
+             ++ "\": " ++ show conf

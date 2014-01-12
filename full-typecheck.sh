@@ -1,2 +1,2 @@
 #!/bin/sh
-./typecheck.sh src/GtkMain.hs && ./typecheck.sh src/CheckProxyMain.hs && ./typecheck.sh src/SmyvalkaMain.hs
+./typecheck.sh full-typecheck.hs -g -DCOMBINED_CHECK "$@"

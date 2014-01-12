@@ -1,7 +1,7 @@
 name: blast-it-with-piss
 synopsis: Flooder for pseudo-anonymous bydloforum 2ch.hk
 description: Flooder for pseudo-anonymous bydloforum 2ch.hk, includes GTK2 gui and auto-updater.
-version: 1.1.36
+version: 1.2
 homepage: https://github.com/exbb2/BlastItWithPiss
 bug-reports: https://github.com/exbb2/BlastItWithPiss/issues
 license: GPL-3
@@ -13,10 +13,9 @@ stability: experimental
 build-type: Simple
 cabal-version: >= 1.15
 -- I highly suspect it doesn't compile on 7.4.1 anymore.
-tested-with: GHC == 7.6.2
+tested-with: GHC == 7.6.3, GHC == 7.6.2
 data-files:
-    build-production.bash
-   ,README.md
+    README.md
    ,COMPILEGUIDE.md
    ,resources/blast.glade
    ,resources/2ch.so.png
@@ -85,7 +84,7 @@ library
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,deepseq
@@ -96,9 +95,11 @@ library
 
     exposed-modules:
          BlastItWithPiss
+         BlastItWithPiss.Types
         ,BlastItWithPiss.Blast
         ,BlastItWithPiss.Post
         ,BlastItWithPiss.Captcha
+        ,BlastItWithPiss.CaptchaServer
         ,BlastItWithPiss.Parsing
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
@@ -109,6 +110,9 @@ library
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
         ,BlastItWithPiss.ProxyReader
+
+        ,Control.Concurrent.STM.FinalizerTVar
+        ,Control.Concurrent.STM.TLQueue
 
     other-modules: Import
 
@@ -150,9 +154,11 @@ executable gtkblast
         ,Paths_blast_it_with_piss
 
         ,BlastItWithPiss
+        ,BlastItWithPiss.Types
         ,BlastItWithPiss.Blast
         ,BlastItWithPiss.Post
         ,BlastItWithPiss.Captcha
+        ,BlastItWithPiss.CaptchaServer
         ,BlastItWithPiss.Parsing
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
@@ -163,6 +169,9 @@ executable gtkblast
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
         ,BlastItWithPiss.ProxyReader
+
+        ,Control.Concurrent.STM.FinalizerTVar
+        ,Control.Concurrent.STM.TLQueue
 
         ,GtkBlast.Achievement
         ,GtkBlast.AntigateCaptcha
@@ -224,7 +233,9 @@ executable gtkblast
         ,gtk >= 0.12.4
         ,glib
 
-        ,aeson
+        -- didn't test whether new aeson instances break something
+        -- but let's play it safe for now.
+        ,aeson == 0.6.1.0 && < 0.6.2.0
         ,aeson-pretty
 
         ,network
@@ -237,7 +248,7 @@ executable gtkblast
 
         ,certificate >= 1.3.1
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
 
         ,fast-tagsoup-utf8-only >= 1.0.4
         ,tagsoup
@@ -288,6 +299,7 @@ executable proxychecker
         ,BlastItWithPiss.Blast
         ,BlastItWithPiss.Post
         ,BlastItWithPiss.Captcha
+        ,BlastItWithPiss.CaptchaServer
         ,BlastItWithPiss.Parsing
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
@@ -298,6 +310,9 @@ executable proxychecker
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
         ,BlastItWithPiss.ProxyReader
+
+        ,Control.Concurrent.STM.FinalizerTVar
+        ,Control.Concurrent.STM.TLQueue
 
     build-depends:
          base >= 4.5 && < 5
@@ -328,7 +343,7 @@ executable proxychecker
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
@@ -383,6 +398,7 @@ executable smyvalka
         ,BlastItWithPiss.Blast
         ,BlastItWithPiss.Post
         ,BlastItWithPiss.Captcha
+        ,BlastItWithPiss.CaptchaServer
         ,BlastItWithPiss.Parsing
         ,BlastItWithPiss.Escaping
         ,BlastItWithPiss.Image
@@ -393,6 +409,9 @@ executable smyvalka
         ,BlastItWithPiss.Choice
         ,BlastItWithPiss.MonadChoice
         ,BlastItWithPiss.ProxyReader
+
+        ,Control.Concurrent.STM.FinalizerTVar
+        ,Control.Concurrent.STM.TLQueue
 
     build-depends:
          base >= 4.5 && < 5
@@ -423,7 +442,7 @@ executable smyvalka
         ,conduit
         ,http-types
         ,mime-types >= 0.1.0.2
-        ,socks == 0.5.1
+        ,socks >= 0.5.1 && < 0.6
         ,resourcet
         ,case-insensitive >= 1 && < 2
         ,tagsoup
@@ -467,38 +486,6 @@ executable smyvalka
         ,FlexibleInstances
         ,TypeSynonymInstances
 
---executable cliblast
---    main-is: CliMain.hs
---    build-depends: base >= 4.5 && < 5
---                  ,process
---                  ,network
---                  ,stm
---                  ,bytestring
---                  ,blast-it-with-piss
---
---    if flag(gtkonly)
---        buildable: False
---
---    if flag(bindist)
---        cpp-options: -DBINDIST
---        build-depends: executable-path
---
---    ghc-options: -Wall -threaded
---
---    default-language: Haskell2010
---
---    hs-source-dirs: src
---
---    default-extensions:
---                NoImplicitPrelude
---               ,CPP
---               ,PatternGuards
---               ,OverloadedStrings
---               ,RecordWildCards
---               ,ScopedTypeVariables
---               ,PackageImports
---               ,BangPatterns
-
 -- updater app. Checks and installs updates, then runs gtkblast
 executable BlastItWithPiss
     main-is: UpdaterMain.hs
@@ -534,8 +521,12 @@ executable BlastItWithPiss
         ,network
         ,http-conduit
         ,zip-archive
-        ,aeson
-        ,cryptohash
+
+        -- didn't test whether new aeson instances break something
+        -- but let's play it safe for now.
+        ,aeson == 0.6.1.0 && < 0.6.2.0
+
+        ,cryptohash-cryptoapi
         ,crypto-api
         ,cereal
         ,executable-path

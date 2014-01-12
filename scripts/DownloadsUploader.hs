@@ -1,6 +1,11 @@
-{-# LANGUAGE OverloadedStrings, NondecreasingIndentation #-}
+{-# LANGUAGE
+      OverloadedStrings
+    , NondecreasingIndentation
+    , PackageImports
+    #-}
+{-# OPTIONS_GHC -Wall #-}
 module Main (main) where
-import Import
+import Import hiding (putStrLn)
 import Updater.Manifest
 import qualified Paths_blast_it_with_piss as Paths
 
@@ -8,14 +13,18 @@ import Network.HTTP.Types
 import Network.HTTP.Conduit
 import Network.HTTP.Conduit.MultipartFormData
 
+#if MIN_VERSION_aeson(0,6,2)
+#error "aeson-0.6.2.0 hasn't been tested yet, and has a slim possibility\
+ of breaking our stuff. Use 0.6.1.0 for now."
+#else
 import Data.Aeson
 import Data.Aeson.Types
+#endif
 import Data.Aeson.Encode.Pretty
 
 import System.Console.Readline
 
 import qualified Data.Text as T
-import Data.Text.Encoding hiding (decodeUtf8)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
@@ -29,7 +38,6 @@ import System.Environment
 import System.Cmd
 
 import Control.Concurrent
-import Control.Monad.Identity
 
 import Data.Version
 import Text.ParserCombinators.ReadP
@@ -44,10 +52,10 @@ emptyUpdate = UpdateManifest
     ,changelog = []
     }
 
--- | Shortcut for 'fromJust . parseUrl'
+-- | Shortcut for 'either throw id . parseUrl'
 {-# INLINE url #-}
 url :: String -> Request m
-url = fromJust . parseUrl
+url = either (\(e :: HttpException) -> throw e) id . parseUrl
 
 username :: IsString a => a
 username = "exbb2"
@@ -67,7 +75,7 @@ getToVersion s' =
        stripPrefix "BlastItWithPiss-windows-x86-" s
 
 only201 :: Status -> ResponseHeaders -> CookieJar -> Maybe SomeException
-only201 s@Status{statusCode=201} e cj = Nothing
+only201 Status{statusCode=201} _ _ = Nothing
 only201 s e cj = Just $ toException $ StatusCodeException s e cj
 
 fromJsonParser :: FromJSON a => LByteString -> (a -> Parser b) -> b
@@ -97,7 +105,7 @@ parseGithubDownloadsPart1Response lbs boundary arcfilename arcbytes =
         ,corr "Content-Type" "mime_type"
         ,return $ partFileRequestBody "file" arcfilename $ RequestBodyLBS arcbytes
         ]
-    rurl <- fromJust . parseUrl <$> o .: "s3_url"
+    rurl <- url <$> o .: "s3_url"
     id' <- o .: "id"
     return $
       (formDataBodyPure boundary fields $ rurl
@@ -117,8 +125,9 @@ getPassword desc = do
 upload :: Text -> ByteString -> String -> Text -> ByteString -> IO Bool
 upload pass contentType arcfilename desc arcbytes = withManager $ \m -> do
     let
-      _req = fromJust $ parseUrl $
-        "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads"
+      _req = url $
+        "https://api.github.com/repos/"
+            ++ username ++ "/" ++ reponame ++ "/downloads"
       req =
         applyBasicAuth username (encodeUtf8 pass) $ _req
             {method = methodPost
@@ -136,10 +145,10 @@ upload pass contentType arcfilename desc arcbytes = withManager $ \m -> do
         liftIO $ putStrLn "Part1"
         lbs <- responseBody <$> httpLbs req m
         boundary <- liftIO $ webkitBoundary
-        let (req,_) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
+        let (req',_) = parseGithubDownloadsPart1Response lbs boundary arcfilename (toLBS arcbytes)
 
         liftIO $ putStrLn "Part2"
-        void $ httpLbs req m
+        void $ httpLbs req' m
 
     case _e of
       Left (StatusCodeException Status{statusCode=401} _ _) -> do
@@ -162,10 +171,10 @@ uploadZips as = do
           (go _retry =<< getPassword prompt)
 
 deleteDownload :: Text -> Int -> IO ()
-deleteDownload pass id = do
+deleteDownload pass id' = do
     let _req = url $
             "https://api.github.com/repos/" ++ username
-            ++ "/" ++ reponame ++ "/downloads/" ++ show id
+            ++ "/" ++ reponame ++ "/downloads/" ++ show id'
         req = applyBasicAuth username (encodeUtf8 pass) $ _req{method="DELETE"}
     void $ withManager $ httpLbs req
 
@@ -174,15 +183,17 @@ deleteDownloads pass v = do
     lbs <- simpleHttp $ "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/downloads"
     let downs = fromJsonParser lbs $ mapM $ \o -> do
             (,) <$> o .: "name" <*> o .: "id"
-    forM_ downs $ \(name, id) ->
+    forM_ downs $ \(name, id') ->
         case lastMay =<< readP_to_S parseVersion <$> getToVersion name of
             Just (dv,_) -> when (dv < v) $ do
-                putStrLn $ "Deleting download " ++ show (name, id) ++ "\n  Version older than current " ++ showVersion dv ++ " < " ++ showVersion v
+                putStrLn $ "Deleting download " ++ show (name, id')
+                    ++ "\n  Version older than current " ++ showVersion dv
+                    ++ " < " ++ showVersion v
                 putStrLn $ "Waiting a bit so you can cancel..."
                 threadDelay $ 2000000
-                deleteDownload pass id
+                deleteDownload pass id'
             Nothing -> do
-                putStrLn $ "Passing by " ++ show (name, id)
+                putStrLn $ "Passing by " ++ show (name, id')
 
 main :: IO ()
 main = do

@@ -1,3 +1,4 @@
 #!/bin/sh
-SANDBOX="$(echo .cabal-sandbox/*ghc*packages.conf.d)"
-ghci -package-db=$SANDBOX $@
+NO_G_OPTION="true"
+source "./hdevtools-options.sh"
+ghci $HDEVTOOLSOPTS "$@"

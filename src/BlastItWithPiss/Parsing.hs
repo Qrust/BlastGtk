@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module BlastItWithPiss.Parsing
     (Html
 
@@ -6,17 +7,13 @@ module BlastItWithPiss.Parsing
     ,Page(..)
     ,postsFromPage
 
-    ,parseOpPost
-    ,parsePosts
     ,parseThreads
     ,parseSpeed
-    ,parsePages
     ,parsePage
 
     ,ErrorMessage(..)
     ,ErrorException(..)
     ,Outcome(..)
-    ,message
     ,successOutcome
     ,wordfiltered
     ,haveAnError
@@ -25,20 +22,19 @@ module BlastItWithPiss.Parsing
     ,detectOutcome
     ,detectCloudflare
 
-    ,parseForm
-    -- ,conduitParseForm
+    ,cloudflareIdCaptcha
     ) where
 import Import
 import BlastItWithPiss.Board
 
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+-- import qualified Data.Text.Encoding as T
 
 import qualified Text.Show as S
 
 import Text.HTML.TagSoup
 
-import Network.HTTP.Conduit.MultipartFormData
+-- import Network.HTTP.Conduit.MultipartFormData
 
 type Html = [Tag Text]
 
@@ -91,13 +87,13 @@ instance NFData t => NFData (Tag t) where
     rnf (TagPosition x y) = x `deepseq` y `deepseq` ()
 
 instance NFData Post where
-    rnf Post{..} = rnf (postId, postContents)
+    rnf (Post a b) = rnf (a,b)
 
 instance NFData Thread where
-    rnf Thread{..} = rnf (threadId, pinned, locked, postcount, visibleposts)
+    rnf (Thread a b c d e) = rnf (a,b,c,d,e)
 
 instance NFData Page where
-    rnf Page{..} = rnf (pageId, lastpage, speed, threads)
+    rnf (Page a b c d) = rnf (a,b,c,d)
 
 postsFromPage :: Page -> [Post]
 postsFromPage = concatMap visibleposts . threads
@@ -164,10 +160,10 @@ parseThreads = first reverse . go []
   where
     go tds (TagOpen "div" (("id", postid):_):ts)
         | Just tid <- readMay . T.unpack =<< T.stripPrefix "thread_" postid
-         ,((pin,lck),rest1) <- parseIcons (False, False) ts
-         ,(oppost, rest2) <- parseOpPost tid rest1
-         ,(mpostn, rest3) <- parseOmitted rest2
-         ,(vposts, rest4) <- parsePosts rest3
+        , ((pin, lck), rest1) <- parseIcons (False, False) ts
+        , (oppost,     rest2) <- parseOpPost tid rest1
+        , (mpostn,     rest3) <- parseOmitted rest2
+        , (vposts,     rest4) <- parsePosts rest3
          = go
             (Thread
                 {threadId = tid
@@ -175,7 +171,8 @@ parseThreads = first reverse . go []
                 ,visibleposts = oppost : vposts
                 ,pinned = pin
                 ,locked = lck
-                } : tds)
+                }
+            : tds)
             rest4             -- continue
     go tds (TagOpen "table" [("border","1")]
            :TagOpen "tbody" []
@@ -224,12 +221,13 @@ parsePage board html =
         spd = flip fromMaybe (parseSpeed rest2) $
                 fromMaybe 0 $ lookup board ssachBoardsSortedByPostRate
     in
-    Page {pageId = i
-         ,lastpage = lp
-         ,speed = spd
-         ,threads = tds
-         }
+    Page{pageId = i
+        ,lastpage = lp
+        ,speed = spd
+        ,threads = tds
+        }
 
+{-
 -- Only valid within one board.
 parseForm :: (Monad m, Monad m') => String -> [Tag Text] -> (String, [Part m m'])
 parseForm host tags =
@@ -247,12 +245,13 @@ parseForm host tags =
         = t ~== tgOpen "input" [("name", "")]
     inputToField tag =
         partBS (fromAttrib "name" tag) (T.encodeUtf8 $ fromAttrib "value" tag)
+-}
 
-newtype ErrorMessage = Err {unErrorMessage :: String}
+newtype ErrorMessage = Err {unErrorMessage :: Text}
     deriving (Eq, Ord)
 
 instance Show ErrorMessage where
-    show = unErrorMessage -- show cyrillic as is, instead of escaping it.
+    show = T.unpack . unErrorMessage -- show cyrillic as is, instead of escaping it.
 
 newtype ErrorException = ErrorException {unErrorException :: SomeException}
     deriving (Typeable)
@@ -291,7 +290,7 @@ data Outcome
         {errMessage :: ErrorMessage}
     | InternalError
         {errException :: ErrorException}
-    | UnknownError
+    | UnknownError Int
   deriving (Eq, Show)
 
 instance NFData ErrorMessage where
@@ -305,9 +304,6 @@ instance NFData Outcome where
     rnf (OtherError s) = rnf s
     rnf (InternalError s) = rnf s
     rnf a = a `seq` ()
-
-message :: Outcome -> String
-message = unErrorMessage . errMessage
 
 successOutcome :: Outcome -> Bool
 successOutcome Success = True
@@ -335,13 +331,20 @@ haveAnError tags =
 
 cloudflareCaptcha :: [Tag Text] -> Bool
 cloudflareCaptcha =
-    isInfixOf [tgOpen "title" [], TagText "Attention required!"]
+    isInfixOfP
+        [(== tgOpen "title" [])
+        ,maybe False (T.isPrefixOf "Attention Required! |") . maybeTagText]
+
+cloudflareIdCaptcha :: [Tag Text] -> Maybe Text
+cloudflareIdCaptcha =
+    fmap (fromAttrib "value") .
+        find (~== tgOpen "input" [("type", "hidden"), ("name", "id")])
 
 cloudflareBan :: [Tag Text] -> Bool
 cloudflareBan =
     isInfixOfP
         [(== tgOpen "title" [])
-        ,maybe False (T.isPrefixOf "Access Denied |") . maybeTagText]
+        ,maybe False (T.isPrefixOf "Access denied |") . maybeTagText]
 
 detectCloudflare :: [Tag Text] -> Maybe Outcome
 detectCloudflare tags
@@ -349,14 +352,14 @@ detectCloudflare tags
     | cloudflareBan tags = Just CloudflareBan
     | otherwise = Nothing
 
-detectOutcome :: [Tag Text] -> Outcome
-detectOutcome tags
+detectOutcome :: [Tag Text] -> Int -> Outcome
+detectOutcome tags st
     | wordfiltered tags = Wordfilter
     | invalidThread tags = ThreadDoesNotExist
     | Just err <- haveAnError tags =
         case () of
           _ | Just reason <- T.stripPrefix "Ошибка: Доступ к отправке сообщений с этого IP закрыт. Причина: " err
-             -> Banned (Err $ T.unpack reason)
+             -> Banned (Err reason)
 
             | T.isInfixOf "String refused" err
              || T.isInfixOf "спам" err
@@ -397,5 +400,5 @@ detectOutcome tags
              -> EmptyPost
 
             | otherwise
-             -> OtherError (Err $ T.unpack err)
-    | otherwise = UnknownError
+             -> OtherError (Err err)
+    | otherwise = UnknownError st

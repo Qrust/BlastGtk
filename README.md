@@ -14,6 +14,6 @@
 #Как сконпелять из сорцов
 + См. [COMPILEGUIDE.md](https://github.com/exbb2/BlastItWithPiss/blob/master/COMPILEGUIDE.md)
 
-Слать багрепорты можно в Issues выше, в тред http://1chan.ru/b/res/70488/, на мыло kudahkukarek@gmail.com или на жаббер kudah@jabber.ru.
+**Шлите багрепорты в тред http://1chan.ru/b/res/77188/**, на мыло kudahkukarek@gmail.com или на жаббер kudah@jabber.ru. С репортом **прикрепите log.txt (или его часть)** и детально опишите обстоятельства возникновения бага.
 
-Старые версии находятся по адресу https://github.com/exbb2/BlastItWithPiss/downloads
+Старые версии находятся по адресу https://github.com/exbb2/BlastItWithPiss/downloads, новые по https://github.com/exbb2/BlastItWithPiss/releases
