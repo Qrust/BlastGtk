@@ -72,6 +72,7 @@ data Conf = Conf
     -- added in 1.2
     ,coPresolveCaptcha   :: !Bool
     ,coBoardSpeedData    :: ![(Board, Int)] -- fucking aeson
+    ,coDomain            :: !String
     }
   deriving (Eq, Show, Ord, Generic)
 
@@ -138,6 +139,7 @@ instance Default Conf => FromJSON (Conf, String) where
         F(coVideoFile)
         F(coPresolveCaptcha)
         F(coBoardSpeedData)
+        F(coDomain)
 #undef F
         return Conf{..}
     parseJSON _ = mzero

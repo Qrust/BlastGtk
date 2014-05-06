@@ -56,6 +56,7 @@ module BlastItWithPiss.Blast
     ) where
 import Import
 import BlastItWithPiss.MonadChoice
+import BlastItWithPiss.Board; import System.IO.Unsafe
 
 import Control.Exception.Lifted
 import Network.Mime
@@ -208,6 +209,7 @@ maybeNoProxy :: a -> (BlastProxy -> a) -> BlastProxy -> a
 maybeNoProxy v _ NoProxy = v
 maybeNoProxy _ f p = f p
 
+{-# NOINLINE setBrowserDefaults #-}
 setBrowserDefaults :: BlastProxy -> UserAgent -> BrowserAction ()
 setBrowserDefaults bproxy (UserAgent userAgent) = do
     httpSetProxy bproxy
@@ -219,6 +221,8 @@ setBrowserDefaults bproxy (UserAgent userAgent) = do
         ,(hAccept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         ,(hAcceptLanguage, "ru,en;q=0.5")
         ,(hConnection, "keep-alive")
+        -- implyign only ssach connections
+        ,("Host", encodeUtf8 $ fromString (unsafePerformIO (readIORef domainVar)))
         ]
     --
     --setCookieFilter $ \_ _ -> return False
@@ -324,7 +328,7 @@ httpReqStrTags u = do
         (<$ x) . parseTagsT . S.concat <$> (responseBody x $$+- consume)
 
 httpGet :: String -> Blast (Response (ResumableSource (ResourceT IO) ByteString))
-httpGet = makeRequest <=< parseUrl
+httpGet = httpReq <=< parseUrl
 
 httpGetLbs :: String -> Blast LByteString
 httpGetLbs u = do

@@ -49,7 +49,7 @@ data Config = Config
     ,_antigateKey            :: String
     ,_antigateHost           :: String
     ,_disableRetryCaptcha    :: Bool
-    ,_disableRetryWordfilter :: !Bool
+    ,_disableRetryWordfilter :: Bool
     ,_disableRetryAlways     :: Bool
     ,_retryExceptions        :: Bool
     ,_imageDir               :: (Maybe FilePath)
@@ -60,6 +60,7 @@ data Config = Config
     ,_banned                 :: FilePath
     ,_dead                   :: FilePath
     ,_other                  :: FilePath
+    ,_domain                 :: String
     }
   deriving (Show, Data, Typeable)
 
@@ -182,6 +183,10 @@ impureAnnotatedCmdargsConfig = Config
         &= name "other"
         &= help "Куда писать остальные прокси, например те у которых обнаружился действующий таймаут на постинг"
         &= typFile
+    ,_domain = "2ch.hk"
+        &= explicit
+        &= name "domain"
+        &= help "Домен ссача, например 2ch.tf"
     }
     &= program "smyvalka"
     &= helpArg [explicit, name "h", name "?", name "help", help "Показать вот эту хуйню"]
@@ -500,6 +505,9 @@ main = withSocketsDo $ do
     ifM (null <$> getArgs)
         (putStrLn $ show md) $ do
         Config{..} <- cmdArgsRun md
+
+        writeIORef domainVar _domain
+
         let !board =
               fromMaybe
                 (error $ "Не смог прочитать \"" ++ _board ++

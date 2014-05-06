@@ -46,6 +46,8 @@ import System.Console.CmdArgs.Implicit hiding (def)
 
 import Control.Monad.Trans.Reader
 
+import Data.IORef
+
 -- cmdargs won't let me use strict fields
 data Config = Config
     {_socks                :: Bool
@@ -68,6 +70,7 @@ data Config = Config
     ,_antigateHost         :: String
     ,_disableRetryCaptcha  :: Bool
     ,_disableRetryRejected :: Bool
+    ,_domain               :: String
     }
   deriving (Show, Data, Typeable)
 
@@ -216,6 +219,10 @@ impureAnnotatedCmdargsConfig = Config
         &= name "dR"
         &= name "disable-retry-rejected"
         &= help "Отключить перепроверку при перегруженности вакабы (PostRejected)."
+    ,_domain = "2ch.hk"
+        &= explicit
+        &= name "domain"
+        &= help "Домен ссача, например 2ch.tf"
     }
     &= program "proxychecker"
     &= helpArg
@@ -541,6 +548,8 @@ main = withSocketsDo $ do
         putStrLn $ show md
       else do
         conf@Config{..} <- cmdArgsRun md
+
+        writeIORef domainVar _domain
 
         let
           !board = fromMaybe

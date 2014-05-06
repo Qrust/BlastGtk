@@ -1,9 +1,11 @@
+{-# OPTIONS_GHC -fno-cse #-}
 module BlastItWithPiss.Board
     (Board(..)
     ,readBoard
     ,renderBoard
 
     -- * Ssach
+    ,domainVar
     ,ssachBoardsSortedByPostRate
     ,ssachLastRecordedFields
     ,allSsachBoards
@@ -19,6 +21,9 @@ module BlastItWithPiss.Board
     ) where
 import Import
 import Network.HTTP.Conduit.MultipartFormData
+
+import System.IO.Unsafe
+import Data.IORef
 
 -- | Ssach boards.
 data Board
@@ -240,8 +245,13 @@ renderBoard b =
         fromString (map toLower $ fromJust $ stripPrefix "Ssach" $ show b)
         <> "/"
 
-ssach :: IsString a => a
-ssach = "http://2ch.hk"
+{-# NOINLINE domainVar #-}
+domainVar :: IORef String
+domainVar = unsafePerformIO (newIORef "2ch.hk")
+
+{-# NOINLINE ssach #-}
+ssach :: (Monoid a, IsString a) => a
+ssach = "http://" <> fromString (unsafePerformIO (readIORef domainVar))
 
 ssachBoard :: (Monoid a, IsString a) => Board -> a
 ssachBoard b = ssach <> renderBoard b

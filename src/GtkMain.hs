@@ -360,6 +360,7 @@ instance Default Conf where
          ++ "http://www.youtube.com/watch?v=r05TYkdsKho"
         ,coPresolveCaptcha = False
         ,coBoardSpeedData = []
+        ,coDomain = "2ch.hk"
         }
 
 helpMessage :: String
@@ -398,6 +399,9 @@ main = withSocketsDo $ do
     configfile <- (</> "config.json") <$> configDir
     conf <- readConfig configfile
     putInvisibleLog $ "Loaded config: " ++ show conf
+
+    -- MAXHACK
+    writeIORef domainVar (coDomain conf)
 
     -- start
 
