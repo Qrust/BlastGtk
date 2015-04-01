@@ -418,7 +418,7 @@ mainloop proxies = do
     writeQueue <- liftIO $ newTQueueIO
 
     _ <- liftIO $ forkIO $
-        CL.sourceList proxies C.$$ sinkTBMQueue proxyQueue
+        CL.sourceList proxies C.$$ sinkTBMQueue proxyQueue True
 
     _ <- liftIO $ forkIO $
         writerThread catFiles writeQueue

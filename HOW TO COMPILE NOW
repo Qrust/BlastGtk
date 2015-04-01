@@ -1,0 +1,1 @@
+http-conduit is sloppy, to compile replace 'import Data.Time.Clock' with 'import Data.Time' in Network.HTTP.Conduit.Types (Show,Read instances trickled down from some imports somewhere before, but they no longer do)

@@ -244,7 +244,7 @@ renderBoard :: (Monoid a, IsString a) => Board -> a
 renderBoard b = "/" <> fromString (map toLower $ fromJust $ stripPrefix "Ssach" $ show b) <> "/"
 
 ssach :: IsString a => a
-ssach = "http://2ch.hk"
+ssach = "https://2ch.hk"
 
 ssachBoard :: (Monoid a, IsString a) => Board -> a
 ssachBoard b = ssach <> renderBoard b
