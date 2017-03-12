@@ -222,7 +222,7 @@ setBrowserDefaults bproxy (UserAgent userAgent) = do
         ,(hAcceptLanguage, "ru,en;q=0.5")
         ,(hConnection, "keep-alive")
         -- implyign only ssach connections
-        ,("Host", encodeUtf8 $ fromString (unsafePerformIO (readIORef domainVar)))
+        -- ,("Host", encodeUtf8 $ fromString (unsafePerformIO (readIORef domainVar)))
         ]
     --
     --setCookieFilter $ \_ _ -> return False
