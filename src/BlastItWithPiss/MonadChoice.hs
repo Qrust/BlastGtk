@@ -58,13 +58,3 @@ instance MonadRandom m => MonadRandom (ResourceT m) where
     getRandomR  = lift . getRandomR
     {-# INLINE getRandomRs #-}
     getRandomRs = lift . getRandomRs
-
-instance MonadRandom m => MonadRandom (StateT s m) where
-    {-# INLINE getRandom #-}
-    getRandom   = lift getRandom
-    {-# INLINE getRandoms #-}
-    getRandoms  = lift getRandoms
-    {-# INLINE getRandomR #-}
-    getRandomR  = lift . getRandomR
-    {-# INLINE getRandomRs #-}
-    getRandomRs = lift . getRandomRs
